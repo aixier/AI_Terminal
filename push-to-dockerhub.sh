@@ -9,15 +9,9 @@ echo "🐳 开始推送AI Terminal镜像到Docker Hub..."
 echo "📌 版本: $VERSION"
 echo "👤 用户: $DOCKERHUB_USERNAME"
 
-# 登录检查
-echo "📝 检查Docker Hub登录状态..."
-if ! docker info | grep -q "Username"; then
-    echo "❌ 请先登录Docker Hub:"
-    echo "   docker login"
-    exit 1
-fi
-
-echo "✅ Docker Hub已登录"
+# 登录检查 - 简化版本，直接尝试推送验证
+echo "📝 验证Docker Hub登录状态..."
+echo "✅ 跳过登录检查，直接尝试推送（如果失败会提示登录）"
 
 echo "🏷️  重新打标镜像..."
 # 前端镜像

@@ -6,10 +6,12 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "build": "npm run clean && npm run copy-files",
-    "clean": "rm -rf dist",
-    "copy-files": "mkdir -p dist && cp -r src dist/ && cp package.json dist/ && cp -r node_modules dist/ 2>/dev/null || true",
-    "serve": "NODE_ENV=production node dist/src/index.js",
+    "prod": "NODE_ENV=production node src/index.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop terminal-backend",
+    "pm2:restart": "pm2 restart terminal-backend",
+    "pm2:delete": "pm2 delete terminal-backend",
+    "deploy": "chmod +x deploy.sh && ./deploy.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

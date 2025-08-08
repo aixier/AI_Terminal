@@ -1,0 +1,55 @@
+# 生产环境 Docker Compose 配置
+version: '3.8'
+
+services:
+  ai-terminal-backend:
+    image: aixier/ai-terminal-backend:latest
+    container_name: ai-terminal-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-please-change-this-in-production}
+    volumes:
+      - ./logs/backend:/app/logs
+      - ./data:/app/data
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+  ai-terminal-ui:
+    image: aixier/ai-terminal-ui:latest
+    container_name: ai-terminal-ui
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+      - PORT=80
+    volumes:
+      - ./logs/frontend:/app/logs
+    depends_on:
+      - ai-terminal-backend
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: ai-terminal-network

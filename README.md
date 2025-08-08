@@ -16,7 +16,7 @@ AI卡片系统是一个智能的知识管理平台，结合AI技术和直观的W
 - 💾 **多格式导出** - 支持JSON、PDF、图片等多种格式导出
 - 🖥️ **现代化界面** - 基于Vue 3 + Element Plus的直观用户界面
 - 🔒 **安全认证** - JWT认证机制，确保数据安全
-- 🌐 **Docker部署** - 支持容器化部署，简化运维
+- 🌐 **Docker部署** - 支持容器化部署，公共镜像可直接使用
 - 🤖 **Claude集成** - 集成Claude AI服务，提供智能内容生成
 
 ## 技术栈
@@ -337,6 +337,95 @@ pm2 logs --lines 10
 ```bash
 cd ~/AI_Terminal/terminal-backend && npm run deploy
 cd ~/AI_Terminal/terminal-ui && npm run deploy
+```
+
+## 🐳 Docker 部署 (推荐)
+
+### 快速开始 - 使用公共镜像
+
+我们提供了预构建的公共Docker镜像，任何人都可以免费使用：
+
+```bash
+# 1. 下载配置文件
+wget https://raw.githubusercontent.com/aixier/AI_Terminal/main/docker-compose.yml
+
+# 2. 一键启动
+docker-compose up -d
+
+# 3. 访问应用
+# 前端: http://your-server-ip/
+# 后端API: http://your-server-ip:3000/
+```
+
+### Docker镜像信息
+
+**公共镜像仓库：**
+- 🖥️ 前端: `aixier/ai-terminal-ui:latest`
+- ⚙️ 后端: `aixier/ai-terminal-backend:latest`
+
+**单独运行镜像：**
+```bash
+# 运行后端
+docker run -d -p 3000:3000 --name ai-terminal-backend aixier/ai-terminal-backend:latest
+
+# 运行前端  
+docker run -d -p 80:80 --name ai-terminal-ui aixier/ai-terminal-ui:latest
+```
+
+### 生产环境 Docker 部署
+
+```bash
+# 1. 克隆配置文件
+git clone https://github.com/aixier/AI_Terminal.git
+cd AI_Terminal
+
+# 2. 配置环境变量
+cp .env.example .env
+nano .env  # 修改JWT_SECRET等配置
+
+# 3. 使用生产配置启动
+docker-compose -f docker-compose.prod.yml up -d
+
+# 4. 查看状态
+docker-compose ps
+docker-compose logs -f
+```
+
+### Docker 管理命令
+
+```bash
+# 启动服务
+docker-compose up -d
+
+# 停止服务
+docker-compose down
+
+# 查看状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+
+# 更新镜像
+docker-compose pull
+docker-compose up -d
+
+# 清理数据
+docker-compose down -v
+```
+
+### 自建镜像
+
+如果需要自定义构建：
+
+```bash
+# 构建镜像
+docker build -t your-username/ai-terminal-backend:latest ./terminal-backend
+docker build -t your-username/ai-terminal-ui:latest ./terminal-ui
+
+# 推送到Docker Hub
+chmod +x push-to-dockerhub.sh
+./push-to-dockerhub.sh
 ```
 
 ## 项目结构

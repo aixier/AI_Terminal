@@ -50,6 +50,15 @@ export const API_SERVERS = {
     ws: 'ws://ai-terminal-xnbmzvtedv.ap-northeast-1.fcapp.run',
     protocol: 'websocket', // 使用原生WebSocket
     default: false
+  },
+  
+  // AWS云服务器
+  aws: {
+    name: 'AWS云服务器',
+    url: 'http://3.91.230.6:3000',
+    ws: 'ws://3.91.230.6:3000',
+    protocol: 'socket.io',
+    default: false
   }
 }
 
@@ -71,7 +80,7 @@ export const getCurrentServer = () => {
   const hostname = window.location.hostname
   const port = window.location.port
   
-  // 特殊处理：如果是通过域名或云主机IP访问（frp映射场景）
+  // 特殊处理：如果是通过域名或云主机IP访问
   if (hostname === 'card.paitongai.com' || hostname === '8.130.86.152') {
     // frp映射场景：使用原生WebSocket
     return {
@@ -81,6 +90,11 @@ export const getCurrentServer = () => {
       protocol: 'websocket',             // 使用原生WebSocket而不是Socket.IO
       default: false
     }
+  }
+  
+  // AWS云服务器特殊处理
+  if (hostname === '3.91.230.6') {
+    return API_SERVERS.aws
   }
   
   // 如果是通过其他IP地址访问，使用相同IP的后端

@@ -10,6 +10,11 @@
     "build:prod": "vite build --mode production",
     "serve": "node server.js",
     "serve:prod": "NODE_ENV=production node server.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop terminal-ui",
+    "pm2:restart": "pm2 restart terminal-ui",
+    "pm2:delete": "pm2 delete terminal-ui",
+    "deploy": "chmod +x deploy.sh && ./deploy.sh",
     "docker:build": "docker build -t terminal-ui .",
     "docker:run": "docker run -p 80:80 --env-file .env terminal-ui"
   },

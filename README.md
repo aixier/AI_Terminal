@@ -59,7 +59,7 @@ npm install
 
 后端配置 `terminal-backend/.env`：
 ```env
-PORT=3000
+PORT=6000
 NODE_ENV=development
 JWT_SECRET=your-secret-key-here-change-in-production
 ```
@@ -91,7 +91,7 @@ npm run dev
 - **Node.js**: 18+ 
 - **系统**: Ubuntu 20.04+ / CentOS 7+
 - **内存**: 至少 2GB RAM
-- **端口**: 80 (前端)、3000 (后端API)
+- **端口**: 80 (前端)、6000 (后端API)
 
 ### 1. 安装系统依赖
 
@@ -123,7 +123,7 @@ chmod +x terminal-backend/deploy.sh
 chmod +x terminal-ui/deploy.sh
 ```
 
-### 3. 部署后端 (端口 3000)
+### 3. 部署后端 (端口 6000)
 
 ```bash
 cd ~/AI_Terminal/terminal-backend
@@ -160,7 +160,7 @@ pm2 status
 pm2 logs
 
 # 测试访问
-curl http://localhost:3000/health  # 后端健康检查
+curl http://localhost:6000/health  # 后端健康检查
 curl http://localhost/             # 前端页面
 ```
 
@@ -275,7 +275,7 @@ npm run pm2:delete   # PM2删除
 ```bash
 # 查看端口占用
 sudo lsof -i :80
-sudo lsof -i :3000
+sudo lsof -i :6000
 
 # 杀死进程
 sudo kill -9 <PID>
@@ -354,7 +354,7 @@ docker-compose up -d
 
 # 3. 访问应用
 # 前端: http://your-server-ip/
-# 后端API: http://your-server-ip:3000/
+# 后端API: http://your-server-ip:6000/
 ```
 
 ### Docker镜像信息
@@ -366,7 +366,7 @@ docker-compose up -d
 **单独运行镜像：**
 ```bash
 # 运行后端
-docker run -d -p 3000:3000 --name ai-terminal-backend coopotfan/ai-terminal-backend:latest
+docker run -d -p 6000:6000 --name ai-terminal-backend coopotfan/ai-terminal-backend:latest
 
 # 运行前端  
 docker run -d -p 80:80 --name ai-terminal-ui coopotfan/ai-terminal-ui:latest

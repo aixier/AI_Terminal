@@ -8,8 +8,8 @@ export const API_SERVERS = {
   // 本地开发环境
   local: {
     name: '本地服务器',
-    url: 'http://localhost:3000',
-    ws: 'ws://localhost:3000',
+    url: 'http://localhost:6000',
+    ws: 'ws://localhost:6000',
     protocol: 'socket.io', // 使用Socket.IO
     default: true
   },
@@ -17,20 +17,20 @@ export const API_SERVERS = {
   // 本地Docker环境
   docker: {
     name: '本地Docker服务',
-    url: 'http://localhost:3001',
-    ws: 'ws://localhost:3001',
+    url: 'http://localhost:6001',
+    ws: 'ws://localhost:6001',
     protocol: 'socket.io', // 使用Socket.IO
     default: false
   },
   
-  // FRP穿透模式（方案1：使用3000端口）
+  // FRP穿透模式（方案1：使用6000端口）
   frp: {
-    name: 'FRP穿透服务(3000端口)',
-    url: 'http://8.130.86.152:3000',   // API也使用IP:3000
-    ws: 'ws://8.130.86.152:3000',      // 原生WebSocket使用IP:3000
+    name: 'FRP穿透服务(6000端口)',
+    url: 'http://8.130.86.152:6000',   // API也使用IP:6000
+    ws: 'ws://8.130.86.152:6000',      // 原生WebSocket使用IP:6000
     protocol: 'websocket',              // 使用原生WebSocket
     default: false,
-    description: '使用原生WebSocket通过IP:3000端口直连'
+    description: '使用原生WebSocket通过IP:6000端口直连'
   },
   
   // FRP穿透模式（方案2：使用80端口）
@@ -55,8 +55,8 @@ export const API_SERVERS = {
   // AWS云服务器
   aws: {
     name: 'AWS云服务器',
-    url: 'http://3.91.230.6:3000',
-    ws: 'ws://3.91.230.6:3000',
+    url: 'http://3.91.230.6:6000',
+    ws: 'ws://3.91.230.6:6000',
     protocol: 'socket.io',
     default: false
   }
@@ -85,8 +85,8 @@ export const getCurrentServer = () => {
     // frp映射场景：使用原生WebSocket
     return {
       name: 'FRP映射服务器',
-      url: `http://8.130.86.152:3000`,  // API使用IP:3000
-      ws: `ws://8.130.86.152:3000`,     // 原生WebSocket使用IP:3000
+      url: `http://8.130.86.152:6000`,  // API使用IP:6000
+      ws: `ws://8.130.86.152:6000`,     // 原生WebSocket使用IP:6000
       protocol: 'websocket',             // 使用原生WebSocket而不是Socket.IO
       default: false
     }
@@ -100,7 +100,7 @@ export const getCurrentServer = () => {
   // 如果是通过其他IP地址访问，使用相同IP的后端
   if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
     // 如果是本地网络IP访问，使用相同主机的后端
-    const backendPort = 3000 // 后端默认端口
+    const backendPort = 6000 // 后端默认端口
     return {
       name: '动态服务器',
       url: `http://${hostname}:${backendPort}`,

@@ -1,6 +1,6 @@
-# 终端能力友好化系统
+# AI卡片系统
 
-一个通过友好的Web界面让用户执行复杂终端命令的多用户终端操作系统。
+一个智能的AI卡片生成和管理系统，通过友好的Web界面让用户创建、编辑和管理知识卡片，集成终端功能进行高级操作。
 
 ## 功能特性
 
@@ -206,4 +206,6 @@ AI_Terminal/
 
 ## 许可证
 
-MIT License
+本项目基于 MIT License 开源，详见 [LICENSE](LICENSE) 文件。
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

@@ -53,4 +53,23 @@ backup/
 *.backup
 
 # Test files
-test-report-*.json
+test-*.js
+test-*.html
+test-*.json
+*test*.js
+*test*.html
+
+# Screenshots and images (keep only necessary ones)
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Scripts and batch files (keep only necessary ones)
+start*.sh
+start.bat
+
+# Analysis and temporary docs
+websocket-*.md
+*-analysis.md
+tasklist.md

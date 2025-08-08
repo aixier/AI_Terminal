@@ -1,16 +1,23 @@
 # AI卡片系统
 
-一个智能的AI卡片生成和管理系统，通过友好的Web界面让用户创建、编辑和管理知识卡片，集成终端功能进行高级操作。
+> 一个现代化的AI驱动的知识卡片生成和管理平台
 
-## 功能特性
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-green)](https://nodejs.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-- 🖥️ **友好的Web界面** - 直观的图形界面，降低终端使用门槛
-- 💬 **自然语言交互** - 支持用自然语言描述操作，自动转换为终端命令
-- 🔘 **命令快捷按钮** - 预设常用命令，一键执行
-- 📊 **执行过程可视化** - 实时显示命令执行进度和日志
-- 🔒 **安全控制** - 命令白名单、参数验证、防注入攻击
-- 👥 **多用户支持** - 用户认证、会话隔离、权限管理
-- 🤖 **Claude Code集成** - 智能命令建议和错误处理
+AI卡片系统是一个智能的知识管理平台，结合AI技术和直观的Web界面，帮助用户高效地创建、编辑和管理知识卡片。系统集成了强大的终端功能，为高级用户提供更多操作选项。
+
+## ✨ 功能特性
+
+- 🎨 **智能卡片生成** - 基于AI技术自动生成结构化知识卡片
+- 📝 **多样化模板** - 提供丰富的卡片模板，适用于不同场景
+- 🔄 **实时预览** - 即时预览卡片效果，所见即所得
+- 💾 **多格式导出** - 支持JSON、PDF、图片等多种格式导出
+- 🖥️ **现代化界面** - 基于Vue 3 + Element Plus的直观用户界面
+- 🔒 **安全认证** - JWT认证机制，确保数据安全
+- 🌐 **Docker部署** - 支持容器化部署，简化运维
+- 🤖 **Claude集成** - 集成Claude AI服务，提供智能内容生成
 
 ## 技术栈
 
@@ -22,15 +29,15 @@
 
 ### 后端
 - Node.js + Express
-- Socket.io
-- node-pty (终端模拟)
+- Socket.io (实时通信)
 - JWT 认证
+- Claude AI API 集成
 
 ## 快速开始
 
 ### 1. 克隆项目
 ```bash
-git clone <repository-url>
+git clone https://github.com/aixier/AI_Terminal.git
 cd AI_Terminal
 ```
 

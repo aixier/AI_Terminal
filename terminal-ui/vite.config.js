@@ -14,14 +14,6 @@ export default defineConfig({
         drop_console: true,
         drop_debugger: true
       }
-    },
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'element-plus': ['element-plus'],
-          'vendor': ['vue', 'vue-router', 'pinia', 'axios']
-        }
-      }
     }
   },
   server: {

@@ -3,7 +3,7 @@ version: '3.8'
 
 services:
   ai-terminal-backend:
-    image: aixier/ai-terminal-backend:latest
+    image: coopotfan/ai-terminal-backend:latest
     container_name: ai-terminal-backend
     ports:
       - "3000:3000"
@@ -27,7 +27,7 @@ services:
       retries: 3
     
   ai-terminal-ui:
-    image: aixier/ai-terminal-ui:latest
+    image: coopotfan/ai-terminal-ui:latest
     container_name: ai-terminal-ui
     ports:
       - "80:80"

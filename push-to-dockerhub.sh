@@ -2,7 +2,7 @@
 set -e
 
 # 配置变量
-DOCKERHUB_USERNAME="aixier"  # 替换为你的Docker Hub用户名
+DOCKERHUB_USERNAME="coopotfan"  # Docker Hub用户名
 VERSION="0.2"
 
 echo "🐳 开始推送AI Terminal镜像到Docker Hub..."

@@ -360,16 +360,16 @@ docker-compose up -d
 ### Docker镜像信息
 
 **公共镜像仓库：**
-- 🖥️ 前端: `aixier/ai-terminal-ui:latest`
-- ⚙️ 后端: `aixier/ai-terminal-backend:latest`
+- 🖥️ 前端: `coopotfan/ai-terminal-ui:latest`
+- ⚙️ 后端: `coopotfan/ai-terminal-backend:latest`
 
 **单独运行镜像：**
 ```bash
 # 运行后端
-docker run -d -p 3000:3000 --name ai-terminal-backend aixier/ai-terminal-backend:latest
+docker run -d -p 3000:3000 --name ai-terminal-backend coopotfan/ai-terminal-backend:latest
 
 # 运行前端  
-docker run -d -p 80:80 --name ai-terminal-ui aixier/ai-terminal-ui:latest
+docker run -d -p 80:80 --name ai-terminal-ui coopotfan/ai-terminal-ui:latest
 ```
 
 ### 生产环境 Docker 部署

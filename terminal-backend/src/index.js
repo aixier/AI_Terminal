@@ -3,6 +3,8 @@ import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
 import bodyParser from 'body-parser'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import config from './config/config.js'
 import logger from './utils/logger.js'
 import terminalRoutes from './routes/terminal.js'
@@ -15,6 +17,9 @@ import { setupSocketHandlers } from './services/socketService.js'
 import websocketService from './services/websocketService.js'
 // import { preventCommandInjection, limitRequestSize, auditLog, rateLimit } from './middleware/security.js'
 // import { verifyToken, optionalAuth } from './middleware/auth.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const app = express()
 const httpServer = createServer(app)
@@ -101,6 +106,19 @@ app.use('/api/preview', previewRoutes) // 预览服务
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
+
+// 静态文件服务 - 托管前端
+const staticPath = process.env.STATIC_PATH || path.join(__dirname, '../../terminal-ui/dist')
+if (process.env.NODE_ENV === 'production' || process.env.SERVE_STATIC === 'true') {
+  app.use(express.static(staticPath))
+  
+  // 所有非API路由返回index.html (SPA路由支持)
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(staticPath, 'index.html'))
+  })
+  
+  logger.info(`📁 Serving static files from: ${staticPath}`)
+}
 
 // Socket.io 处理 (保留作为备选)
 setupSocketHandlers(io)

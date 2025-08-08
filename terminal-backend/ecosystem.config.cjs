@@ -8,11 +8,15 @@ module.exports = {
     max_memory_restart: '1G',
     env: {
       NODE_ENV: 'production',
-      PORT: 6000
+      PORT: 80,
+      SERVE_STATIC: 'true',
+      STATIC_PATH: '../terminal-ui/dist'
     },
     env_production: {
       NODE_ENV: 'production',
-      PORT: 6000
+      PORT: 80,
+      SERVE_STATIC: 'true',
+      STATIC_PATH: '../terminal-ui/dist'
     },
     error_file: './logs/error.log',
     out_file: './logs/out.log',

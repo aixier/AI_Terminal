@@ -1,0 +1,1517 @@
+<template>
+  <div class="card-generator-layout">
+    <!-- Left Sidebar - My Cards -->
+    <div class="left-sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">我的卡片</span>
+        <button class="refresh-btn" @click="refreshCardFolders" title="刷新">
+          🔄
+        </button>
+      </div>
+      <div class="folder-tree">
+        <div 
+          v-for="folder in cardFolders" 
+          :key="folder.id"
+          class="folder-container"
+        >
+          <div 
+            class="folder-item"
+            :class="{ expanded: expandedFolders.includes(folder.id) }"
+            @click="toggleFolder(folder.id)"
+          >
+            <span class="folder-icon">{{ expandedFolders.includes(folder.id) ? '📂' : '📁' }}</span>
+            <span class="folder-name">{{ folder.name }}</span>
+            <span class="folder-count">({{ folder.cards?.length || 0 }})</span>
+          </div>
+          
+          <div v-if="expandedFolders.includes(folder.id)" class="cards-list">
+            <div 
+              v-for="card in folder.cards" 
+              :key="card.id"
+              class="card-item"
+              :class="{ active: selectedCard === card.id }"
+              @click="selectCard(card.id, folder.id)"
+            >
+              <span class="card-icon">
+                {{ getFileIcon(card.name) }}
+              </span>
+              <span class="card-name">{{ card.name }}</span>
+              <div class="card-actions">
+                <span class="card-type">{{ getFileType(card.name) }}</span>
+                <button 
+                  v-if="card.name.toLowerCase().endsWith('.json')"
+                  class="generate-html-btn"
+                  @click.stop="generateHtmlFromJson(card, folder)"
+                  :disabled="isGeneratingHtml[card.id]"
+                  title="预览HTML"
+                >
+                  <svg v-if="!isGeneratingHtml[card.id]" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                    <path d="M8.646 6.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L10.293 9 8.646 7.354a.5.5 0 0 1 0-.708z"/>
+                  </svg>
+                  <span v-else class="loading-spinner">⟳</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="cardFolders.length === 0" class="empty-message">
+          暂无卡片文件夹
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-area">
+      <!-- Top: Card Preview Area -->
+      <div class="preview-area">
+        <div class="area-title">
+          {{ selectedCard ? '卡片内容预览' : '生成结果预览' }}
+          <span v-if="selectedCard && previewType" class="preview-type-tag">{{ previewType.toUpperCase() }}</span>
+        </div>
+        <div class="preview-content">
+          <!-- HTML文件或iframe URL预览 -->
+          <iframe 
+            v-if="previewContent && (previewType === 'html' || previewType === 'iframe')"
+            :src="previewContent"
+            class="preview-iframe"
+            frameborder="0"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+            referrerpolicy="no-referrer"
+          ></iframe>
+          
+          <!-- JSON文件使用验证JSON查看器 -->
+          <ValidatedJsonViewer 
+            v-else-if="previewContent && previewType === 'json'"
+            :data="previewContent"
+            class="json-viewer-preview"
+            @fixed="handleJsonFixed"
+            @preview="handleJsonPreview"
+          />
+          
+          <!-- 默认内容 -->
+          <div v-else class="empty-state">
+            {{ selectedCard ? '加载卡片内容...' : '等待生成卡片...' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom: Terminal Area (可折叠) -->
+      <div class="terminal-area" :class="{ collapsed: !showTerminal }">
+        <div class="terminal-header" @click="showTerminal = !showTerminal">
+          <span class="terminal-title">
+            <span class="terminal-toggle">{{ showTerminal ? '▼' : '▶' }}</span>
+            terminal
+            <span v-if="!showTerminal" class="terminal-status-mini">
+              {{ isClaudeInitialized ? '✅ Claude就绪' : isInitializingClaude ? '🔄 初始化中...' : '⚪ 未初始化' }}
+            </span>
+          </span>
+          <div class="terminal-actions" v-if="showTerminal">
+            <!-- 流式状态指示器 -->
+            <div v-if="streamingStatus.isStreaming" class="streaming-indicator">
+              <span class="streaming-dot"></span>
+              <span>接收中... ({{ Math.round(streamingStatus.bufferLength / 1024) }}KB)</span>
+            </div>
+            <span class="claude-status">
+              <span v-if="isInitializingClaude">🔄 初始化中...</span>
+              <span v-else-if="isClaudeInitialized">✅ Claude已就绪</span>
+              <span v-else>⚪ Claude未初始化</span>
+            </span>
+          </div>
+        </div>
+        <div class="terminal-content" ref="terminalContainer" v-show="showTerminal">
+          <!-- Terminal will be mounted here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar - Style Templates & Input -->
+    <div class="right-sidebar">
+      <!-- Top: Style Templates -->
+      <div class="style-templates">
+        <div class="template-header">风格模板</div>
+        <div class="template-list">
+          <div 
+            v-for="(template, index) in templates" 
+            :key="index"
+            class="template-item"
+            :class="{ active: selectedTemplate === index }"
+            @click="selectTemplate(index)"
+          >
+            <div class="template-name">{{ template.name }}</div>
+            <div class="template-desc">{{ template.description }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom: Input & Create -->
+      <div class="input-create-section">
+        <div class="input-wrapper">
+          <input 
+            v-model="currentTopic"
+            type="text"
+            class="topic-input"
+            placeholder="输入主题"
+          />
+          <button 
+            class="create-btn"
+            @click="generateCard"
+            :disabled="!currentTopic.trim() || isGenerating"
+          >
+            创建
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, nextTick } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Terminal } from 'xterm'
+import { FitAddon } from 'xterm-addon-fit'
+import 'xterm/css/xterm.css'
+import terminalAPI from '../api/terminal'
+import terminalService from '../services/terminalService'
+import cardGeneratorAPI from '../api/cardGenerator'
+import MarkdownRenderer from '../components/MarkdownRenderer.vue'
+import SimpleJsonViewer from '../components/SimpleJsonViewer.vue'
+import ValidatedJsonViewer from '../components/ValidatedJsonViewer.vue'
+
+// State
+const currentTopic = ref('')
+const generatedUrl = ref('')
+const isGenerating = ref(false)
+const selectedTemplate = ref(0)
+const selectedCard = ref(null)
+const selectedFolder = ref(null)
+const terminalContainer = ref(null)
+const terminal = ref(null)
+const fitAddon = ref(null)
+const cardFolders = ref([])
+const templates = ref([])
+const expandedFolders = ref([])
+const isClaudeInitialized = ref(false)
+const isInitializingClaude = ref(false)
+const streamingStatus = ref({
+  isStreaming: false,
+  bufferLength: 0
+})
+const previewContent = ref('')
+const previewType = ref('')
+const isGeneratingHtml = ref({})
+const showTerminal = ref(false) // Terminal默认隐藏
+
+// Methods
+// Initialize Claude in terminal
+const initializeClaude = async () => {
+  if (isInitializingClaude.value || isClaudeInitialized.value) return
+  
+  isInitializingClaude.value = true
+  
+  try {
+    ElMessage.info('正在初始化 Claude...')
+    
+    // Connect to terminal if not connected
+    if (!terminalService.isReady()) {
+      // Terminal会在initializeXTerm中初始化
+      console.log('[Claude Init] Terminal not ready, waiting...')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+    
+    // Send claude command with skip permissions flag (skips confirmation menu)
+    console.log('[Claude Init] Sending claude command with --dangerously-skip-permissions')
+    terminalService.sendCommand('claude --dangerously-skip-permissions')
+    terminalService.sendInput('\r')  // Send Enter separately
+    
+    // Wait for Claude to initialize (no menu with --dangerously-skip-permissions)
+    console.log('[Claude Init] Waiting for Claude to initialize...')
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    
+    // Check if Claude is ready by looking for prompt indicators
+    const isReady = await terminalService.checkOutput(/claude>|╭─|▌/)
+    
+    if (isReady) {
+      console.log('[Claude Init] Claude is ready')
+    } else {
+      console.log('[Claude Init] Claude initialization may still be in progress')
+    }
+    
+    isClaudeInitialized.value = true
+    ElMessage.success('Claude 初始化成功！')
+    
+  } catch (error) {
+    console.error('[Claude Init] Error:', error)
+    ElMessage.error('Claude 初始化失败: ' + error.message)
+  } finally {
+    isInitializingClaude.value = false
+  }
+}
+
+const generateCard = async () => {
+  if (!currentTopic.value.trim() || isGenerating.value) return
+  
+  // Check if Claude is initialized
+  if (!isClaudeInitialized.value) {
+    ElMessage.warning('请先初始化 Claude')
+    return
+  }
+  
+  // Check if template is selected
+  if (selectedTemplate.value === null || !templates.value[selectedTemplate.value]) {
+    ElMessage.warning('请先选择一个模板')
+    return
+  }
+  
+  isGenerating.value = true
+  
+  try {
+    // Get selected template info
+    const template = templates.value[selectedTemplate.value]
+    const templateFileName = template.fileName || 'daily-knowledge-card-template.md'
+    // 模板文件的完整路径
+    const templatePath = `/mnt/d/work/AI_Terminal/terminal-backend/data/public_template/${templateFileName}`
+    
+    // 构建用户卡片目录路径（使用绝对路径）
+    const sanitizedTopic = currentTopic.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+    // 使用绝对路径确保文件创建在正确位置
+    const userCardPath = `/mnt/d/work/AI_Terminal/terminal-backend/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
+    
+    // 构建完整的命令，使用完整路径
+    const prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${userCardPath}]：${currentTopic.value}`
+    
+    ElMessage.info('正在生成卡片...')
+    console.log('[Generate Card] Sending prompt:', prompt)
+    
+    // 使用分离发送方式：先发送文本内容，等待终端准备好，再发送控制符
+    await terminalService.sendTextAndControl(prompt, '\r', 1000)
+    
+    // 显示生成信息
+    previewType.value = 'html'
+    previewContent.value = `data:text/html,
+      <div style="padding: 20px; font-family: Arial;">
+        <h2>卡片生成任务已提交</h2>
+        <p><strong>主题:</strong> ${currentTopic.value}</p>
+        <p><strong>模板:</strong> ${templateFileName}</p>
+        <p><strong>输出路径:</strong> ${userCardPath}</p>
+        <p style="color: #666;">终端正在执行生成任务，请查看下方终端输出</p>
+      </div>`
+    
+    ElMessage.success('生成命令已发送！')
+    
+    // 等待几秒后自动刷新文件夹列表
+    setTimeout(async () => {
+      await refreshCardFolders()
+    }, 5000)
+    
+  } catch (error) {
+    console.error('Generate card error:', error)
+    ElMessage.error('生成失败: ' + error.message)
+  } finally {
+    isGenerating.value = false
+  }
+}
+
+// Initialize XTerm
+const initializeXTerm = async () => {
+  if (!terminalContainer.value) return
+  
+  try {
+    // 使用统一的terminalService初始化
+    await terminalService.init(terminalContainer.value, {
+      cols: 120,
+      rows: 30
+    })
+    
+    console.log('[Terminal] Initialized successfully')
+    
+    // Terminal已经在service中创建，不需要再创建
+    return
+  } catch (error) {
+    console.error('[Terminal] Failed to initialize:', error)
+    ElMessage.error('终端初始化失败: ' + error.message)
+    return
+  }
+    theme: {
+      background: '#0c0c0c',
+      foreground: '#d0d0d0',
+      cursor: '#d0d0d0',
+      black: '#000000',
+      red: '#cd3131',
+      green: '#0dbc79',
+      yellow: '#e5e510',
+      blue: '#2472c8',
+      magenta: '#bc3fbc',
+      cyan: '#11a8cd',
+      white: '#e5e5e5',
+      brightBlack: '#666666',
+      brightRed: '#f14c4c',
+      brightGreen: '#23d18b',
+      brightYellow: '#f5f543',
+      brightBlue: '#3b8eea',
+      brightMagenta: '#d670d6',
+      brightCyan: '#29b8db',
+      brightWhite: '#e5e5e5'
+    },
+    fontSize: 14,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    cursorBlink: true,
+    scrollback: 10000,
+    cols: 120,
+    rows: 24,
+    letterSpacing: 0,
+    lineHeight: 1.2,
+    convertEol: true,  // 转换行结束符
+    windowsMode: false, // 确保使用Unix模式
+    macOptionIsMeta: true,
+    rendererType: 'canvas'  // 使用canvas渲染器以获得更好的性能
+  })
+  
+  // Add fit addon
+  fitAddon.value = new FitAddon()
+  terminal.value.loadAddon(fitAddon.value)
+  
+  // Mount terminal to DOM
+  terminal.value.open(terminalContainer.value)
+  fitAddon.value.fit()
+  
+  // Connect to backend via terminalIntegration
+  await terminalIntegration.connect()
+  
+  // Handle terminal output from backend with optimized streaming
+  let currentProgressLine = null
+  let lastUpdateTime = 0
+  let outputBuffer = []
+  let flushTimer = null
+  
+  // 批量刷新函数
+  const flushBuffer = () => {
+    if (outputBuffer.length > 0 && terminal.value) {
+      const combined = outputBuffer.join('')
+      outputBuffer = []
+      terminal.value.write(combined)
+    }
+    flushTimer = null
+  }
+  
+  terminalIntegration.onOutput((data) => {
+    if (!terminal.value) return
+    
+    const now = Date.now()
+    
+    // 检测是否是进度/动画行（包含特殊字符和状态信息）
+    const isProgressUpdate = /[✻✶✽✢·✤✧★☆▪▫◆◇○●□■].*(?:tokens|interrupt|…)/i.test(data)
+    
+    // 检测是否是框架线
+    const isFrameLine = /^[╭─┬╮│├─┼┤╰─┴╯]+/.test(data.trim())
+    
+    if (isProgressUpdate) {
+      // 进度更新：覆盖当前行
+      if (currentProgressLine !== null) {
+        // 移动到进度行并清除
+        terminal.value.write('\x1b[1A')  // 上移一行
+        terminal.value.write('\r\x1b[2K') // 清除整行
+      }
+      
+      // 写入新的进度信息（去掉多余的换行和框架）
+      const cleanData = data
+        .replace(/[\r\n]+/g, '')  // 移除所有换行
+        .replace(/[╭─┬╮│├─┼┤╰─┴╯]+/g, '') // 移除框架字符
+        .trim()
+      
+      if (cleanData) {
+        terminal.value.write(cleanData)
+        currentProgressLine = cleanData
+      }
+      
+      lastUpdateTime = now
+      
+    } else if (isFrameLine && now - lastUpdateTime < 100) {
+      // 忽略紧随进度更新后的框架线（100ms内）
+      return
+      
+    } else if (data.includes('│') && data.includes('tokens')) {
+      // 处理带框架的进度行
+      const match = data.match(/([✻✶✽✢·✤✧★☆▪▫◆◇○●□■].*?(?:tokens|interrupt|…)[^│]*)/i)
+      if (match) {
+        if (currentProgressLine !== null) {
+          terminal.value.write('\x1b[1A\r\x1b[2K')
+        }
+        terminal.value.write(match[1].trim())
+        currentProgressLine = match[1].trim()
+      }
+      
+    } else {
+      // 正常输出
+      if (currentProgressLine !== null && !data.match(/^\s*$/)) {
+        // 如果之前有进度行，先换行
+        terminal.value.write('\n')
+        currentProgressLine = null
+      }
+      
+      // 批量缓冲普通输出
+      outputBuffer.push(data)
+      
+      // 使用requestAnimationFrame或定时器批量刷新
+      if (!flushTimer) {
+        flushTimer = setTimeout(flushBuffer, 10)
+      }
+    }
+  })
+  
+  // Send input to backend
+  terminal.value.onData((data) => {
+    terminalIntegration.sendInput(data)
+  })
+  
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    if (fitAddon.value) {
+      fitAddon.value.fit()
+    }
+  })
+}
+
+// Select template
+const selectTemplate = (index) => {
+  selectedTemplate.value = index
+  console.log('Selected template:', templates.value[index])
+}
+
+// Toggle folder expand/collapse
+const toggleFolder = (folderId) => {
+  const index = expandedFolders.value.indexOf(folderId)
+  if (index > -1) {
+    expandedFolders.value.splice(index, 1)
+  } else {
+    expandedFolders.value.push(folderId)
+  }
+}
+
+// Select a card
+const selectCard = (cardId, folderId) => {
+  selectedCard.value = cardId
+  selectedFolder.value = folderId
+  // Load card content if needed
+  loadCardContent(cardId, folderId)
+}
+
+// Load card content
+const loadCardContent = async (cardId, folderId) => {
+  try {
+    // 找到对应的卡片
+    const folder = cardFolders.value.find(f => f.id === folderId)
+    if (!folder) return
+    
+    const card = folder.cards.find(c => c.id === cardId)
+    if (!card) return
+    
+    console.log('[CardContent] Loading card:', card.name, 'path:', card.path)
+    
+    // 根据文件扩展名确定预览类型
+    const fileName = card.name.toLowerCase()
+    if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
+      previewType.value = 'html'
+      // HTML文件：使用后端静态服务URL
+      const baseUrl = 'http://localhost:3000'
+      previewContent.value = `${baseUrl}/api/terminal/card/html/${folder.id}/${encodeURIComponent(card.name)}`
+      console.log('[CardContent] HTML file URL:', previewContent.value)
+    } else if (fileName.endsWith('.json')) {
+      previewType.value = 'json'
+      // JSON文件：尝试读取文件内容
+      try {
+        console.log('[CardContent] Attempting to load JSON content from:', card.path)
+        // 使用后端API读取卡片内容
+        const response = await terminalAPI.getCardContent(card.path)
+        if (response && response.success) {
+          previewContent.value = response.content
+        } else {
+          // 如果API失败，显示卡片信息
+          previewContent.value = {
+            title: card.name,
+            path: card.path,
+            folder: folder.name,
+            loadTime: new Date().toISOString(),
+            note: "无法加载文件内容，显示卡片元信息"
+          }
+        }
+      } catch (error) {
+        console.error('[CardContent] Failed to load JSON content:', error)
+        // 显示错误信息和基本卡片数据
+        previewContent.value = {
+          title: card.name,
+          path: card.path,
+          folder: folder.name,
+          error: "文件读取失败: " + error.message,
+          loadTime: new Date().toISOString()
+        }
+      }
+    } else {
+      // 其他类型文件：显示基本信息
+      previewType.value = 'html'
+      previewContent.value = `data:text/html;charset=utf-8,
+        <div style="padding: 20px; font-family: Arial, sans-serif; background: #f5f5f5; height: 100%;">
+          <h2 style="color: #333; margin-bottom: 20px;">📄 ${card.name}</h2>
+          <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <p style="color: #666; margin-bottom: 15px;">
+              <strong>文件路径:</strong><br/>
+              <code style="background: #f0f0f0; padding: 5px; border-radius: 3px; font-size: 12px; word-break: break-all;">
+                ${card.path || 'N/A'}
+              </code>
+            </p>
+            <p style="color: #666; margin-bottom: 15px;">
+              <strong>主题:</strong> ${folder.name}
+            </p>
+            <p style="color: #666; margin-bottom: 15px;">
+              <strong>类型:</strong> ${fileName.split('.').pop().toUpperCase()}文件
+            </p>
+            <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 3px solid #4a9eff;">
+              <p style="color: #999; font-size: 14px;">
+                💡 该文件由Claude AI根据模板生成<br/>
+                暂不支持此文件类型的预览
+              </p>
+            </div>
+          </div>
+          <div style="margin-top: 20px; text-align: center;">
+            <span style="color: #999; font-size: 12px;">加载时间: ${new Date().toLocaleString()}</span>
+          </div>
+        </div>`
+    }
+    
+    ElMessage.success('卡片加载成功')
+  } catch (error) {
+    console.error('[CardContent] Failed to load card content:', error)
+    ElMessage.error('加载卡片失败: ' + error.message)
+  }
+}
+
+// Handle JSON fixed event
+const handleJsonFixed = (fixedData) => {
+  console.log('[CardGenerator] JSON data fixed:', fixedData)
+  previewContent.value = fixedData
+  ElMessage.success('JSON格式已修复')
+}
+
+// Handle JSON preview event
+const handleJsonPreview = (jsonData) => {
+  console.log('[CardGenerator] Preview JSON as card:', jsonData)
+  // 可以在这里实现预览功能
+  ElMessage.info('预览功能开发中...')
+}
+
+// Download HTML locally using browser
+const downloadHtmlLocally = (htmlContent, fileName, url = null) => {
+  try {
+    if (htmlContent) {
+      // 如果有内容，直接下载
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
+      const downloadUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(downloadUrl)
+      
+      console.log('[GenerateHTML] HTML downloaded locally via browser:', fileName)
+      ElMessage.success(`HTML文件已下载到浏览器默认下载目录：${fileName}`)
+    } else if (url) {
+      // 如果没有内容但有URL，触发浏览器下载
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      console.log('[GenerateHTML] Triggered browser download from URL:', url)
+      ElMessage.info('已触发浏览器下载，请查看下载目录')
+    }
+  } catch (error) {
+    console.error('[GenerateHTML] Failed to download locally:', error)
+    ElMessage.error('本地下载失败: ' + error.message)
+  }
+}
+
+// Generate HTML from JSON file and preview
+const generateHtmlFromJson = async (card, folder) => {
+  try {
+    // 设置生成状态
+    isGeneratingHtml.value[card.id] = true
+    
+    console.log('[GenerateHTML] Processing card:', card.name, 'from folder:', folder.name)
+    
+    // 显示加载提示
+    ElMessage.info('正在生成预览链接...')
+    
+    // 读取JSON文件内容
+    let jsonContent = null
+    try {
+      const response = await terminalAPI.getCardContent(card.path)
+      if (response && response.success) {
+        jsonContent = response.content
+      } else {
+        throw new Error('无法读取JSON文件内容')
+      }
+    } catch (error) {
+      console.error('[GenerateHTML] Failed to read JSON file:', error)
+      throw new Error('读取JSON文件失败: ' + error.message)
+    }
+    
+    console.log('[GenerateHTML] JSON content loaded:', jsonContent)
+    
+    // 调用API生成HTML
+    const generateResult = await cardGeneratorAPI.generateHtmlCard(jsonContent)
+    
+    if (!generateResult.success) {
+      throw new Error(generateResult.error || '生成HTML失败')
+    }
+    
+    console.log('[GenerateHTML] HTML generated successfully:', generateResult.data)
+    
+    // 获取分享链接并替换域名
+    let shareUrl = generateResult.data.shareLink
+    
+    // 替换域名: engagia-s-cdmxfcdbwa.cn-hangzhou.fcapp.run -> engagia-s3.paitongai.net
+    shareUrl = shareUrl.replace(
+      'engagia-s-cdmxfcdbwa.cn-hangzhou.fcapp.run',
+      'engagia-s3.paitongai.net'
+    )
+    
+    console.log('[GenerateHTML] Share URL with new domain:', shareUrl)
+    
+    // 直接在iframe中加载预览
+    previewType.value = 'iframe'
+    previewContent.value = shareUrl
+    
+    // 选中当前卡片
+    selectedCard.value = card.id
+    
+    ElMessage.success('预览链接已生成！')
+    
+    // 可选：复制链接到剪贴板
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        console.log('[GenerateHTML] Share link copied to clipboard:', shareUrl)
+      }).catch(err => {
+        console.error('[GenerateHTML] Failed to copy link:', err)
+      })
+    }
+    
+  } catch (error) {
+    console.error('[GenerateHTML] Error:', error)
+    ElMessage.error('生成预览失败: ' + error.message)
+  } finally {
+    // 清除生成状态
+    isGeneratingHtml.value[card.id] = false
+  }
+}
+
+
+// Get file icon based on extension
+const getFileIcon = (fileName) => {
+  const ext = fileName.toLowerCase().split('.').pop()
+  switch (ext) {
+    case 'json':
+      return '📋'
+    case 'html':
+    case 'htm':
+      return '🌐'
+    default:
+      return '📄'
+  }
+}
+
+// Get file type display text
+const getFileType = (fileName) => {
+  const ext = fileName.toLowerCase().split('.').pop()
+  switch (ext) {
+    case 'json':
+      return 'JSON'
+    case 'html':
+    case 'htm':
+      return 'HTML'
+    default:
+      return ext.toUpperCase()
+  }
+}
+
+// Load user card folders from file system
+const loadCardFolders = async () => {
+  try {
+    // 调用后端API获取真实的目录结构
+    const response = await terminalAPI.getCardsDirectory()
+    if (response && response.success && response.folders) {
+      cardFolders.value = response.folders
+      // Auto-expand first folder
+      if (cardFolders.value.length > 0 && !expandedFolders.value.includes(cardFolders.value[0].id)) {
+        expandedFolders.value.push(cardFolders.value[0].id)
+      }
+      console.log('Loaded folders from backend:', cardFolders.value)
+      return
+    }
+  } catch (error) {
+    console.error('Failed to load folders from backend:', error)
+  }
+  
+  // 如果API失败，至少显示空状态
+  if (!cardFolders.value) {
+    cardFolders.value = []
+  }
+}
+
+// 刷新卡片文件夹（生成后调用）
+const refreshCardFolders = async () => {
+  // 模拟读取生成的文件
+  const generatedTopic = currentTopic.value
+  if (generatedTopic) {
+    const sanitizedTopic = generatedTopic.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+    
+    // 检查是否已存在该文件夹
+    const existingFolder = cardFolders.value.find(f => f.id === sanitizedTopic)
+    
+    if (!existingFolder) {
+      // 添加新的文件夹和文件
+      cardFolders.value.push({
+        id: sanitizedTopic,
+        name: generatedTopic,
+        cards: [
+          { 
+            id: `${sanitizedTopic}-1`, 
+            name: `${sanitizedTopic}-knowledge-card.json`,
+            path: `/mnt/d/work/AI_Terminal/terminal-backend/data/users/default/folders/default-folder/cards/${sanitizedTopic}/${sanitizedTopic}-knowledge-card.json`
+          }
+        ]
+      })
+      
+      // 自动展开新文件夹
+      expandedFolders.value.push(sanitizedTopic)
+    } else {
+      // 如果文件夹已存在，检查是否需要添加新文件
+      const newCard = { 
+        id: `${sanitizedTopic}-${Date.now()}`, 
+        name: `${sanitizedTopic}-knowledge-card.json`,
+        path: `/mnt/d/work/AI_Terminal/terminal-backend/data/users/default/folders/default-folder/cards/${sanitizedTopic}/${sanitizedTopic}-knowledge-card.json`
+      }
+      
+      // 检查文件是否已存在
+      const exists = existingFolder.cards.some(c => c.name === newCard.name)
+      if (!exists) {
+        existingFolder.cards.push(newCard)
+      }
+    }
+  }
+  
+  // 保存到localStorage以便下次加载
+  localStorage.setItem('generatedCardFolders', JSON.stringify(cardFolders.value))
+  
+  ElMessage.success('文件夹已刷新')
+}
+
+// Load templates
+const loadTemplates = async () => {
+  try {
+    const response = await terminalAPI.getTemplates()
+    if (response.success && response.templates) {
+      templates.value = response.templates
+    } else {
+      // Fallback templates based on the file we read
+      templates.value = [
+        {
+          name: '每日知识卡片',
+          description: '科普向内容，适合知识分享',
+          fileName: 'daily-knowledge-card-template.md'
+        },
+        {
+          name: 'AI知识系列',
+          description: '人工智能相关知识科普',
+          fileName: 'ai-knowledge-series-template.md'
+        },
+        {
+          name: '心理学知识',
+          description: '心理学概念和日常应用',
+          fileName: 'psychology-knowledge-template.md'
+        }
+      ]
+    }
+  } catch (error) {
+    console.error('Failed to load templates:', error)
+    // Use fallback templates
+    templates.value = [
+      {
+        name: '每日知识卡片',
+        description: '科普向内容，适合知识分享',
+        fileName: 'daily-knowledge-card-template.md'
+      },
+      {
+        name: 'AI知识系列',
+        description: '人工智能相关知识科普',
+        fileName: 'ai-knowledge-series-template.md'
+      }
+    ]
+  }
+}
+
+// Initialize
+onMounted(async () => {
+  // Load data
+  loadCardFolders()
+  loadTemplates()
+  
+  // Initialize terminal after DOM is ready
+  await nextTick()
+  initializeXTerm()
+  
+  // 监听流式状态变化
+  setInterval(() => {
+    if (terminalIntegration.getStreamingStatus) {
+      const status = terminalIntegration.getStreamingStatus()
+      streamingStatus.value = status
+    }
+  }, 500)
+  
+  // 自动初始化Claude（延迟2秒确保terminal准备就绪）
+  setTimeout(() => {
+    console.log('[CardGenerator] Auto-initializing Claude...')
+    initializeClaude()
+  }, 2000)
+})
+</script>
+
+<style scoped>
+.card-generator-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  font-family: 'Microsoft YaHei', sans-serif;
+  overflow: hidden;  /* 防止滚动条 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Left Sidebar */
+.left-sidebar {
+  width: 240px;
+  min-width: 240px;
+  flex-shrink: 0;
+  background: #1e1e1e;
+  border-right: 1px solid #2d2d2d;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2d2d2d;
+  background: #252525;
+}
+
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cccccc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.refresh-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.refresh-btn:hover {
+  background: #2a2a2a;
+  color: #4a9eff;
+}
+
+.folder-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.folder-tree::-webkit-scrollbar {
+  width: 6px;
+}
+
+.folder-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.folder-tree::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+.folder-tree::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.folder-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  user-select: none;
+  margin-bottom: 2px;
+}
+
+.folder-item:hover {
+  background: #2a2a2a;
+}
+
+.folder-item.expanded {
+  background: transparent;
+}
+
+.folder-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.folder-name {
+  flex: 1;
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.folder-count {
+  color: #666;
+  font-size: 11px;
+  background: #2a2a2a;
+  padding: 1px 5px;
+  border-radius: 10px;
+}
+
+.cards-list {
+  margin-left: 22px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.card-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: transparent;
+  border-radius: 3px;
+  transition: all 0.2s;
+  font-size: 13px;
+  cursor: pointer;
+  position: relative;
+}
+
+.card-item:hover {
+  background: #2a2a2a;
+}
+
+.card-item.active {
+  background: #2a2a2a;
+}
+
+.card-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #4a9eff;
+  border-radius: 2px;
+}
+
+.card-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.card-name {
+  color: #d0d0d0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.card-type {
+  color: #888;
+  font-size: 10px;
+  padding: 2px 5px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 3px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.generate-html-btn {
+  background: transparent;
+  color: #4a9eff;
+  border: 1px solid #4a9eff;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  width: 20px;
+  opacity: 0;
+}
+
+.card-item:hover .generate-html-btn {
+  opacity: 1;
+}
+
+.generate-html-btn:hover {
+  background: #4a9eff;
+  color: white;
+}
+
+.generate-html-btn:active {
+  transform: scale(0.95);
+}
+
+.generate-html-btn:disabled {
+  background: transparent;
+  border-color: #555;
+  color: #555;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  font-size: 14px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.empty-message {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+  font-size: 13px;
+}
+
+/* Main Area */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 20px;
+  min-width: 0; /* 防止flex子元素撑开 */
+  max-width: calc(100vw - 560px); /* 左侧240px + 右侧320px */
+}
+
+.preview-area,
+.terminal-area {
+  background: #252525;
+  border: 1px solid #333;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preview-area {
+  flex: 1;
+}
+
+.terminal-area {
+  height: 300px;
+  transition: height 0.3s ease;
+}
+
+.terminal-area.collapsed {
+  height: 48px; /* 只显示header */
+}
+
+.area-title {
+  padding: 12px 20px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-type-tag {
+  background: #4a9eff;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  cursor: pointer;
+  user-select: none;
+}
+
+.terminal-header:hover {
+  background: #303030;
+}
+
+.terminal-toggle {
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.2s;
+}
+
+.terminal-status-mini {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #888;
+}
+
+.claude-status {
+  font-size: 13px;
+  color: #888;
+}
+
+.terminal-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.terminal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.init-claude-btn {
+  padding: 6px 12px;
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.init-claude-btn:hover:not(:disabled) {
+  background: #4a4a4a;
+  border-color: #4a9eff;
+}
+
+.init-claude-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.preview-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden; /* 防止内容溢出 */
+  display: flex;
+  flex-direction: column;
+}
+
+.json-viewer-preview {
+  flex: 1;
+  overflow: hidden;
+}
+
+.preview-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  border: none;
+}
+
+.empty-state {
+  color: #666;
+  font-size: 14px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.json-viewer-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.terminal-content {
+  flex: 1;
+  background: #0c0c0c;
+  overflow: hidden;
+  padding: 10px;
+  text-align: left;
+}
+
+/* XTerm container styles */
+.terminal-content :deep(.xterm) {
+  padding: 10px;
+  height: 100%;
+}
+
+.terminal-content :deep(.xterm-viewport) {
+  background-color: #0c0c0c;
+}
+
+.terminal-content :deep(.xterm-screen) {
+  padding: 0;
+  margin: 0;
+}
+
+.terminal-content :deep(.xterm-rows) {
+  text-align: left !important;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+/* Right Sidebar */
+.right-sidebar {
+  width: 320px;
+  min-width: 320px;
+  flex-shrink: 0;
+  background: #252525;
+  border-left: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Style Templates */
+.style-templates {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #333;
+  overflow: hidden;
+}
+
+.template-header {
+  padding: 15px 20px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.template-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.template-item {
+  padding: 12px 15px;
+  margin-bottom: 8px;
+  background: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.template-item:hover {
+  background: #333;
+  border-color: #444;
+}
+
+.template-item.active {
+  background: #3a3a3a;
+  border-color: #4a9eff;
+}
+
+.template-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.template-desc {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.4;
+}
+
+/* Input & Create Section */
+.input-create-section {
+  padding: 20px;
+  background: #2a2a2a;
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.topic-input {
+  flex: 1;
+  padding: 10px 15px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.topic-input::placeholder {
+  color: #666;
+}
+
+.topic-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.create-btn {
+  padding: 10px 30px;
+  background: #4a9eff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 500;
+}
+
+.create-btn:hover:not(:disabled) {
+  background: #3a8eef;
+}
+
+.create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 流式状态指示器 */
+.streaming-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(74, 158, 255, 0.1);
+  border: 1px solid #4a9eff;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #4a9eff;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.streaming-dot {
+  width: 8px;
+  height: 8px;
+  background: #4a9eff;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+  25%, 75% {
+    opacity: 0.3;
+  }
+}
+
+/* HTML链接对话框样式 */
+:deep(.html-links-dialog) {
+  .el-message-box__content {
+    padding: 20px;
+  }
+  
+  a {
+    word-break: break-all;
+    display: inline-block;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+}
+</style>

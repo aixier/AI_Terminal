@@ -1,0 +1,203 @@
+{
+  "categories": [
+    {
+      "id": "file",
+      "name": "文件操作",
+      "icon": "folder",
+      "description": "文件和目录管理相关命令"
+    },
+    {
+      "id": "system",
+      "name": "系统管理",
+      "icon": "setting",
+      "description": "系统信息和进程管理"
+    },
+    {
+      "id": "network",
+      "name": "网络工具",
+      "icon": "global",
+      "description": "网络诊断和连接管理"
+    },
+    {
+      "id": "development",
+      "name": "开发工具",
+      "icon": "code",
+      "description": "开发相关的常用命令"
+    }
+  ],
+  "commands": [
+    {
+      "id": "ls",
+      "category": "file",
+      "name": "列出文件",
+      "command": "ls",
+      "description": "列出目录中的文件和子目录",
+      "danger": false,
+      "parameters": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "目录路径",
+          "required": false,
+          "default": "."
+        },
+        {
+          "name": "all",
+          "type": "boolean",
+          "flag": "-a",
+          "description": "显示所有文件（包括隐藏文件）",
+          "required": false,
+          "default": false
+        },
+        {
+          "name": "long",
+          "type": "boolean",
+          "flag": "-l",
+          "description": "使用长格式显示",
+          "required": false,
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "mkdir",
+      "category": "file",
+      "name": "创建目录",
+      "command": "mkdir",
+      "description": "创建新目录",
+      "danger": false,
+      "parameters": [
+        {
+          "name": "directory",
+          "type": "string",
+          "description": "目录名称",
+          "required": true
+        },
+        {
+          "name": "parents",
+          "type": "boolean",
+          "flag": "-p",
+          "description": "递归创建父目录",
+          "required": false,
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "rm",
+      "category": "file",
+      "name": "删除文件",
+      "command": "rm",
+      "description": "删除文件或目录",
+      "danger": true,
+      "requireConfirm": true,
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "description": "要删除的文件或目录",
+          "required": true
+        },
+        {
+          "name": "recursive",
+          "type": "boolean",
+          "flag": "-r",
+          "description": "递归删除目录",
+          "required": false,
+          "default": false
+        },
+        {
+          "name": "force",
+          "type": "boolean",
+          "flag": "-f",
+          "description": "强制删除",
+          "required": false,
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "ps",
+      "category": "system",
+      "name": "查看进程",
+      "command": "ps",
+      "description": "显示当前运行的进程",
+      "danger": false,
+      "parameters": [
+        {
+          "name": "all",
+          "type": "boolean",
+          "flag": "-a",
+          "description": "显示所有用户的进程",
+          "required": false,
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "ping",
+      "category": "network",
+      "name": "网络连通性测试",
+      "command": "ping",
+      "description": "测试与目标主机的网络连接",
+      "danger": false,
+      "parameters": [
+        {
+          "name": "host",
+          "type": "string",
+          "description": "目标主机地址",
+          "required": true
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "flag": "-c",
+          "description": "发送的数据包数量",
+          "required": false,
+          "default": 4
+        }
+      ]
+    },
+    {
+      "id": "git-status",
+      "category": "development",
+      "name": "Git状态",
+      "command": "git status",
+      "description": "查看Git仓库的当前状态",
+      "danger": false,
+      "parameters": []
+    },
+    {
+      "id": "npm-install",
+      "category": "development",
+      "name": "NPM安装",
+      "command": "npm install",
+      "description": "安装Node.js项目依赖",
+      "danger": false,
+      "parameters": [
+        {
+          "name": "package",
+          "type": "string",
+          "description": "要安装的包名（留空安装所有依赖）",
+          "required": false
+        },
+        {
+          "name": "save",
+          "type": "boolean",
+          "flag": "--save",
+          "description": "保存到dependencies",
+          "required": false,
+          "default": false
+        },
+        {
+          "name": "saveDev",
+          "type": "boolean",
+          "flag": "--save-dev",
+          "description": "保存到devDependencies",
+          "required": false,
+          "default": false
+        }
+      ]
+    }
+  ]
+}

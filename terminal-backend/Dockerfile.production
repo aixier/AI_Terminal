@@ -1,0 +1,85 @@
+# 多阶段构建 - 构建阶段
+FROM node:22-alpine AS builder
+
+# 安装构建依赖
+RUN apk add --no-cache python3 make g++ git
+
+WORKDIR /app
+
+# 复制package文件
+COPY package*.json ./
+
+# 安装所有依赖（包括devDependencies用于构建）
+RUN npm ci
+
+# 复制源代码
+COPY . .
+
+# 如果有构建步骤，在这里执行
+# RUN npm run build
+
+# 清理不必要的文件
+RUN npm prune --production && \
+    rm -rf .git .github docs tests *.md
+
+# ========================================
+# 生产阶段 - 最小化镜像
+FROM node:22-alpine
+
+# 设置环境变量（硬编码生产环境配置）
+ENV NODE_ENV=production \
+    PORT=3000 \
+    LOG_LEVEL=info \
+    # 数据和日志路径
+    DATA_PATH=/app/data \
+    LOG_PATH=/app/logs \
+    # 应用配置
+    MAX_SESSIONS=100 \
+    SESSION_TIMEOUT=1800000 \
+    # API配置
+    API_TIMEOUT=60000 \
+    API_MAX_RETRIES=3 \
+    # 性能优化
+    NODE_OPTIONS="--max-old-space-size=1536" \
+    UV_THREADPOOL_SIZE=4
+
+# 安装运行时必要的依赖
+RUN apk add --no-cache \
+    bash \
+    tini && \
+    # 安装Claude Code CLI
+    npm install -g @anthropic-ai/claude-code && \
+    # 清理npm缓存
+    npm cache clean --force
+
+# 创建非root用户
+RUN addgroup -g 1000 -S nodeuser && \
+    adduser -u 1000 -S nodeuser -G nodeuser -h /home/nodeuser
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制应用和依赖
+COPY --from=builder --chown=nodeuser:nodeuser /app/node_modules ./node_modules
+COPY --from=builder --chown=nodeuser:nodeuser /app/package*.json ./
+COPY --from=builder --chown=nodeuser:nodeuser /app/src ./src
+
+# 创建必要的目录
+RUN mkdir -p /app/data /app/logs && \
+    chown -R nodeuser:nodeuser /app/data /app/logs
+
+# 切换到非root用户
+USER nodeuser
+
+# 暴露端口
+EXPOSE 3000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/terminal/health', (r) => {r.statusCode === 200 ? process.exit(0) : process.exit(1)})" || exit 1
+
+# 使用tini作为init进程，优雅处理信号
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# 启动应用
+CMD ["node", "src/index.js"]

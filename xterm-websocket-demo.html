@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>xterm.js + WebSocket Demo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            color: white;
+            margin-bottom: 20px;
+        }
+        .controls {
+            margin-bottom: 10px;
+        }
+        .controls button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .controls button:hover {
+            background: #005a9e;
+        }
+        .controls button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        #terminal {
+            height: 500px;
+            background: black;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status {
+            color: white;
+            margin-top: 10px;
+            padding: 10px;
+            background: #333;
+            border-radius: 4px;
+        }
+        .status.connected { background: #2d5016; }
+        .status.disconnected { background: #5a1e1e; }
+        .status.error { background: #8b0000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>xterm.js + 原生 WebSocket 终端</h1>
+            <p>使用原生WebSocket协议连接终端</p>
+        </div>
+        
+        <div class="controls">
+            <button id="connectBtn">连接</button>
+            <button id="disconnectBtn" disabled>断开</button>
+            <button id="clearBtn">清屏</button>
+            <select id="serverSelect">
+                <option value="ws://localhost:3000">本地服务器</option>
+                <option value="ws://localhost:3001">Docker服务</option>
+                <option value="ws://ai-terminal-xnbmzvtedv.ap-northeast-1.fcapp.run">阿里云FC</option>
+            </select>
+        </div>
+        
+        <div id="terminal"></div>
+        
+        <div id="status" class="status disconnected">
+            状态: 未连接
+        </div>
+    </div>
+
+    <script>
+        // 初始化 xterm.js
+        const term = new Terminal({
+            cursorBlink: true,
+            fontSize: 14,
+            fontFamily: 'Consolas, Monaco, monospace',
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#d4d4d4',
+                cursor: '#aeafad',
+                black: '#000000',
+                red: '#cd3131',
+                green: '#0dbc79',
+                yellow: '#e5e510',
+                blue: '#2472c8',
+                magenta: '#bc3fbc',
+                cyan: '#11a8cd',
+                white: '#e5e5e5'
+            }
+        });
+
+        // 添加插件
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        
+        // 挂载终端
+        term.open(document.getElementById('terminal'));
+        fitAddon.fit();
+
+        // WebSocket 相关变量
+        let ws = null;
+        let reconnectTimer = null;
+        
+        // DOM 元素
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const serverSelect = document.getElementById('serverSelect');
+        const statusDiv = document.getElementById('status');
+
+        // 更新状态显示
+        function updateStatus(status, message) {
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = `状态: ${message}`;
+        }
+
+        // 连接 WebSocket
+        function connect() {
+            const url = serverSelect.value;
+            updateStatus('disconnected', `正在连接到 ${url}...`);
+            
+            try {
+                // 创建原生 WebSocket 连接
+                ws = new WebSocket(url + '/terminal');
+                
+                // 连接打开
+                ws.onopen = () => {
+                    console.log('WebSocket 连接成功');
+                    updateStatus('connected', '已连接');
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    
+                    // 发送初始化消息
+                    ws.send(JSON.stringify({
+                        type: 'init',
+                        cols: term.cols,
+                        rows: term.rows
+                    }));
+                    
+                    term.writeln('\r\n\x1b[32m✓ WebSocket 连接成功\x1b[0m\r\n');
+                };
+                
+                // 接收消息
+                ws.onmessage = (event) => {
+                    // 处理不同类型的消息
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'output') {
+                            term.write(data.data);
+                        } else if (data.type === 'exit') {
+                            term.writeln(`\r\n\x1b[31m进程退出: ${data.code}\x1b[0m`);
+                        }
+                    } catch {
+                        // 如果不是JSON，直接作为终端输出
+                        term.write(event.data);
+                    }
+                };
+                
+                // 连接关闭
+                ws.onclose = (event) => {
+                    console.log('WebSocket 连接关闭:', event.code, event.reason);
+                    updateStatus('disconnected', '连接已断开');
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    term.writeln('\r\n\x1b[31m✗ 连接已断开\x1b[0m');
+                    ws = null;
+                };
+                
+                // 连接错误
+                ws.onerror = (error) => {
+                    console.error('WebSocket 错误:', error);
+                    updateStatus('error', '连接错误');
+                    term.writeln('\r\n\x1b[31m✗ 连接错误\x1b[0m');
+                };
+                
+            } catch (error) {
+                console.error('创建 WebSocket 失败:', error);
+                updateStatus('error', `连接失败: ${error.message}`);
+            }
+        }
+
+        // 断开连接
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        // 终端输入处理
+        term.onData((data) => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'input',
+                    data: data
+                }));
+            }
+        });
+
+        // 终端大小改变
+        term.onResize(({ cols, rows }) => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'resize',
+                    cols: cols,
+                    rows: rows
+                }));
+            }
+        });
+
+        // 窗口大小改变时调整终端
+        window.addEventListener('resize', () => {
+            fitAddon.fit();
+        });
+
+        // 绑定按钮事件
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+        clearBtn.addEventListener('click', () => {
+            term.clear();
+        });
+
+        // 初始欢迎消息
+        term.writeln('欢迎使用 xterm.js + WebSocket 终端');
+        term.writeln('请选择服务器并点击"连接"开始使用');
+        term.writeln('');
+    </script>
+</body>
+</html>

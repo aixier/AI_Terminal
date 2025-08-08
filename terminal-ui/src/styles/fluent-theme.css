@@ -1,0 +1,256 @@
+/* Fluent Design 主题变量 */
+:root {
+  /* 基础色彩 */
+  --fluent-blue: #0078d4;
+  --fluent-blue-light: #40e0ff;
+  --fluent-blue-dark: #106ebe;
+  
+  /* 中性色 */
+  --fluent-neutral-white: #ffffff;
+  --fluent-neutral-light: #faf9f8;
+  --fluent-neutral-lighter: #f3f2f1;
+  --fluent-neutral-lightest: #edebe9;
+  --fluent-neutral-tertiary: #a19f9d;
+  --fluent-neutral-secondary: #605e5c;
+  --fluent-neutral-primary: #323130;
+  --fluent-neutral-dark: #201f1e;
+  --fluent-neutral-darker: #106ebe;
+  
+  /* 语义色 */
+  --fluent-success: #107c10;
+  --fluent-warning: #ffaa44;
+  --fluent-error: #d83b01;
+  --fluent-info: #0078d4;
+  
+  /* Acrylic 毛玻璃效果 */
+  --fluent-acrylic-light: rgba(255, 255, 255, 0.8);
+  --fluent-acrylic-dark: rgba(32, 31, 30, 0.8);
+  --fluent-acrylic-tint: rgba(255, 255, 255, 0.6);
+  
+  /* 阴影系统 */
+  --fluent-shadow-2: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --fluent-shadow-4: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --fluent-shadow-8: 0 4px 14px rgba(0, 0, 0, 0.15);
+  --fluent-shadow-16: 0 8px 22px rgba(0, 0, 0, 0.18);
+  --fluent-shadow-64: 0 25px 50px rgba(0, 0, 0, 0.25);
+  
+  /* 深度系统 */
+  --fluent-depth-2: var(--fluent-shadow-2);
+  --fluent-depth-4: var(--fluent-shadow-4);
+  --fluent-depth-8: var(--fluent-shadow-8);
+  --fluent-depth-16: var(--fluent-shadow-16);
+  --fluent-depth-64: var(--fluent-shadow-64);
+  
+  /* 圆角 */
+  --fluent-radius-small: 2px;
+  --fluent-radius-medium: 4px;
+  --fluent-radius-large: 8px;
+  --fluent-radius-xl: 12px;
+  
+  /* 动画 */
+  --fluent-duration-fast: 0.1s;
+  --fluent-duration-normal: 0.2s;
+  --fluent-duration-slow: 0.3s;
+  --fluent-easing: cubic-bezier(0.1, 0.9, 0.2, 1);
+  
+  /* 间距 */
+  --fluent-space-xs: 4px;
+  --fluent-space-sm: 8px;
+  --fluent-space-md: 16px;
+  --fluent-space-lg: 24px;
+  --fluent-space-xl: 32px;
+  --fluent-space-xxl: 48px;
+  
+  /* 字体 */
+  --fluent-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --fluent-font-size-xs: 11px;
+  --fluent-font-size-sm: 12px;
+  --fluent-font-size-md: 14px;
+  --fluent-font-size-lg: 16px;
+  --fluent-font-size-xl: 18px;
+  --fluent-font-size-xxl: 24px;
+  --fluent-font-size-hero: 32px;
+  
+  /* 层级 */
+  --fluent-z-tooltip: 1000;
+  --fluent-z-modal: 1050;
+  --fluent-z-dropdown: 1100;
+  --fluent-z-header: 100;
+  --fluent-z-sidebar: 90;
+}
+
+/* Acrylic 毛玻璃效果基础类 */
+.fluent-acrylic {
+  background: var(--fluent-acrylic-light);
+  backdrop-filter: blur(40px) saturate(125%);
+  -webkit-backdrop-filter: blur(40px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.fluent-acrylic-dark {
+  background: var(--fluent-acrylic-dark);
+  backdrop-filter: blur(40px) saturate(125%);
+  -webkit-backdrop-filter: blur(40px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 深度和层次效果 */
+.fluent-depth-2 { box-shadow: var(--fluent-depth-2); }
+.fluent-depth-4 { box-shadow: var(--fluent-depth-4); }
+.fluent-depth-8 { box-shadow: var(--fluent-depth-8); }
+.fluent-depth-16 { box-shadow: var(--fluent-depth-16); }
+.fluent-depth-64 { box-shadow: var(--fluent-depth-64); }
+
+/* 光影效果 */
+.fluent-glow {
+  box-shadow: 
+    0 0 20px rgba(0, 120, 212, 0.2), 
+    var(--fluent-depth-8);
+}
+
+.fluent-glow-hover {
+  transition: box-shadow var(--fluent-duration-normal) var(--fluent-easing);
+}
+
+.fluent-glow-hover:hover {
+  box-shadow: 
+    0 0 30px rgba(0, 120, 212, 0.3), 
+    var(--fluent-depth-16);
+}
+
+/* 卡片基础样式 */
+.fluent-card {
+  background: var(--fluent-neutral-white);
+  border-radius: var(--fluent-radius-large);
+  box-shadow: var(--fluent-depth-4);
+  transition: box-shadow var(--fluent-duration-normal) var(--fluent-easing);
+}
+
+.fluent-card:hover {
+  box-shadow: var(--fluent-depth-8);
+}
+
+.fluent-card-acrylic {
+  background: var(--fluent-acrylic-light);
+  backdrop-filter: blur(40px) saturate(125%);
+  -webkit-backdrop-filter: blur(40px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--fluent-radius-large);
+  box-shadow: var(--fluent-depth-4);
+}
+
+/* 按钮样式 */
+.fluent-button {
+  background: var(--fluent-blue);
+  color: var(--fluent-neutral-white);
+  border: none;
+  border-radius: var(--fluent-radius-medium);
+  padding: var(--fluent-space-sm) var(--fluent-space-md);
+  font-family: var(--fluent-font-family);
+  font-size: var(--fluent-font-size-md);
+  cursor: pointer;
+  transition: all var(--fluent-duration-normal) var(--fluent-easing);
+  box-shadow: var(--fluent-depth-2);
+}
+
+.fluent-button:hover {
+  background: var(--fluent-blue-light);
+  box-shadow: var(--fluent-depth-4);
+  transform: translateY(-1px);
+}
+
+.fluent-button:active {
+  transform: translateY(0);
+  box-shadow: var(--fluent-depth-2);
+}
+
+/* 输入框样式 */
+.fluent-input {
+  background: var(--fluent-neutral-white);
+  border: 1px solid var(--fluent-neutral-lighter);
+  border-radius: var(--fluent-radius-medium);
+  padding: var(--fluent-space-sm) var(--fluent-space-md);
+  font-family: var(--fluent-font-family);
+  font-size: var(--fluent-font-size-md);
+  transition: all var(--fluent-duration-normal) var(--fluent-easing);
+  box-shadow: var(--fluent-depth-2);
+}
+
+.fluent-input:focus {
+  border-color: var(--fluent-blue);
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2), var(--fluent-depth-4);
+  outline: none;
+}
+
+/* 动画类 */
+.fluent-fade-in {
+  animation: fluentFadeIn var(--fluent-duration-normal) var(--fluent-easing);
+}
+
+.fluent-slide-up {
+  animation: fluentSlideUp var(--fluent-duration-normal) var(--fluent-easing);
+}
+
+.fluent-scale-in {
+  animation: fluentScaleIn var(--fluent-duration-normal) var(--fluent-easing);
+}
+
+@keyframes fluentFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fluentSlideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes fluentScaleIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.9); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+/* 滚动条样式 */
+.fluent-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.fluent-scrollbar::-webkit-scrollbar-track {
+  background: var(--fluent-neutral-lighter);
+  border-radius: var(--fluent-radius-medium);
+}
+
+.fluent-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--fluent-neutral-tertiary);
+  border-radius: var(--fluent-radius-medium);
+  border: 2px solid var(--fluent-neutral-lighter);
+}
+
+.fluent-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--fluent-neutral-secondary);
+}
+
+/* PC端优化 */
+@media (min-width: 1024px) {
+  :root {
+    --fluent-space-xs: 6px;
+    --fluent-space-sm: 12px;
+    --fluent-space-md: 20px;
+    --fluent-space-lg: 28px;
+    --fluent-space-xl: 36px;
+    --fluent-space-xxl: 56px;
+  }
+}

@@ -1,0 +1,223 @@
+{
+  "theme": {
+    "name": "daily-mythology-knowledge",
+    "pageTitle": "神话知识点：黑悟空的深层含义",
+    "sectionTitle": "黑悟空为何成为游戏文化新符号？",
+    "sectionSubtitle": "每天学习一个神话知识点 · 特别篇",
+    "gradientColor1": "#DC2626",
+    "gradientColor2": "#F59E0B",
+    "gradientColor1RGB": "220, 38, 38",
+    "accentColor": "#DC2626",
+    "accentColorRGB": "220, 38, 38"
+  },
+  "copy": {
+    "title": "🐒 黑悟空不只是游戏角色，更是中国神话的现代解读！",
+    "content": "今天聊聊爆火的黑悟空背后的神话深意。\n\n你有没有想过：\n• 为什么是\"黑\"悟空而不是其他颜色？\n• 黑悟空和传统孙悟空有什么区别？\n• 这个形象为何能引起全球共鸣？\n\n这不仅仅是一个游戏角色那么简单！\n\n🎯 一句话解释：\n黑悟空是传统神话与现代审美的完美融合，代表着叛逆精神的当代表达。\n\n📚 7个要点深度解析黑悟空：\n\n1️⃣ 颜色象征\n黑色不仅代表神秘和力量，更象征着对传统形象的颠覆与重构。\n\n2️⃣ 文化内核\n保留了孙悟空的叛逆精神，但增加了现代人的孤独感和内心挣扎。\n\n3️⃣ 视觉冲击\n东方神话美学与现代游戏技术的结合，创造出独特的视觉语言。\n\n4️⃣ 精神共鸣\n反映了当代年轻人面对压力时的不屈精神和自我突破的渴望。\n\n5️⃣ 文化输出\n成功将中国传统文化以现代化方式推向世界舞台。\n\n6️⃣ 游戏革新\n打破了西方神话垄断游戏市场的格局，开创东方神话游戏新纪元。\n\n7️⃣ 深层寓意\n\"黑化\"不是堕落，而是成长中必经的自我觉醒和力量觉醒。\n\n💡 思考：\n黑悟空的成功，是否预示着中国文化输出的新模式？\n\n下期预告：解析《山海经》中那些被游戏化的神兽",
+    "hashtags": "#黑悟空 #中国神话 #游戏文化 #文化输出 #西游记 #神话解读 #黑神话悟空 #传统文化",
+    "tips": "发布时间：晚8-10点（游戏玩家活跃时间）\n封面选择：第1张主卡片\n互动引导：分享对黑悟空形象的理解\n后续内容：可做成中国神话游戏化系列"
+  },
+  "cards": [
+    {
+      "type": "main",
+      "icon": "",
+      "header": "黑悟空为何能征服全球玩家？",
+      "subtitle": "不只是游戏，更是文化觉醒",
+      "content": {
+        "highlight": {
+          "number": "黑悟空\n神话密码",
+          "description": "传统与现代的完美融合"
+        },
+        "points": [
+          {"icon": "→", "text": "读懂它，就读懂了文化自信"}
+        ],
+        "tags": []
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎭",
+      "header": "黑悟空是什么？",
+      "subtitle": "不仅仅是换了颜色",
+      "content": {
+        "list": [
+          "传统孙悟空的<strong style=\"color: #DC2626;\">现代化身</strong>",
+          "保留齐天大圣的叛逆本质",
+          "增添了深沉与内敛的气质",
+          "代表着成长后的力量觉醒"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "核心特征",
+          "description": "从金色到黑色，从张扬到内敛"
+        },
+        "tip": "🐒 每个人心中都有一个黑悟空",
+        "tags": ["📖 概念"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🔮",
+      "header": "黑色的深层含义",
+      "subtitle": "为什么选择黑色？",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "四重寓意",
+          "items": [
+            "<strong>神秘力量</strong>：未知与无限可能",
+            "<strong>内心深沉</strong>：成熟后的沉稳",
+            "<strong>反叛精神</strong>：对规则的挑战",
+            "<strong>东方美学</strong>：水墨画的写意"
+          ]
+        },
+        "tip": "⚫ 黑色是所有颜色的终点，也是起点",
+        "tags": ["🎨 象征"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🌟",
+      "header": "与传统悟空对比",
+      "subtitle": "相同与不同",
+      "content": {
+        "list": [
+          "✅ <strong style=\"color: #F59E0B;\">相同</strong>：不屈不挠的精神",
+          "✅ <strong style=\"color: #F59E0B;\">相同</strong>：对自由的追求",
+          "❌ <strong style=\"color: #DC2626;\">不同</strong>：更加内敛深沉",
+          "❌ <strong style=\"color: #DC2626;\">不同</strong>：带有悲剧色彩"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "本质",
+          "description": "从反抗者到觉醒者的转变"
+        },
+        "tip": "🔄 传承中有创新",
+        "tags": ["📊 对比"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎮",
+      "header": "游戏中的呈现",
+      "subtitle": "技术与艺术的结合",
+      "content": {
+        "list": [
+          "动作设计融入<strong style=\"color: #DC2626;\">中国武术</strong>",
+          "场景取材于<strong style=\"color: #DC2626;\">真实古建筑</strong>",
+          "音乐采用<strong style=\"color: #DC2626;\">传统乐器</strong>",
+          "故事改编自<strong style=\"color: #DC2626;\">西游记</strong>"
+        ],
+        "special": {
+          "type": "progress",
+          "value": 95,
+          "label": "文化还原度：95%"
+        },
+        "tip": "🏮 每一帧都是中国美学",
+        "tags": ["🎯 呈现"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "💫",
+      "header": "文化输出意义",
+      "subtitle": "不只是一个游戏",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "三大突破",
+          "items": [
+            "<strong>打破垄断</strong>：东方神话进入主流",
+            "<strong>文化自信</strong>：中国故事世界表达",
+            "<strong>产业升级</strong>：游戏成为文化载体"
+          ]
+        },
+        "list": [
+          "全球销量突破<strong style=\"color: #DC2626;\">千万</strong>份",
+          "带动西游文化<strong style=\"color: #DC2626;\">全球传播</strong>"
+        ],
+        "tip": "🌏 这是中国文化的胜利",
+        "tags": ["🚀 影响"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🧠",
+      "header": "心理共鸣点",
+      "subtitle": "为何能打动人心",
+      "content": {
+        "list": [
+          "现代人的<strong style=\"color: #F59E0B;\">压力投射</strong>",
+          "对自由的<strong style=\"color: #F59E0B;\">永恒追求</strong>",
+          "成长中的<strong style=\"color: #F59E0B;\">自我斗争</strong>",
+          "文化身份的<strong style=\"color: #F59E0B;\">认同感</strong>"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "核心",
+          "description": "每个人都在寻找内心的悟空"
+        },
+        "tip": "💭 黑化是成长的必经之路",
+        "tags": ["💡 共鸣"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🔥",
+      "header": "未来发展趋势",
+      "subtitle": "开启新时代",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "发展方向",
+          "items": [
+            "<strong>更多神话IP</strong>：山海经、封神榜",
+            "<strong>技术创新</strong>：AI与传统文化结合",
+            "<strong>文化宇宙</strong>：构建东方神话体系",
+            "<strong>全球影响</strong>：中国文化新名片"
+          ]
+        },
+        "tip": "🚀 这只是开始",
+        "tags": ["📈 趋势"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📚",
+      "header": "今日总结",
+      "subtitle": "记住这些要点",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "核心观点",
+          "items": [
+            "黑悟空=传统+现代",
+            "不只是游戏是文化现象",
+            "代表中国文化输出新模式",
+            "每个人都能找到共鸣"
+          ]
+        },
+        "tip": "🌟 下期：《山海经》神兽的游戏化之路",
+        "tags": ["✅ 总结"]
+      }
+    }
+  ],
+  "footer": {
+    "tags": ["🐒 黑悟空", "🎮 游戏文化", "📚 神话解读", "🇨🇳 文化输出"]
+  },
+  "export": {
+    "mainCardFilename": "主卡片-黑悟空神话深度解析.png",
+    "cardFilenames": [
+      "2-黑悟空是什么.png",
+      "3-黑色的深层含义.png",
+      "4-与传统悟空对比.png",
+      "5-游戏中的呈现.png",
+      "6-文化输出意义.png",
+      "7-心理共鸣点.png",
+      "8-未来发展趋势.png",
+      "9-今日总结.png"
+    ],
+    "zipFilename": "神话知识-黑悟空深度解析-知识卡片.zip"
+  },
+  "customStyles": "",
+  "exportAdjustments": ""
+}

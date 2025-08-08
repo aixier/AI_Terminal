@@ -1,0 +1,2317 @@
+<template>
+  <!-- Main Layout (直接显示，不等待初始化) -->
+  <div class="card-generator-layout">
+    <!-- Server Selector -->
+    <div class="server-selector-container">
+      <ServerSelector />
+    </div>
+    
+    <!-- Left Sidebar - My Cards -->
+    <div class="left-sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">我的卡片</span>
+        <button class="refresh-btn" @click="refreshCardFolders" title="刷新">
+          🔄
+        </button>
+      </div>
+      <div class="folder-tree">
+        <div 
+          v-for="folder in cardFolders" 
+          :key="folder.id"
+          class="folder-container"
+        >
+          <div 
+            class="folder-item"
+            :class="{ expanded: expandedFolders.includes(folder.id) }"
+            @click="toggleFolder(folder.id)"
+          >
+            <span class="folder-icon">{{ expandedFolders.includes(folder.id) ? '📂' : '📁' }}</span>
+            <span class="folder-name">{{ folder.name }}</span>
+            <span class="folder-count">({{ folder.cards?.length || 0 }})</span>
+            <button 
+              class="delete-folder-btn"
+              @click.stop="deleteFolder(folder)"
+              title="删除文件夹"
+            >
+              🗑️
+            </button>
+          </div>
+          
+          <div v-if="expandedFolders.includes(folder.id)" class="cards-list">
+            <div 
+              v-for="card in folder.cards" 
+              :key="card.id"
+              class="card-item"
+              :class="{ active: selectedCard === card.id }"
+              @click="selectCard(card.id, folder.id)"
+            >
+              <span class="card-icon">
+                {{ getFileIcon(card.name) }}
+              </span>
+              <span class="card-name">{{ card.name }}</span>
+              <div class="card-actions">
+                <button 
+                  class="delete-card-btn"
+                  @click.stop="deleteCardFile(card, folder)"
+                  title="删除文件"
+                >
+                  ❌
+                </button>
+                <span class="card-type">{{ getFileType(card.name) }}</span>
+                <button 
+                  v-if="card.name.toLowerCase().endsWith('.json')"
+                  :id="`generate-html-btn-${card.id}`"
+                  class="generate-html-btn"
+                  @click.stop="generateHtmlFromJson(card, folder)"
+                  :disabled="isGeneratingHtml[card.id]"
+                  title="生成HTML"
+                >
+                  <svg v-if="!isGeneratingHtml[card.id]" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                    <path d="M8.646 6.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L10.293 9 8.646 7.354a.5.5 0 0 1 0-.708z"/>
+                  </svg>
+                  <span v-else class="loading-spinner">⟳</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="cardFolders.length === 0" class="empty-message">
+          暂无卡片文件夹
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-area">
+      <!-- Top: Card Preview Area -->
+      <div class="preview-area">
+        <div class="area-title">
+          {{ selectedCard ? '卡片内容预览' : '生成结果预览' }}
+          <span v-if="selectedCard && previewType" class="preview-type-tag">{{ previewType.toUpperCase() }}</span>
+        </div>
+        <!-- Tab 切换区域 -->
+        <div v-if="previewType === 'iframe' && responseUrls.shareLink && responseUrls.originalUrl" class="preview-tabs">
+          <div 
+            class="preview-tab" 
+            :class="{ active: activePreviewTab === 'shareLink' }"
+            @click="switchPreviewTab('shareLink')"
+          >
+            <span class="tab-icon">🔗</span>
+            <span class="tab-label">分享链接</span>
+          </div>
+          <div 
+            class="preview-tab" 
+            :class="{ active: activePreviewTab === 'originalUrl' }"
+            @click="switchPreviewTab('originalUrl')"
+          >
+            <span class="tab-icon">📄</span>
+            <span class="tab-label">原始HTML</span>
+          </div>
+        </div>
+        <div class="preview-content">
+          <!-- 生成中的进度提示 -->
+          <div v-if="isGenerating" class="generating-state">
+            <div class="generating-loader">
+              <div class="loader-spinner"></div>
+              <div class="generating-text">正在生成...</div>
+              <div class="generating-hint">{{ generatingHint }}</div>
+            </div>
+          </div>
+          
+          <!-- 使用智能URL预览组件（Web Components + 智能降级） -->
+          <!-- 当有两个URL时，根据activePreviewTab切换显示 -->
+          <SmartUrlPreview 
+            v-else-if="(previewType === 'html' || previewType === 'iframe') && responseUrls.shareLink && responseUrls.originalUrl"
+            :url="activePreviewTab === 'originalUrl' ? responseUrls.originalUrl : responseUrls.shareLink"
+            :key="activePreviewTab"
+          />
+          
+          <!-- 只有单个URL时的显示 -->
+          <SmartUrlPreview 
+            v-else-if="(previewType === 'html' || previewType === 'iframe') && previewContent"
+            :url="previewContent"
+          />
+          
+          <!-- JSON文件使用验证JSON查看器 -->
+          <ValidatedJsonViewer 
+            v-else-if="previewContent && previewType === 'json'"
+            :data="previewContent"
+            class="json-viewer-preview"
+            @fixed="handleJsonFixed"
+          />
+          
+          <!-- 默认内容 -->
+          <div v-else class="empty-state">
+            {{ selectedCard ? '加载卡片内容...' : '等待生成卡片...' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom: Terminal Area (可折叠) -->
+      <div class="terminal-area" :class="{ collapsed: !showTerminal }">
+        <div class="terminal-header" @click="showTerminal = !showTerminal">
+          <span class="terminal-title">
+            <span class="terminal-toggle">{{ showTerminal ? '▼' : '▶' }}</span>
+            terminal
+            <span v-if="!showTerminal" class="terminal-status-mini">
+              {{ isClaudeInitialized ? '✅ Claude就绪' : isInitializingClaude ? '🔄 初始化中...' : '⚪ 未初始化' }}
+            </span>
+          </span>
+          <div class="terminal-actions" v-if="showTerminal">
+            <!-- 流式状态指示器 -->
+            <div v-if="streamingStatus.isStreaming" class="streaming-indicator">
+              <span class="streaming-dot"></span>
+              <span>接收中... ({{ Math.round(streamingStatus.bufferLength / 1024) }}KB)</span>
+            </div>
+            <span class="claude-status">
+              <span v-if="isInitializingClaude">🔄 初始化中...</span>
+              <span v-else-if="isClaudeInitialized">✅ Claude已就绪</span>
+              <span v-else>⚪ Claude未初始化</span>
+            </span>
+          </div>
+        </div>
+        <div class="terminal-content" ref="terminalContainer" v-show="showTerminal">
+          <!-- Terminal will be mounted here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar - Style Templates & Input -->
+    <div class="right-sidebar">
+      <!-- Top: Style Templates -->
+      <div class="style-templates">
+        <div class="template-header">风格模板</div>
+        <div class="template-list">
+          <div 
+            v-for="(template, index) in templates" 
+            :key="index"
+            class="template-item"
+            :class="{ active: selectedTemplate === index }"
+            @click="selectTemplate(index)"
+          >
+            <div class="template-name">{{ template.name }}</div>
+            <div class="template-desc">{{ template.description }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom: Input & Create -->
+      <div class="input-create-section">
+        <div class="input-wrapper">
+          <input 
+            v-model="currentTopic"
+            type="text"
+            class="topic-input"
+            placeholder="输入主题"
+          />
+          <button 
+            class="create-btn"
+            @click="generateCard"
+            :disabled="!currentTopic.trim() || isGenerating"
+          >
+            创建
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import 'xterm/css/xterm.css'
+import terminalAPI from '../api/terminal'
+import TerminalServiceFactory from '../services/terminalServiceFactory'
+import cardGeneratorAPI from '../api/cardGenerator'
+import sseService from '../services/sseService'
+import ValidatedJsonViewer from '../components/ValidatedJsonViewer.vue'
+import SmartUrlPreview from '../components/SmartUrlPreview.vue'
+import ServerSelector from '../components/ServerSelector.vue'
+
+// State
+const currentTopic = ref('')
+const isGenerating = ref(false)
+const selectedTemplate = ref(0)
+const selectedCard = ref(null)
+const selectedFolder = ref(null)
+const terminalContainer = ref(null)
+const cardFolders = ref([])
+const templates = ref([])
+const expandedFolders = ref([])
+const isClaudeInitialized = ref(false)
+const isInitializingClaude = ref(false)
+const streamingStatus = ref({
+  isStreaming: false,
+  bufferLength: 0
+})
+const previewContent = ref('')
+const previewType = ref('')
+const isGeneratingHtml = ref({})
+const showTerminal = ref(true) // Terminal默认显示，方便查看初始化过程
+const iframeScaleMode = ref('fit') // 'fit' or 'fill' - 默认适应模式，显示完整内容
+const iframeSandbox = ref('allow-scripts allow-forms allow-popups allow-same-origin allow-storage-access-by-user-activation')
+const generatingHint = ref('主题正在处理中，请稍候...')
+
+// 新增：用于存储两种URL
+const responseUrls = ref({
+  shareLink: '',
+  originalUrl: ''
+})
+const activePreviewTab = ref('shareLink') // 当前激活的tab
+
+// SSE相关
+let sseUnsubscribe = null
+const isSSEConnected = ref(false)
+
+// Terminal Service
+let terminalService = null
+
+// Methods
+// 切换预览Tab
+const switchPreviewTab = (tab) => {
+  console.log('[Preview] Switching to tab:', tab)
+  activePreviewTab.value = tab
+  
+  // 记录当前选择的URL
+  const currentUrl = tab === 'originalUrl' ? responseUrls.value.originalUrl : responseUrls.value.shareLink
+  console.log('[Preview] Current URL:', currentUrl)
+}
+
+// Initialize Claude in terminal
+const initializeClaude = async () => {
+  if (isInitializingClaude.value || isClaudeInitialized.value) return
+  
+  console.log('[Claude Init] Starting Claude initialization')
+  isInitializingClaude.value = true
+  
+  // 自动展开终端以显示初始化过程
+  showTerminal.value = true
+  console.log('[Claude Init] Terminal expanded to show initialization')
+  
+  try {
+    // Check if terminal service is connected
+    if (!terminalService.isReady()) {
+      console.warn('[Claude Init] Terminal service not connected')
+      ElMessage.warning('终端服务未连接，请确保后端正在运行')
+      isInitializingClaude.value = false
+      return
+    }
+    
+    console.log('[Claude Init] Terminal service is ready')
+    ElMessage.info('正在初始化 Claude，请查看终端...')
+    
+    // 在终端中显示初始化信息
+    terminalService.terminal.write('\r\n\x1b[36m========== Initializing Claude ==========\x1b[0m\r\n')
+    terminalService.terminal.write('\x1b[33mSending command: claude --dangerously-skip-permissions\x1b[0m\r\n')
+    
+    // Send claude command with the flag
+    const claudeCommand = 'claude --dangerously-skip-permissions'
+    console.log('[Claude Init] Sending command:', claudeCommand)
+    
+    // 发送命令 - 确保回显
+    terminalService.terminal.write(`\x1b[32m$ ${claudeCommand}\x1b[0m\r\n`)
+    
+    // Send the actual command
+    terminalService.sendCommand(claudeCommand)
+    await new Promise(resolve => setTimeout(resolve, 100))
+    terminalService.sendInput('\r')
+    
+    // Wait for Claude to initialize
+    console.log('[Claude Init] Waiting for Claude to initialize...')
+    terminalService.terminal.write('\x1b[36mWaiting for Claude to start...\x1b[0m\r\n')
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    
+    // Check if Claude is ready
+    const isReady = await terminalService.checkOutput(/claude>|╭─|▌/, 5000)
+    
+    if (isReady) {
+      console.log('[Claude Init] Claude is ready')
+      terminalService.terminal.write('\x1b[32m✓ Claude initialized successfully!\x1b[0m\r\n')
+    } else {
+      console.log('[Claude Init] Claude initialization may still be in progress')
+      terminalService.terminal.write('\x1b[33m⚠ Claude may still be initializing...\x1b[0m\r\n')
+    }
+    
+    isClaudeInitialized.value = true
+    ElMessage.success('Claude 初始化成功！')
+    
+  } catch (error) {
+    console.error('[Claude Init] Error:', error)
+    terminalService.terminal.write(`\x1b[31m✗ Error: ${error.message}\x1b[0m\r\n`)
+    ElMessage.error('Claude 初始化失败: ' + error.message)
+  } finally {
+    isInitializingClaude.value = false
+    terminalService.terminal.write('\x1b[36m========================================\x1b[0m\r\n')
+  }
+}
+
+
+const generateCard = async () => {
+  if (!currentTopic.value.trim() || isGenerating.value) return
+  
+  // Check if Claude is initialized (should be done during startup)
+  if (!isClaudeInitialized.value) {
+    ElMessage.warning('Claude 尚未就绪，请稍后再试')
+    return
+  }
+  
+  // Check if template is selected
+  if (selectedTemplate.value === null || !templates.value[selectedTemplate.value]) {
+    ElMessage.warning('请先选择一个模板')
+    return
+  }
+  
+  // Clear previous preview content when starting new generation
+  previewContent.value = ''
+  previewType.value = ''
+  generatingHint.value = '正在准备生成...'
+  
+  isGenerating.value = true
+  
+  try {
+    // Get selected template info
+    generatingHint.value = '正在连接到Claude...'
+    const template = templates.value[selectedTemplate.value]
+    const templateFileName = template.fileName || 'daily-knowledge-card-template.md'
+    // 模板文件的完整路径
+    const templatePath = `/mnt/d/work/AI_Terminal/terminal-backend/data/public_template/${templateFileName}`
+    
+    // 构建用户卡片目录路径（使用绝对路径）
+    const sanitizedTopic = currentTopic.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+    // 使用绝对路径确保文件创建在正确位置
+    const userCardPath = `/mnt/d/work/AI_Terminal/terminal-backend/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
+    
+    // 构建完整的命令，使用完整路径
+    const prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${userCardPath}]：${currentTopic.value}`
+    
+    ElMessage.info('正在生成卡片...')
+    generatingHint.value = '正在发送生成命令...'
+    console.log('[Generate Card] Sending prompt:', prompt)
+    
+    // 展开终端显示生成过程
+    showTerminal.value = true
+    
+    // 在终端中显示命令
+    terminalService.terminal.write('\r\n\x1b[36m========== Generating Card ==========\x1b[0m\r\n')
+    terminalService.terminal.write(`\x1b[32m$ ${prompt}\x1b[0m\r\n`)
+    
+    // 使用分离发送方式：先发送文本内容，等待终端准备好，再发送控制符
+    await terminalService.sendTextAndControl(prompt, '\r', 1000)
+    
+    generatingHint.value = '内容生成中，请耐心等待...' 
+    
+    // 不再显示临时的HTML内容，保持生成状态
+    // 等待生成完成后显示实际的URL
+    
+    ElMessage.info('生成命令已发送，请等待结果...')
+    
+    // SSE会自动监听文件创建事件，当JSON文件创建时会触发生成完成
+    // 不再需要轮询，由SSE的file:added事件处理
+    generatingHint.value = '正在等待Claude生成内容...'
+    
+    // 设置超时处理（3分钟）
+    const timeout = setTimeout(() => {
+      if (isGenerating.value) {
+        isGenerating.value = false
+        ElMessage.warning('生成超时，请查看终端输出确认状态')
+        console.log('[GenerateCard] Generation timeout after 3 minutes')
+        refreshCardFolders()
+      }
+    }, 180000) // 3分钟超时
+    
+    // 保存超时ID，以便在生成完成时清除
+    window.generationTimeout = timeout
+    
+  } catch (error) {
+    console.error('Generate card error:', error)
+    ElMessage.error('生成失败: ' + error.message)
+    isGenerating.value = false
+    // 清除预览内容
+    previewContent.value = ''
+    previewType.value = ''
+  }
+}
+
+// Initialize XTerm
+const initializeXTerm = async () => {
+  if (!terminalContainer.value) return
+  
+  try {
+    console.log('[Terminal] Starting terminal initialization...')
+    
+    // 获取终端服务实例
+    terminalService = TerminalServiceFactory.getService()
+    
+    // 使用统一的terminalService初始化
+    await terminalService.init(terminalContainer.value, {
+      cols: 120,
+      rows: 30
+    })
+    
+    // 在终端中显示欢迎信息
+    if (terminalService.terminal) {
+      terminalService.terminal.write('\x1b[36m╔══════════════════════════════════════╗\x1b[0m\r\n')
+      terminalService.terminal.write('\x1b[36m║     AI Terminal - Card Generator     ║\x1b[0m\r\n')
+      terminalService.terminal.write('\x1b[36m╚══════════════════════════════════════╝\x1b[0m\r\n')
+      terminalService.terminal.write('\r\n')
+      terminalService.terminal.write('\x1b[33m⚡ Terminal connected successfully\x1b[0m\r\n')
+      terminalService.terminal.write('\x1b[32m✓ Ready to initialize Claude...\x1b[0m\r\n')
+      terminalService.terminal.write('\r\n')
+    }
+    
+    console.log('[Terminal] Initialized successfully')
+  } catch (error) {
+    console.error('[Terminal] Failed to initialize:', error)
+    
+    // 即使初始化失败，也尝试在容器中显示错误信息
+    if (terminalContainer.value) {
+      terminalContainer.value.innerHTML = `
+        <div style="color: #ff6b6b; padding: 20px; font-family: monospace;">
+          <h3>终端初始化失败</h3>
+          <p>错误: ${error.message}</p>
+          <p>请确保后端服务正在运行</p>
+        </div>
+      `
+    }
+    
+    ElMessage.error('终端初始化失败: ' + error.message)
+  }
+}
+
+// Select template
+const selectTemplate = (index) => {
+  selectedTemplate.value = index
+  console.log('Selected template:', templates.value[index])
+}
+
+// Toggle folder expand/collapse
+const toggleFolder = (folderId) => {
+  const index = expandedFolders.value.indexOf(folderId)
+  if (index > -1) {
+    expandedFolders.value.splice(index, 1)
+  } else {
+    expandedFolders.value.push(folderId)
+  }
+}
+
+// Select a card
+const selectCard = (cardId, folderId) => {
+  selectedCard.value = cardId
+  selectedFolder.value = folderId
+  // Load card content if needed
+  loadCardContent(cardId, folderId)
+}
+
+// Load card content
+const loadCardContent = async (cardId, folderId) => {
+  try {
+    // 清除之前的URL状态
+    responseUrls.value = {
+      shareLink: '',
+      originalUrl: ''
+    }
+    
+    // 找到对应的卡片
+    const folder = cardFolders.value.find(f => f.id === folderId)
+    if (!folder) return
+    
+    const card = folder.cards.find(c => c.id === cardId)
+    if (!card) return
+    
+    console.log('[CardContent] Loading card:', card.name, 'path:', card.path)
+    
+    // 根据文件扩展名确定预览类型
+    const fileName = card.name.toLowerCase()
+    
+    // 检查是否是响应文件
+    if (fileName.includes('-response.json')) {
+      console.log('[CardContent] Detected response file:', card.name)
+      
+      try {
+        // 读取响应文件
+        console.log('[CardContent] Reading response file from:', card.path)
+        const response = await terminalAPI.getCardContent(card.path)
+        
+        if (response && response.success) {
+          console.log('[CardContent] Response file loaded successfully')
+          
+          const responseData = typeof response.content === 'string' 
+            ? JSON.parse(response.content) 
+            : response.content
+          
+          console.log('[CardContent] Response data keys:', Object.keys(responseData))
+          
+          // 查找 shareLink
+          const shareLink = responseData.shareLink || 
+                           responseData.metadata?.processedShareLink ||
+                           responseData.originalResponse?.data?.shareLink
+          
+          // 查找 originalUrl
+          const originalUrl = responseData.originalResponse?.data?.originalUrl || 
+                             responseData.originalResponse?.data?.directViewUrl
+          
+          if (shareLink || originalUrl) {
+            // 处理shareLink
+            if (shareLink) {
+              let shareUrl = shareLink
+              // 替换域名
+              shareUrl = shareUrl.replace(
+                'engagia-s-cdmxfcdbwa.cn-hangzhou.fcapp.run',
+                'engagia-s3.paitongai.net'
+              )
+              responseUrls.value.shareLink = shareUrl
+              console.log('[CardContent] Extracted share URL:', shareUrl)
+            }
+            
+            // 处理originalUrl
+            if (originalUrl) {
+              responseUrls.value.originalUrl = originalUrl
+              console.log('[CardContent] Extracted original URL:', originalUrl)
+            }
+            
+            previewType.value = 'iframe'
+            // 默认显示shareLink，如果没有则显示originalUrl
+            previewContent.value = responseUrls.value.shareLink || responseUrls.value.originalUrl
+            activePreviewTab.value = responseUrls.value.shareLink ? 'shareLink' : 'originalUrl'
+            
+            ElMessage.success('已加载响应链接预览')
+            return
+          } else {
+            // 如果没有找到任何URL，显示JSON内容供调试
+            console.log('[CardContent] No URLs found, showing JSON')
+            previewType.value = 'json'
+            previewContent.value = responseData
+            ElMessage.info('响应文件中未找到预览链接，显示JSON内容')
+          }
+        } else {
+          throw new Error('Failed to load response file')
+        }
+      } catch (error) {
+        console.error('[CardContent] Failed to load response file:', error)
+        previewType.value = 'json'
+        previewContent.value = {
+          error: '加载响应文件失败',
+          message: error.message,
+          file: card.name
+        }
+      }
+    } else if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
+      previewType.value = 'html'
+      // HTML文件：使用后端静态服务URL
+      const { getCurrentServer } = await import('../config/api.config')
+      const baseUrl = getCurrentServer().url
+      previewContent.value = `${baseUrl}/api/terminal/card/html/${folder.id}/${encodeURIComponent(card.name)}`
+      console.log('[CardContent] HTML file URL:', previewContent.value)
+    } else if (fileName.endsWith('.json')) {
+      previewType.value = 'json'
+      // JSON文件：使用API读取文件内容
+      try {
+        console.log('[CardContent] Attempting to load JSON content from:', card.path)
+        
+        // 使用后端API读取卡片内容
+        const response = await terminalAPI.getCardContent(card.path)
+        
+        if (response && response.success) {
+          // 成功读取文件内容
+          previewContent.value = response.content
+          console.log('[CardContent] JSON content loaded successfully')
+        } else {
+          // API返回失败，显示卡片元信息
+          console.warn('[CardContent] Failed to load content:', response?.message)
+          previewContent.value = {
+            title: card.name,
+            path: card.path,
+            folder: folder.name,
+            loadTime: new Date().toISOString(),
+            note: "无法加载文件内容，显示卡片元信息"
+          }
+        }
+      } catch (error) {
+        console.error('[CardContent] Failed to load JSON content:', error)
+        // 显示错误信息和基本卡片数据
+        previewContent.value = {
+          title: card.name,
+          path: card.path,
+          folder: folder.name,
+          error: "文件读取失败: " + error.message,
+          loadTime: new Date().toISOString()
+        }
+      }
+    } else {
+      // 其他类型文件：显示基本信息
+      previewType.value = 'html'
+      previewContent.value = `data:text/html;charset=utf-8,
+        <div style="padding: 20px; font-family: Arial, sans-serif; background: #f5f5f5; height: 100%;">
+          <h2 style="color: #333; margin-bottom: 20px;">📄 ${card.name}</h2>
+          <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <p style="color: #666; margin-bottom: 15px;">
+              <strong>文件路径:</strong><br/>
+              <code style="background: #f0f0f0; padding: 5px; border-radius: 3px; font-size: 12px; word-break: break-all;">
+                ${card.path || 'N/A'}
+              </code>
+            </p>
+            <p style="color: #666; margin-bottom: 15px;">
+              <strong>主题:</strong> ${folder.name}
+            </p>
+            <p style="color: #666; margin-bottom: 15px;">
+              <strong>类型:</strong> ${fileName.split('.').pop().toUpperCase()}文件
+            </p>
+            <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 3px solid #4a9eff;">
+              <p style="color: #999; font-size: 14px;">
+                💡 该文件由Claude AI根据模板生成<br/>
+                暂不支持此文件类型的预览
+              </p>
+            </div>
+          </div>
+          <div style="margin-top: 20px; text-align: center;">
+            <span style="color: #999; font-size: 12px;">加载时间: ${new Date().toLocaleString()}</span>
+          </div>
+        </div>`
+    }
+    
+    ElMessage.success('卡片加载成功')
+  } catch (error) {
+    console.error('[CardContent] Failed to load card content:', error)
+    ElMessage.error('加载卡片失败: ' + error.message)
+  }
+}
+
+// Handle JSON fixed event
+const handleJsonFixed = (fixedData) => {
+  console.log('[CardGenerator] JSON data fixed:', fixedData)
+  previewContent.value = fixedData
+  ElMessage.success('JSON格式已修复')
+}
+
+// Handle JSON preview event
+const handleJsonPreview = (jsonData) => {
+  console.log('[CardGenerator] Preview JSON as card:', jsonData)
+  // 可以在这里实现预览功能
+  ElMessage.info('预览功能开发中...')
+}
+
+// Handle iframe load event
+const onIframeLoad = (event) => {
+  const iframe = event.target
+  
+  // Skip trying to access cross-origin content
+  // Directly apply scaling for all iframes
+  console.log('[CardGenerator] Iframe loaded, applying responsive scaling')
+  
+  // Apply scaling
+  applyIframeScaling(iframe)
+  
+  // Add resize observer for responsive scaling
+  observeIframeResize(iframe)
+}
+
+// Apply CSS transform scaling for iframes
+const applyIframeScaling = (iframe) => {
+  const wrapper = iframe.parentElement
+  if (!wrapper) return
+  
+  // Get actual container dimensions
+  const containerWidth = wrapper.offsetWidth
+  const containerHeight = wrapper.offsetHeight
+  
+  // 使用固定的移动端视口作为基准
+  const baseWidth = 375  // iPhone X width - 大多数响应式网站的设计基准
+  const baseHeight = 812  // iPhone X height
+  
+  // Set iframe to base size
+  iframe.style.width = `${baseWidth}px`
+  iframe.style.height = `${baseHeight}px`
+  
+  // Calculate scale factors
+  const scaleX = containerWidth / baseWidth
+  const scaleY = containerHeight / baseHeight
+  
+  let scale
+  if (iframeScaleMode.value === 'fill') {
+    // Fill mode - 使用适合的缩放，确保内容可读
+    // 不要过度放大，最大缩放2倍
+    scale = Math.min(scaleX * 0.95, 2.0)
+    wrapper.style.overflow = 'auto' // 允许滚动
+  } else {
+    // Fit mode - 完整显示内容
+    scale = Math.min(scaleX, scaleY) * 0.9 // 留10%边距
+    wrapper.style.overflow = 'hidden'
+  }
+  
+  // Apply transform
+  iframe.style.transform = `scale(${scale})`
+  iframe.style.transformOrigin = 'top center'
+  iframe.style.position = 'absolute'
+  
+  // Center horizontally
+  const scaledWidth = baseWidth * scale
+  const left = (containerWidth - scaledWidth) / 2
+  
+  iframe.style.left = `${Math.max(0, left)}px`
+  iframe.style.top = '0px'
+  
+  // 调整wrapper高度以适应内容
+  if (iframeScaleMode.value === 'fill') {
+    const scaledHeight = baseHeight * scale
+    wrapper.style.minHeight = `${scaledHeight}px`
+  }
+  
+  console.log(`[CardGenerator] Scaling: ${scale.toFixed(2)} | Base: ${baseWidth}x${baseHeight} | Container: ${containerWidth}x${containerHeight} | Mode: ${iframeScaleMode.value}`)
+}
+
+// Toggle scale mode
+const toggleScaleMode = () => {
+  iframeScaleMode.value = iframeScaleMode.value === 'fit' ? 'fill' : 'fit'
+  // Reapply scaling
+  const iframe = document.querySelector('.preview-iframe')
+  if (iframe) {
+    applyIframeScaling(iframe)
+  }
+}
+
+// Reset scale
+const resetScale = () => {
+  iframeScaleMode.value = 'fit'
+  const iframe = document.querySelector('.preview-iframe')
+  if (iframe) {
+    applyIframeScaling(iframe)
+  }
+}
+
+// Add resize observer to handle container size changes
+const observeIframeResize = (iframe) => {
+  const wrapper = iframe.parentElement
+  if (!wrapper) return
+  
+  const resizeObserver = new ResizeObserver(() => {
+    applyIframeScaling(iframe)
+  })
+  
+  resizeObserver.observe(wrapper)
+  
+  // Store observer for cleanup
+  iframe.dataset.resizeObserver = 'active'
+}
+
+// Generate HTML from JSON file and preview
+const generateHtmlFromJson = async (card, folder) => {
+  try {
+    // 设置生成状态
+    isGeneratingHtml.value[card.id] = true
+    
+    console.log('[GenerateHTML] Processing card:', card.name, 'from folder:', folder.name)
+    
+    // 检查是否存在已保存的响应文件
+    const responseFileName = card.name.replace('.json', '-response.json')
+    const responsePath = card.path.replace('.json', '-response.json')
+    
+    // 先尝试查找已存在的响应文件
+    const existingResponseCard = folder.cards.find(c => c.name === responseFileName)
+    
+    if (existingResponseCard) {
+      console.log('[GenerateHTML] Found existing response file:', responseFileName)
+      ElMessage.info('发现已保存的响应，正在加载...')
+      
+      try {
+        // 读取响应文件
+        const responseData = await terminalAPI.getCardContent(existingResponseCard.path)
+        if (responseData && responseData.success && responseData.content) {
+          const savedResponse = typeof responseData.content === 'string' 
+            ? JSON.parse(responseData.content) 
+            : responseData.content
+          
+          const shareLink = savedResponse.shareLink || savedResponse.metadata?.processedShareLink
+          const originalUrl = savedResponse.originalResponse?.data?.originalUrl || 
+                            savedResponse.originalResponse?.data?.directViewUrl
+          
+          if (shareLink || originalUrl) {
+            // 处理shareLink
+            if (shareLink) {
+              let shareUrl = shareLink
+              // 替换域名
+              shareUrl = shareUrl.replace(
+                'engagia-s-cdmxfcdbwa.cn-hangzhou.fcapp.run',
+                'engagia-s3.paitongai.net'
+              )
+              responseUrls.value.shareLink = shareUrl
+              console.log('[GenerateHTML] Using saved share URL:', shareUrl)
+            }
+            
+            // 处理originalUrl
+            if (originalUrl) {
+              responseUrls.value.originalUrl = originalUrl
+              console.log('[GenerateHTML] Using saved original URL:', originalUrl)
+            }
+            
+            // 直接在iframe中加载预览
+            previewType.value = 'iframe'
+            previewContent.value = responseUrls.value.shareLink || responseUrls.value.originalUrl
+            activePreviewTab.value = responseUrls.value.shareLink ? 'shareLink' : 'originalUrl'
+            selectedCard.value = card.id
+            
+            ElMessage.success('已加载保存的预览链接！')
+            return // 直接返回，不需要重新生成
+          }
+        }
+      } catch (error) {
+        console.warn('[GenerateHTML] Failed to load saved response, will regenerate:', error)
+      }
+    }
+    
+    // 显示加载提示
+    ElMessage.info('正在生成预览链接...')
+    
+    // 读取JSON文件内容
+    let jsonContent = null
+    try {
+      const response = await terminalAPI.getCardContent(card.path)
+      if (response && response.success) {
+        jsonContent = response.content
+      } else {
+        throw new Error('无法读取JSON文件内容')
+      }
+    } catch (error) {
+      console.error('[GenerateHTML] Failed to read JSON file:', error)
+      throw new Error('读取JSON文件失败: ' + error.message)
+    }
+    
+    console.log('[GenerateHTML] JSON content loaded:', jsonContent)
+    
+    // 调用API生成HTML
+    const generateResult = await cardGeneratorAPI.generateHtmlCard(jsonContent)
+    
+    // 输出完整的API响应用于调试
+    console.log('[GenerateHTML] Complete API Response:', generateResult)
+    console.log('[GenerateHTML] Response type:', typeof generateResult)
+    console.log('[GenerateHTML] Response keys:', Object.keys(generateResult || {}))
+    
+    if (!generateResult.success) {
+      throw new Error(generateResult.error || '生成HTML失败')
+    }
+    
+    console.log('[GenerateHTML] HTML generated successfully')
+    console.log('[GenerateHTML] Response data:', generateResult.data)
+    console.log('[GenerateHTML] Data type:', typeof generateResult.data)
+    console.log('[GenerateHTML] Data keys:', Object.keys(generateResult.data || {}))
+    
+    // 获取分享链接并替换域名
+    let shareUrl = generateResult.data.shareLink
+    let originalUrl = generateResult.data.originalUrl || generateResult.data.directViewUrl
+    
+    // 替换域名: engagia-s-cdmxfcdbwa.cn-hangzhou.fcapp.run -> engagia-s3.paitongai.net
+    shareUrl = shareUrl.replace(
+      'engagia-s-cdmxfcdbwa.cn-hangzhou.fcapp.run',
+      'engagia-s3.paitongai.net'
+    )
+    
+    console.log('[GenerateHTML] Share URL with new domain:', shareUrl)
+    console.log('[GenerateHTML] Original URL:', originalUrl)
+    
+    // 保存完整的原始响应，不做任何格式检查
+    const responseToSave = {
+      originalResponse: generateResult,  // 保存完整的原始响应
+      shareLink: shareUrl,  // 处理后的分享链接
+      generatedAt: new Date().toISOString(),
+      sourceFile: card.name,
+      metadata: {
+        originalShareLink: generateResult.data?.shareLink,  // 原始链接
+        processedShareLink: shareUrl  // 处理后的链接
+      }
+    }
+    
+    console.log('[GenerateHTML] Full response to save:', responseToSave)
+    console.log('[GenerateHTML] Response path:', responsePath)
+    
+    // 保存响应文件到后端（不触发浏览器下载）
+    const saveJson = JSON.stringify(responseToSave, null, 2)
+    
+    console.log('[GenerateHTML] Saving response to backend:', responsePath)
+    
+    // 直接通过后端API保存
+    try {
+      const saveResult = await terminalAPI.saveCardContent({
+        path: responsePath,
+        content: saveJson,
+        type: 'response'
+      })
+      
+      if (saveResult && saveResult.success) {
+        console.log('[GenerateHTML] Response saved to server successfully')
+        ElMessage.success(`响应已保存到: ${responseFileName}`)
+        
+        // 刷新文件夹列表以显示新文件
+        await refreshCardFolders()
+      } else {
+        throw new Error(saveResult?.error || 'Save failed')
+      }
+    } catch (err) {
+      console.error('[GenerateHTML] Failed to save response:', err)
+      ElMessage.error(`保存响应失败: ${err.message}`)
+      
+      // 作为备选方案，输出到控制台
+      console.log('[GenerateHTML] Response JSON for manual save:', saveJson)
+    }
+    
+    
+    // 保存两种URL
+    responseUrls.value.shareLink = shareUrl
+    responseUrls.value.originalUrl = originalUrl
+    
+    // 直接在iframe中加载预览
+    previewType.value = 'iframe'
+    previewContent.value = shareUrl
+    activePreviewTab.value = 'shareLink' // 默认显示shareLink
+    
+    // 选中当前卡片
+    selectedCard.value = card.id
+    
+    ElMessage.success('预览链接已生成！')
+    
+    // 安全地复制链接到剪贴板
+    if (navigator.clipboard && document.hasFocus()) {
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        console.log('[GenerateHTML] Share link copied to clipboard:', shareUrl)
+        ElMessage.success('链接已复制到剪贴板')
+      } catch (err) {
+        console.warn('[GenerateHTML] Could not copy link automatically:', err.message)
+        ElMessage.info(`预览链接: ${shareUrl}`)
+      }
+    } else {
+      ElMessage.info(`预览链接: ${shareUrl}`)
+    }
+    
+  } catch (error) {
+    console.error('[GenerateHTML] Error:', error)
+    ElMessage.error('生成预览失败: ' + error.message)
+  } finally {
+    // 清除生成状态
+    isGeneratingHtml.value[card.id] = false
+  }
+}
+
+
+// Get file icon based on extension
+const getFileIcon = (fileName) => {
+  const lowerFileName = fileName.toLowerCase()
+  
+  // 特殊处理响应文件
+  if (lowerFileName.includes('-response.json')) {
+    return '🔗' // 链接图标，表示这是保存的响应
+  }
+  
+  const ext = lowerFileName.split('.').pop()
+  switch (ext) {
+    case 'json':
+      return '📋'
+    case 'html':
+    case 'htm':
+      return '🌐'
+    default:
+      return '📄'
+  }
+}
+
+// Get file type display text
+const getFileType = (fileName) => {
+  const lowerFileName = fileName.toLowerCase()
+  
+  // 特殊处理响应文件
+  if (lowerFileName.includes('-response.json')) {
+    return 'RESP'
+  }
+  
+  const ext = lowerFileName.split('.').pop()
+  switch (ext) {
+    case 'json':
+      return 'JSON'
+    case 'html':
+    case 'htm':
+      return 'HTML'
+    default:
+      return ext.toUpperCase()
+  }
+}
+
+// Load user card folders from file system
+const loadCardFolders = async () => {
+  try {
+    // 调用后端API获取真实的目录结构
+    const response = await terminalAPI.getCardsDirectory()
+    if (response && response.success && response.folders) {
+      cardFolders.value = response.folders
+      // Auto-expand first folder
+      if (cardFolders.value.length > 0 && !expandedFolders.value.includes(cardFolders.value[0].id)) {
+        expandedFolders.value.push(cardFolders.value[0].id)
+      }
+      console.log('Loaded folders from backend:', cardFolders.value)
+      return
+    }
+  } catch (error) {
+    console.error('Failed to load folders from backend:', error)
+  }
+  
+  // 如果API失败，至少显示空状态
+  if (!cardFolders.value) {
+    cardFolders.value = []
+  }
+}
+
+// 刷新卡片文件夹（从后端获取真实数据）
+const refreshCardFolders = async () => {
+  console.log('[RefreshFolders] Refreshing card folders from backend...')
+  
+  try {
+    // 直接调用loadCardFolders来获取最新的后端数据
+    await loadCardFolders()
+    console.log('[RefreshFolders] Folders refreshed successfully')
+    
+    // 如果有当前主题，尝试展开对应的文件夹
+    if (currentTopic.value) {
+      const sanitizedTopic = currentTopic.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+      const folder = cardFolders.value.find(f => f.id === sanitizedTopic || f.name === currentTopic.value)
+      
+      if (folder && !expandedFolders.value.includes(folder.id)) {
+        expandedFolders.value.push(folder.id)
+      }
+    }
+    
+    return true
+  } catch (error) {
+    console.error('[RefreshFolders] Failed to refresh folders:', error)
+    ElMessage.error('刷新文件夹失败')
+    return false
+  }
+}
+
+// Load templates
+const loadTemplates = async () => {
+  try {
+    const response = await terminalAPI.getTemplates()
+    if (response.success && response.templates) {
+      templates.value = response.templates
+    } else {
+      // Use empty templates if API fails
+      templates.value = []
+      console.warn('No templates loaded from backend')
+    }
+  } catch (error) {
+    console.error('Failed to load templates:', error)
+    // Use empty templates on error
+    templates.value = []
+  }
+}
+
+// 初始化SSE连接
+const initSSE = () => {
+  console.log('[SSE] Initializing SSE connection...')
+  
+  // 连接SSE
+  sseService.connect()
+  
+  // 监听文件系统变化事件
+  sseUnsubscribe = sseService.on('filesystem:changed', async (data) => {
+    console.log('[SSE] Filesystem changed:', data)
+    
+    // 如果不在生成过程中，刷新文件夹列表
+    if (!isGenerating.value) {
+      console.log('[SSE] Refreshing folders due to filesystem change...')
+      await loadCardFolders()
+    }
+  })
+  
+  // 监听文件添加事件，用于检测生成完成
+  sseService.on('file:added', async (data) => {
+    console.log('[SSE] File added:', data)
+    
+    // 检查是否是JSON文件
+    if (data.path && data.path.endsWith('.json')) {
+      const fileName = data.path.split('/').pop() || data.path.split('\\').pop()
+      
+      // 如果正在生成过程中，检查是否是主题文件夹下的JSON文件
+      if (isGenerating.value) {
+        const sanitizedTopic = currentTopic.value.trim().replace(/[\/\\:*?"<>|]/g, '_')
+        const userCardPath = `${CARDS_BASE_PATH}/${sanitizedTopic}`
+        
+        // 检查文件路径是否包含当前主题文件夹
+        if (data.path.includes(sanitizedTopic)) {
+          console.log('[SSE] Generated JSON file detected:', data.path)
+          generatingHint.value = '生成完成！'
+          
+          // 清除超时定时器
+          if (window.generationTimeout) {
+            clearTimeout(window.generationTimeout)
+            window.generationTimeout = null
+          }
+          
+          // 标记生成完成
+          isGenerating.value = false
+          
+          // 刷新文件夹列表
+          await loadCardFolders()
+          
+          // 自动选择新生成的文件夹
+          const newFolder = cardFolders.value.find(f => f.id === sanitizedTopic)
+          if (newFolder) {
+            selectedFolder.value = newFolder
+            await loadCardsInFolder(newFolder)
+            
+            // 如果是非response后缀的JSON文件，自动触发生成HTML
+            if (!fileName.includes('-response.json')) {
+              console.log('[SSE] Auto-triggering HTML generation for:', fileName)
+              
+              // 找到对应的卡片
+              const card = newFolder.cards.find(c => c.name === fileName)
+              if (card) {
+                // 检查是否已经存在对应的response文件
+                const baseName = card.name.replace('.json', '')
+                const responseFileName = `${baseName}-response.json`
+                const hasResponseFile = newFolder.cards.some(c => c.name === responseFileName)
+                
+                if (hasResponseFile) {
+                  console.log('[SSE] Response file already exists, skipping auto-generation:', responseFileName)
+                } else {
+                  // 延迟一秒后自动触发按钮点击
+                  setTimeout(() => {
+                    const button = document.getElementById(`generate-html-btn-${card.id}`)
+                    if (button && !button.disabled) {
+                      console.log('[SSE] Triggering generate HTML button for:', card.name)
+                      button.click()
+                      ElMessage.info('正在自动生成HTML预览...')
+                    }
+                  }, 1000)
+                }
+              }
+            }
+          }
+          
+          ElMessage.success('卡片生成成功！')
+        }
+      }
+      // 如果不在生成过程中，但是收到了非response后缀的JSON文件
+      else if (!fileName.includes('-response.json')) {
+        console.log('[SSE] Non-response JSON file detected:', fileName)
+        
+        // 刷新文件夹列表
+        await loadCardFolders()
+        
+        // 查找包含这个文件的文件夹
+        for (const folder of cardFolders.value) {
+          const card = folder.cards?.find(c => c.path === data.path)
+          if (card) {
+            console.log('[SSE] Found card in folder:', folder.name)
+            
+            // 检查是否已经存在对应的response文件
+            const baseName = card.name.replace('.json', '')
+            const responseFileName = `${baseName}-response.json`
+            const hasResponseFile = folder.cards.some(c => c.name === responseFileName)
+            
+            if (hasResponseFile) {
+              console.log('[SSE] Response file already exists, skipping auto-generation:', responseFileName)
+            } else {
+              // 自动触发按钮点击
+              setTimeout(() => {
+                const button = document.getElementById(`generate-html-btn-${card.id}`)
+                if (button && !button.disabled) {
+                  console.log('[SSE] Triggering generate HTML button for:', card.name)
+                  button.click()
+                  ElMessage.info(`正在为 ${card.name} 自动生成HTML预览...`)
+                }
+              }, 1000)
+            }
+            break
+          }
+        }
+      }
+    }
+  })
+  
+  // 监听连接状态
+  sseService.on('connected', () => {
+    console.log('[SSE] Connected to SSE stream')
+    isSSEConnected.value = true
+    ElMessage.success('实时同步已连接')
+  })
+  
+  sseService.on('disconnected', () => {
+    console.log('[SSE] Disconnected from SSE stream')
+    isSSEConnected.value = false
+  })
+  
+  sseService.on('error', (error) => {
+    console.error('[SSE] Error:', error)
+    ElMessage.warning('实时同步连接异常')
+  })
+  
+  sseService.on('connection:failed', (data) => {
+    console.error('[SSE] Connection failed:', data)
+    ElMessage.error('实时同步连接失败，将使用定时刷新')
+    
+    // 如果SSE失败，启用备用的定时刷新
+    startFallbackRefresh()
+  })
+}
+
+// 备用的定时刷新（当SSE不可用时）
+let fallbackRefreshInterval = null
+const startFallbackRefresh = () => {
+  if (fallbackRefreshInterval) return
+  
+  fallbackRefreshInterval = setInterval(async () => {
+    if (!isGenerating.value && !isSSEConnected.value) {
+      console.log('[FallbackRefresh] Refreshing folders...')
+      await loadCardFolders()
+    }
+  }, 10000) // 10秒刷新一次
+  
+  console.log('[FallbackRefresh] Started')
+}
+
+// 停止备用刷新
+const stopFallbackRefresh = () => {
+  if (fallbackRefreshInterval) {
+    clearInterval(fallbackRefreshInterval)
+    fallbackRefreshInterval = null
+    console.log('[FallbackRefresh] Stopped')
+  }
+}
+
+// 检查并自动生成缺失的HTML
+const checkAndGenerateMissingHtml = async () => {
+  console.log('[AutoGenerate] Checking for missing HTML files...')
+  
+  for (const folder of cardFolders.value) {
+    // 等待一下让DOM更新
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    for (const card of folder.cards || []) {
+      // 只处理非response的JSON文件
+      if (card.name.endsWith('.json') && !card.name.includes('-response.json')) {
+        // 检查是否已经存在response文件
+        const baseName = card.name.replace('.json', '')
+        const responseFileName = `${baseName}-response.json`
+        const hasResponseFile = folder.cards.some(c => c.name === responseFileName)
+        
+        if (!hasResponseFile) {
+          console.log('[AutoGenerate] Missing response file for:', card.name)
+          
+          // 触发生成HTML按钮
+          const button = document.getElementById(`generate-html-btn-${card.id}`)
+          if (button && !button.disabled) {
+            console.log('[AutoGenerate] Triggering generate HTML button for:', card.name)
+            button.click()
+            
+            // 等待一会儿再处理下一个，避免同时生成太多
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          }
+        }
+      }
+    }
+  }
+  
+  console.log('[AutoGenerate] Check completed')
+}
+
+// 删除文件夹
+const deleteFolder = async (folder) => {
+  try {
+    const confirmResult = await ElMessageBox.confirm(
+      `确定要删除文件夹 "${folder.name}" 及其所有内容吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    
+    if (confirmResult === 'confirm') {
+      ElMessage.info('正在删除文件夹...')
+      
+      const result = await terminalAPI.deleteCard(folder.path)
+      
+      if (result.success) {
+        ElMessage.success(`文件夹 "${folder.name}" 已删除`)
+        
+        // 如果删除的是当前选中的文件夹，清除选中状态
+        if (selectedFolder.value === folder.id) {
+          selectedFolder.value = null
+          selectedCard.value = null
+          previewContent.value = ''
+          previewType.value = ''
+          responseUrls.value = { shareLink: '', originalUrl: '' }
+        }
+        
+        // 刷新文件夹列表
+        await refreshCardFolders()
+      } else {
+        ElMessage.error('删除失败：' + (result.message || '未知错误'))
+      }
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('[DeleteFolder] Error:', error)
+      ElMessage.error('删除失败：' + error.message)
+    }
+  }
+}
+
+// 删除文件
+const deleteCardFile = async (card, folder) => {
+  try {
+    const confirmResult = await ElMessageBox.confirm(
+      `确定要删除文件 "${card.name}" 吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    
+    if (confirmResult === 'confirm') {
+      ElMessage.info('正在删除文件...')
+      
+      const result = await terminalAPI.deleteCard(card.path)
+      
+      if (result.success) {
+        ElMessage.success(`文件 "${card.name}" 已删除`)
+        
+        // 如果删除的是当前选中的文件，清除选中状态
+        if (selectedCard.value === card.id) {
+          selectedCard.value = null
+          previewContent.value = ''
+          previewType.value = ''
+          responseUrls.value = { shareLink: '', originalUrl: '' }
+        }
+        
+        // 刷新文件夹列表
+        await refreshCardFolders()
+      } else {
+        ElMessage.error('删除失败：' + (result.message || '未知错误'))
+      }
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('[DeleteCard] Error:', error)
+      ElMessage.error('删除失败：' + error.message)
+    }
+  }
+}
+
+// Initialize
+onMounted(async () => {
+  console.log('[CardGenerator] Component mounted, starting initialization...')
+  
+  // Load initial data (non-blocking)
+  await loadCardFolders()
+  loadTemplates()
+  
+  // 初始化SSE实时同步
+  initSSE()
+  
+  // 延迟检查并自动生成缺失的HTML
+  setTimeout(() => {
+    checkAndGenerateMissingHtml()
+  }, 3000)  // 延迟3秒，让页面完全加载
+  
+  // Initialize terminal after DOM is ready (non-blocking)
+  nextTick(() => {
+    setTimeout(async () => {
+      try {
+        await initializeXTerm()
+        console.log('[CardGenerator] Terminal initialized')
+        
+        // Try to initialize Claude after terminal is ready (non-blocking)
+        setTimeout(() => {
+          console.log('[CardGenerator] Attempting to initialize Claude...')
+          initializeClaude().catch(err => {
+            console.warn('[CardGenerator] Claude initialization failed:', err)
+            ElMessage.warning('Claude 初始化失败，部分功能可能不可用')
+          })
+        }, 2000)
+      } catch (err) {
+        console.warn('[CardGenerator] Terminal initialization failed:', err)
+        ElMessage.warning('终端初始化失败，部分功能可能不可用')
+      }
+    }, 100)
+  })
+})
+
+
+// Cleanup
+onUnmounted(() => {
+  console.log('[CardGenerator] Component unmounting, cleaning up...')
+  
+  // 断开SSE连接
+  if (sseUnsubscribe) {
+    sseUnsubscribe()
+  }
+  sseService.disconnect()
+  
+  // 停止备用刷新
+  stopFallbackRefresh()
+  
+  // 清理终端
+  if (terminalService) {
+    terminalService.cleanup()
+  }
+})
+</script>
+
+<style scoped>
+.card-generator-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  position: relative;
+  font-family: 'Microsoft YaHei', sans-serif;
+  overflow: hidden;  /* 防止滚动条 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Left Sidebar */
+.left-sidebar {
+  width: 240px;
+  min-width: 240px;
+  flex-shrink: 0;
+  background: #1e1e1e;
+  border-right: 1px solid #2d2d2d;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2d2d2d;
+  background: #252525;
+}
+
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cccccc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.refresh-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.refresh-btn:hover {
+  background: #2a2a2a;
+  color: #4a9eff;
+}
+
+.folder-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.folder-tree::-webkit-scrollbar {
+  width: 6px;
+}
+
+.folder-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.folder-tree::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+.folder-tree::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.folder-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  user-select: none;
+  margin-bottom: 2px;
+  position: relative;
+}
+
+.folder-item:hover {
+  background: #2a2a2a;
+}
+
+.delete-folder-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  margin-left: auto;
+  opacity: 0;
+}
+
+.folder-item:hover .delete-folder-btn {
+  opacity: 1;
+}
+
+.delete-folder-btn:hover {
+  background: #ff4444;
+  color: white;
+}
+
+.folder-item.expanded {
+  background: transparent;
+}
+
+.folder-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.folder-name {
+  flex: 1;
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.folder-count {
+  color: #666;
+  font-size: 11px;
+  background: #2a2a2a;
+  padding: 1px 5px;
+  border-radius: 10px;
+}
+
+.cards-list {
+  margin-left: 22px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.card-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: transparent;
+  border-radius: 3px;
+  transition: all 0.2s;
+  font-size: 13px;
+  cursor: pointer;
+  position: relative;
+}
+
+.card-item:hover {
+  background: #2a2a2a;
+}
+
+.card-item.active {
+  background: #2a2a2a;
+}
+
+.card-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #4a9eff;
+  border-radius: 2px;
+}
+
+.card-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.card-name {
+  color: #d0d0d0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.delete-card-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  opacity: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-item:hover .delete-card-btn {
+  opacity: 1;
+}
+
+.delete-card-btn:hover {
+  color: #ff4444;
+  transform: scale(1.2);
+}
+
+.card-type {
+  color: #888;
+  font-size: 10px;
+  padding: 2px 5px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 3px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.generate-html-btn {
+  background: transparent;
+  color: #4a9eff;
+  border: 1px solid #4a9eff;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  width: 20px;
+  opacity: 0;
+}
+
+.card-item:hover .generate-html-btn {
+  opacity: 1;
+}
+
+.generate-html-btn:hover {
+  background: #4a9eff;
+  color: white;
+}
+
+.generate-html-btn:active {
+  transform: scale(0.95);
+}
+
+.generate-html-btn:disabled {
+  background: transparent;
+  border-color: #555;
+  color: #555;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  font-size: 14px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.empty-message {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+  font-size: 13px;
+}
+
+/* Main Area */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 20px;
+  min-width: 0; /* 防止flex子元素撑开 */
+  max-width: calc(100vw - 560px); /* 左侧240px + 右侧320px */
+}
+
+.preview-area,
+.terminal-area {
+  background: #252525;
+  border: 1px solid #333;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preview-area {
+  flex: 1;
+}
+
+.terminal-area {
+  height: 300px;
+  transition: height 0.3s ease;
+}
+
+.terminal-area.collapsed {
+  height: 48px; /* 只显示header */
+}
+
+.area-title {
+  padding: 12px 20px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-type-tag {
+  background: #4a9eff;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  cursor: pointer;
+  user-select: none;
+}
+
+.terminal-header:hover {
+  background: #303030;
+}
+
+.terminal-toggle {
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.2s;
+}
+
+.terminal-status-mini {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #888;
+}
+
+.claude-status {
+  font-size: 13px;
+  color: #888;
+}
+
+.terminal-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.terminal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.init-claude-btn {
+  padding: 6px 12px;
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.init-claude-btn:hover:not(:disabled) {
+  background: #4a4a4a;
+  border-color: #4a9eff;
+}
+
+.init-claude-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.preview-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden; /* 防止内容溢出 */
+  display: flex;
+  flex-direction: column;
+}
+
+.generating-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+}
+
+.generating-loader {
+  text-align: center;
+  padding: 40px;
+}
+
+.loader-spinner {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 20px;
+  border: 3px solid #333;
+  border-top-color: #4a9eff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.generating-text {
+  font-size: 18px;
+  font-weight: 500;
+  color: #e0e0e0;
+  margin-bottom: 10px;
+}
+
+.generating-hint {
+  font-size: 14px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.json-viewer-preview {
+  flex: 1;
+  overflow: hidden;
+}
+
+.iframe-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #f5f5f5;
+  overflow: hidden;
+}
+
+.preview-iframe {
+  background: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.iframe-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.scale-toggle-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(74, 158, 255, 0.9);
+  color: white;
+  border: 1px solid #4a9eff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.scale-reset-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.scale-toggle-btn:hover {
+  background: rgba(74, 158, 255, 1);
+  transform: scale(1.05);
+}
+
+.scale-reset-btn:hover {
+  background: #4a9eff;
+  border-color: #4a9eff;
+  transform: scale(1.1);
+}
+
+.scale-toggle-btn:active,
+.scale-reset-btn:active {
+  transform: scale(0.95);
+}
+
+.empty-state {
+  color: #666;
+  font-size: 14px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.json-viewer-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.terminal-content {
+  flex: 1;
+  background: #0c0c0c;
+  overflow: hidden;
+  padding: 10px;
+  text-align: left;
+}
+
+/* XTerm container styles */
+.terminal-content :deep(.xterm) {
+  padding: 10px;
+  height: 100%;
+}
+
+.terminal-content :deep(.xterm-viewport) {
+  background-color: #0c0c0c;
+}
+
+.terminal-content :deep(.xterm-screen) {
+  padding: 0;
+  margin: 0;
+}
+
+.terminal-content :deep(.xterm-rows) {
+  text-align: left !important;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+/* Right Sidebar */
+.right-sidebar {
+  width: 320px;
+  min-width: 320px;
+  flex-shrink: 0;
+  background: #252525;
+  border-left: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Style Templates */
+.style-templates {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #333;
+  overflow: hidden;
+}
+
+.template-header {
+  padding: 15px 20px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.template-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.template-item {
+  padding: 12px 15px;
+  margin-bottom: 8px;
+  background: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.template-item:hover {
+  background: #333;
+  border-color: #444;
+}
+
+.template-item.active {
+  background: #3a3a3a;
+  border-color: #4a9eff;
+}
+
+.template-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.template-desc {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.4;
+}
+
+/* Input & Create Section */
+.input-create-section {
+  padding: 20px;
+  background: #2a2a2a;
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.topic-input {
+  flex: 1;
+  padding: 10px 15px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.topic-input::placeholder {
+  color: #666;
+}
+
+.topic-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.create-btn {
+  padding: 10px 30px;
+  background: #4a9eff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 500;
+}
+
+.create-btn:hover:not(:disabled) {
+  background: #3a8eef;
+}
+
+.create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 流式状态指示器 */
+.streaming-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(74, 158, 255, 0.1);
+  border: 1px solid #4a9eff;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #4a9eff;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.streaming-dot {
+  width: 8px;
+  height: 8px;
+  background: #4a9eff;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+  25%, 75% {
+    opacity: 0.3;
+  }
+}
+
+/* HTML链接对话框样式 */
+:deep(.html-links-dialog) {
+  .el-message-box__content {
+    padding: 20px;
+  }
+  
+  a {
+    word-break: break-all;
+    display: inline-block;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+}
+
+/* 预览 Tab 样式 */
+.preview-tabs {
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  height: 42px;
+  gap: 2px;
+}
+
+.preview-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 4px 4px 0 0;
+  color: #888;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  user-select: none;
+}
+
+.preview-tab:hover {
+  background: #333;
+  color: #ccc;
+}
+
+.preview-tab.active {
+  background: #252525;
+  color: #4a9eff;
+  border-bottom: 2px solid #4a9eff;
+}
+
+.preview-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #252525;
+}
+
+.tab-icon {
+  font-size: 14px;
+}
+
+.tab-label {
+  white-space: nowrap;
+}
+
+/* 服务器选择器容器 */
+.server-selector-container {
+  position: absolute;
+  top: 10px;
+  right: 340px; /* 右侧栏宽度320px + 20px间距 */
+  z-index: 100;
+}
+</style>

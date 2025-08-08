@@ -1,0 +1,207 @@
+{
+  "theme": {
+    "name": "daily-literature-knowledge",
+    "pageTitle": "文学知识点：猪八戒嘲笑悟空",
+    "sectionTitle": "为什么猪八戒总爱挖苦孙悟空？",
+    "sectionSubtitle": "每天学习一个西游记知识点 · 第1期",
+    "gradientColor1": "#F59E0B",
+    "gradientColor2": "#FCD34D",
+    "gradientColor1RGB": "245, 158, 11",
+    "accentColor": "#F59E0B",
+    "accentColorRGB": "245, 158, 11"
+  },
+  "copy": {
+    "title": "🐷 猪八戒为啥总是嘲笑孙悟空？原来背后有这些心理！",
+    "content": "每天一个西游记小知识，今天聊聊猪八戒和孙悟空的相处模式。\n\n你有没有发现：\n• 猪八戒总是在悟空失败时幸灾乐祸？\n• 明知道打不过还要嘴上逞能？\n• 师父面前经常打小报告？\n• 关键时刻却又会帮忙？\n\n这其实是典型的\"竞争型兄弟关系\"！\n\n🎯 一句话解释：\n猪八戒的嘲笑，是自卑心理下的自我保护机制。\n\n📚 5个角度解读八戒的嘲笑：\n\n1️⃣ 表面现象\n• 称呼：\"弼马温\"、\"猴头\"\n• 时机：悟空受挫时\n• 方式：阴阳怪气、煽风点火\n\n2️⃣ 深层原因\n• 能力差距带来的自卑\n• 争夺师父关注的嫉妒\n• 前世身份落差的失落\n• 团队地位的不甘心\n\n3️⃣ 经典场景\n• 三打白骨精：\"师父，猴哥打人了\"\n• 真假美猴王：\"活该，谁让你逞能\"\n• 被妖怪抓走：\"猴哥救命啊\"\n\n4️⃣ 兄弟情谊\n• 嘴上不饶人，心里认同\n• 危难时刻，立刻求助\n• 悟空离开，最想念的是他\n\n5️⃣ 人物成长\n• 从嫉妒到接纳\n• 从对抗到配合\n• 从表面到理解\n\n💡 现实启示：\n你身边有没有这样的\"猪八戒\"？表面挑刺，其实是最在意的人。\n\n明天预告：唐僧为什么总是误会孙悟空？",
+    "hashtags": "#西游记 #猪八戒 #孙悟空 #经典文学 #人物关系 #心理分析 #每日学习 #国学经典",
+    "tips": "发布时间：晚7-8点（休闲阅读时间）\n封面选择：第1张主卡片\n互动引导：分享你身边的\"猪八戒\"型朋友\n后续内容：可做西游记人物关系系列"
+  },
+  "cards": [
+    {
+      "type": "main",
+      "icon": "",
+      "header": "为什么猪八戒总爱挖苦孙悟空？",
+      "subtitle": "揭秘西游记中的兄弟相处之道",
+      "content": {
+        "highlight": {
+          "number": "嘲笑\n心理",
+          "description": "自卑下的自我保护"
+        },
+        "points": [
+          {"icon": "→", "text": "读懂人物，看透人性"}
+        ],
+        "tags": []
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎭",
+      "header": "八戒的嘲笑方式",
+      "subtitle": "那些经典的挖苦台词",
+      "content": {
+        "list": [
+          "称呼：<strong style=\"color: #F59E0B;\">\"弼马温\"</strong>",
+          "讽刺：<strong style=\"color: #F59E0B;\">\"猴子逞能\"</strong>",
+          "挑拨：<strong style=\"color: #F59E0B;\">\"师父，他又...\"</strong>",
+          "幸灾乐祸：<strong style=\"color: #F59E0B;\">\"活该\"</strong>"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "经典语录",
+          "description": "\"呆子\"与\"猴头\"的日常"
+        },
+        "tip": "😄 嘴上最毒，心里最软",
+        "tags": ["📖 表现"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🧠",
+      "header": "为什么要嘲笑？",
+      "subtitle": "心理动机大揭秘",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "四大原因",
+          "items": [
+            "<strong>能力自卑</strong>：打不过就嘴上赢",
+            "<strong>争宠心理</strong>：想要师父更关注",
+            "<strong>身份落差</strong>：天蓬元帅变成猪",
+            "<strong>地位焦虑</strong>：二师兄的尴尬"
+          ]
+        },
+        "tip": "💡 嘲笑是弱者的武器",
+        "tags": ["🔬 原因"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📺",
+      "header": "经典嘲笑场景",
+      "subtitle": "那些让人印象深刻的时刻",
+      "content": {
+        "list": [
+          "<strong style=\"color: #FCD34D;\">三打白骨精</strong>：告状专业户",
+          "<strong style=\"color: #FCD34D;\">真假美猴王</strong>：煽风点火",
+          "<strong style=\"color: #FCD34D;\">被抓时刻</strong>：立马认怂求救",
+          "<strong style=\"color: #FCD34D;\">分行李</strong>：表面赶人实则挽留"
+        ],
+        "tip": "🎬 每次都是神助攻",
+        "tags": ["📱 场景"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📊",
+      "header": "嘲笑背后的数据",
+      "subtitle": "原著中的有趣统计",
+      "content": {
+        "list": [
+          "嘲笑次数：<strong style=\"color: #F59E0B;\">200+次</strong>",
+          "求救次数：<strong style=\"color: #F59E0B;\">80+次</strong>",
+          "配合默契度：<strong style=\"color: #F59E0B;\">越来越高</strong>",
+          "真心关心：<strong style=\"color: #F59E0B;\">关键时刻显真情</strong>"
+        ],
+        "special": {
+          "type": "progress",
+          "value": 85,
+          "label": "口是心非指数：85%"
+        },
+        "tip": "📈 嘴硬心软的典型",
+        "tags": ["📉 数据"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "❌",
+      "header": "常见误解",
+      "subtitle": "八戒不是真的坏",
+      "content": {
+        "list": [
+          "❌ \"八戒真的讨厌悟空\"",
+          "✅ 其实是最依赖的人",
+          "❌ \"八戒只会拖后腿\"",
+          "✅ 关键时刻也很给力"
+        ],
+        "tip": "🤔 复杂的人物才真实",
+        "tags": ["🚫 误区"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "💪",
+      "header": "兄弟情深的证据",
+      "subtitle": "打是亲骂是爱",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "真情时刻",
+          "items": [
+            "<strong>危难相救</strong>：遇险第一个喊猴哥",
+            "<strong>思念之情</strong>：悟空离开最想念",
+            "<strong>默契配合</strong>：关键战斗心有灵犀",
+            "<strong>最终理解</strong>：取经路上共成长"
+          ]
+        },
+        "tip": "❤️ 这就是兄弟",
+        "tags": ["🛠️ 情谊"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🌟",
+      "header": "现实映射",
+      "subtitle": "生活中的八戒型朋友",
+      "content": {
+        "list": [
+          "特征：<strong style=\"color: #F59E0B;\">嘴毒心善</strong>",
+          "• 平时各种挑毛病",
+          "• 关键时刻最可靠",
+          "• 表面损你实则护你",
+          "这种朋友值得<strong style=\"color: #F59E0B;\">珍惜</strong>"
+        ],
+        "tip": "🎭 你身边有这样的人吗",
+        "tags": ["🎓 启示"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📚",
+      "header": "今日总结",
+      "subtitle": "记住这几点",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "要点回顾",
+          "items": [
+            "嘲笑源于内心自卑",
+            "口是心非的兄弟情",
+            "成长中的相互理解",
+            "真朋友经得起调侃"
+          ]
+        },
+        "tip": "🌈 明天见：唐僧的识人之明",
+        "tags": ["✅ 总结"]
+      }
+    }
+  ],
+  "footer": {
+    "tags": ["📚 西游记", "🎭 人物分析", "💡 每日学习"]
+  },
+  "export": {
+    "mainCardFilename": "主卡片-猪八戒嘲笑悟空.png",
+    "cardFilenames": [
+      "2-八戒的嘲笑方式.png",
+      "3-为什么要嘲笑.png",
+      "4-经典嘲笑场景.png",
+      "5-嘲笑背后的数据.png",
+      "6-常见误解.png",
+      "7-兄弟情深的证据.png",
+      "8-现实映射.png",
+      "9-今日总结.png"
+    ],
+    "zipFilename": "西游记知识-猪八戒嘲笑悟空-知识卡片.zip"
+  },
+  "customStyles": "",
+  "exportAdjustments": ""
+}

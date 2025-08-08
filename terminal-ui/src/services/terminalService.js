@@ -1,0 +1,403 @@
+/**
+ * Terminal Service - 统一的终端服务
+ * 合并了terminalIntegration.js和terminal-best-practice.js的功能
+ */
+
+import { io } from 'socket.io-client'
+import { Terminal } from 'xterm'
+import { FitAddon } from 'xterm-addon-fit'
+import { WebLinksAddon } from 'xterm-addon-web-links'
+import 'xterm/css/xterm.css'
+import { getCurrentServer } from '../config/api.config'
+
+class TerminalService {
+  constructor() {
+    // Socket连接
+    this.socket = null
+    this.isConnected = false
+    this.sessionId = null
+    
+    // XTerm实例
+    this.terminal = null
+    this.fitAddon = null
+    this.container = null
+    
+    // 事件处理
+    this.outputHandlers = []
+    this.outputBuffer = []
+    
+    // 动态获取WebSocket URL
+    this.getWsUrl = () => {
+      const server = getCurrentServer()
+      console.log('[TerminalService] Current server config:', server)
+      // Socket.IO 使用 ws URL，但协议是 http/https
+      const url = server.ws ? server.ws.replace('ws://', 'http://').replace('wss://', 'https://') : server.url
+      console.log('[TerminalService] Using WebSocket URL:', url)
+      return url
+    }
+  }
+
+  /**
+   * 初始化并连接终端
+   */
+  async init(container, options = {}) {
+    if (this.terminal) {
+      console.warn('[TerminalService] Already initialized')
+      return this.sessionId
+    }
+
+    this.container = container
+
+    // 创建XTerm实例
+    this.createTerminal(options)
+    
+    // 先挂载到DOM
+    this.mount()
+    
+    try {
+      // 连接到服务器
+      await this.connect()
+      
+      // 设置数据流
+      this.setupDataFlow()
+      
+      return this.sessionId
+    } catch (error) {
+      console.error('[TerminalService] Failed to connect:', error)
+      // 即使连接失败，terminal界面仍然可用
+      // 显示错误信息
+      if (this.terminal) {
+        this.terminal.write('\r\n\x1b[31m⚠ 无法连接到后端服务器\x1b[0m\r\n')
+        this.terminal.write('\x1b[33m请确保后端服务运行在 http://localhost:3000\x1b[0m\r\n')
+        this.terminal.write('\r\n运行后端: cd terminal-backend && npm start\r\n')
+      }
+      throw error
+    }
+  }
+
+  /**
+   * 创建XTerm实例
+   */
+  createTerminal(options = {}) {
+    this.terminal = new Terminal({
+      theme: {
+        background: '#0c0c0c',
+        foreground: '#cccccc',
+        cursor: '#ffffff',
+        black: '#0c0c0c',
+        red: '#c50f1f',
+        green: '#13a10e',
+        yellow: '#c19c00',
+        blue: '#0037da',
+        magenta: '#881798',
+        cyan: '#3a96dd',
+        white: '#cccccc',
+        brightBlack: '#767676',
+        brightRed: '#e74856',
+        brightGreen: '#16c60c',
+        brightYellow: '#f9f1a5',
+        brightBlue: '#3b78ff',
+        brightMagenta: '#b4009e',
+        brightCyan: '#61d6d6',
+        brightWhite: '#f2f2f2'
+      },
+      fontFamily: '"Cascadia Code", "Courier New", monospace',
+      fontSize: 14,
+      lineHeight: 1.2,
+      cursorBlink: true,
+      cursorStyle: 'block',
+      scrollback: 10000,
+      tabStopWidth: 4,
+      ...options
+    })
+
+    // 添加插件
+    this.fitAddon = new FitAddon()
+    this.terminal.loadAddon(this.fitAddon)
+    
+    const webLinksAddon = new WebLinksAddon()
+    this.terminal.loadAddon(webLinksAddon)
+  }
+
+  /**
+   * 连接到WebSocket服务器
+   */
+  async connect() {
+    return new Promise((resolve, reject) => {
+      const wsUrl = this.getWsUrl()
+      console.log('[TerminalService] Attempting to connect to:', wsUrl)
+      
+      // 设置超时
+      const timeout = setTimeout(() => {
+        if (!this.isConnected) {
+          console.error('[TerminalService] Connection timeout after 15 seconds')
+          this.cleanup()
+          reject(new Error('Connection timeout'))
+        }
+      }, 15000) // 增加到15秒超时
+
+      // 创建socket连接
+      this.socket = io(wsUrl, {
+        transports: ['polling'], // 只使用polling，避免WebSocket升级错误
+        reconnection: true,
+        reconnectionAttempts: 3,
+        timeout: 10000,
+        upgrade: false // 禁用自动升级到WebSocket
+      })
+      
+      console.log('[TerminalService] Socket created, waiting for connection...')
+
+      this.socket.on('connect', () => {
+        console.log('========================================')
+        console.log('[TerminalService] ✅ SOCKET CONNECTED!')
+        console.log('[TerminalService] Socket ID:', this.socket.id)
+        console.log('[TerminalService] Transport:', this.socket.io.engine.transport.name)
+        console.log('========================================')
+        
+        this.isConnected = true
+        clearTimeout(timeout)
+        
+        // 创建终端会话
+        console.log('[TerminalService] Emitting terminal:create event...')
+        this.socket.emit('terminal:create', {
+          cols: this.terminal?.cols || 120,
+          rows: this.terminal?.rows || 30
+        })
+      })
+
+      this.socket.on('terminal:ready', (response) => {
+        console.log('[TerminalService] Received terminal:ready event:', response)
+        if (response.success) {
+          this.sessionId = response.terminalId
+          console.log('========================================')
+          console.log('[TerminalService] ✅ TERMINAL SESSION READY!')
+          console.log('[TerminalService] Terminal ID:', this.sessionId)
+          console.log('[TerminalService] Ready for Claude initialization')
+          console.log('========================================')
+          resolve(this.sessionId)
+        } else {
+          console.error('[TerminalService] ❌ Failed to create terminal:', response.error)
+          clearTimeout(timeout)
+          reject(new Error(response.error || 'Failed to create terminal'))
+        }
+      })
+
+      this.socket.on('connect_error', (error) => {
+        console.error('[TerminalService] Connection error:', error.message)
+        clearTimeout(timeout)
+        this.cleanup()
+        reject(error)
+      })
+
+      this.socket.on('disconnect', (reason) => {
+        console.warn('[TerminalService] Disconnected:', reason)
+        this.isConnected = false
+      })
+    })
+  }
+
+  /**
+   * 设置数据流
+   */
+  setupDataFlow() {
+    if (!this.terminal || !this.socket) return
+
+    // Terminal -> Server (用户输入直接发送)
+    this.terminal.onData((data) => {
+      if (this.isConnected && this.sessionId) {
+        // 后端期望直接接收数据字符串，不需要包装
+        this.socket.emit('terminal:input', data)
+        console.log('[TerminalService] Sent input to server:', data.charCodeAt(0))
+      }
+    })
+
+    // Server -> Terminal (流式输出)
+    this.socket.on('terminal:output', (data) => {
+      if (this.terminal) {
+        // 直接写入终端，实现流式显示
+        this.terminal.write(data)
+        
+        // 触发输出处理器
+        this.outputHandlers.forEach(handler => handler(data))
+        
+        // 保存到缓冲区（用于checkOutput等功能）
+        this.outputBuffer.push({
+          data,
+          timestamp: Date.now()
+        })
+        
+        // 限制缓冲区大小
+        if (this.outputBuffer.length > 1000) {
+          this.outputBuffer.shift()
+        }
+      }
+    })
+
+    // 处理错误
+    this.socket.on('terminal:error', (error) => {
+      console.error('[TerminalService] Terminal error:', error)
+      if (this.terminal) {
+        this.terminal.write(`\r\n\x1b[31mError: ${error.message || error}\x1b[0m\r\n`)
+      }
+    })
+    
+    // 处理终端退出
+    this.socket.on('terminal:exit', ({ exitCode, signal }) => {
+      console.log('[TerminalService] Terminal exited:', { exitCode, signal })
+      if (this.terminal) {
+        this.terminal.write(`\r\n\x1b[33m[Terminal exited with code ${exitCode}]\x1b[0m\r\n`)
+      }
+    })
+  }
+
+  /**
+   * 挂载到DOM
+   */
+  mount() {
+    if (this.terminal && this.container) {
+      this.terminal.open(this.container)
+      this.fitAddon.fit()
+      console.log('[TerminalService] Terminal mounted')
+    }
+  }
+
+  /**
+   * 发送命令
+   */
+  sendCommand(command) {
+    if (!this.isConnected || !this.sessionId) {
+      console.error('[TerminalService] Not connected')
+      return false
+    }
+
+    // 直接发送数据字符串，后端通过socketId知道对应的terminalId
+    this.socket.emit('terminal:input', command)
+    console.log('[TerminalService] Sent command:', command)
+    return true
+  }
+
+  /**
+   * 发送输入
+   */
+  sendInput(data) {
+    return this.sendCommand(data)
+  }
+
+  /**
+   * 发送文本和控制字符
+   */
+  async sendTextAndControl(text, control = '\r', delay = 100) {
+    this.sendCommand(text)
+    
+    return new Promise(resolve => {
+      setTimeout(() => {
+        this.sendCommand(control)
+        resolve()
+      }, delay)
+    })
+  }
+
+  /**
+   * 检查输出
+   */
+  async checkOutput(pattern, timeout = 5000) {
+    return new Promise((resolve) => {
+      const startTime = Date.now()
+      
+      const checkInterval = setInterval(() => {
+        const recentOutput = this.outputBuffer
+          .slice(-10)
+          .map(item => item.data)
+          .join('')
+        
+        if (pattern.test(recentOutput)) {
+          clearInterval(checkInterval)
+          resolve(true)
+        } else if (Date.now() - startTime > timeout) {
+          clearInterval(checkInterval)
+          resolve(false)
+        }
+      }, 100)
+    })
+  }
+
+  /**
+   * 注册输出处理器
+   */
+  onOutput(handler) {
+    this.outputHandlers.push(handler)
+    
+    // 返回取消注册函数
+    return () => {
+      const index = this.outputHandlers.indexOf(handler)
+      if (index > -1) {
+        this.outputHandlers.splice(index, 1)
+      }
+    }
+  }
+
+  /**
+   * 调整大小
+   */
+  resize() {
+    if (this.fitAddon) {
+      this.fitAddon.fit()
+      
+      if (this.isConnected && this.sessionId) {
+        // 后端通过socketId映射找到对应的terminal
+        this.socket.emit('terminal:resize', {
+          cols: this.terminal.cols,
+          rows: this.terminal.rows
+        })
+      }
+    }
+  }
+
+  /**
+   * 清屏
+   */
+  clear() {
+    if (this.terminal) {
+      this.terminal.clear()
+    }
+  }
+
+  /**
+   * 检查是否就绪
+   */
+  isReady() {
+    return this.isConnected && this.sessionId && this.terminal
+  }
+
+  /**
+   * 清理资源
+   */
+  cleanup() {
+    if (this.terminal) {
+      this.terminal.dispose()
+      this.terminal = null
+    }
+    
+    if (this.socket) {
+      this.socket.disconnect()
+      this.socket = null
+    }
+    
+    this.isConnected = false
+    this.sessionId = null
+    this.outputHandlers = []
+    this.outputBuffer = []
+    
+    console.log('[TerminalService] Cleaned up')
+  }
+
+  /**
+   * 销毁服务
+   */
+  destroy() {
+    this.cleanup()
+  }
+}
+
+// 导出单例
+export default new TerminalService()

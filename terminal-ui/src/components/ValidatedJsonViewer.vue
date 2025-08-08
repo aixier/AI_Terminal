@@ -183,26 +183,87 @@ const handleAutoFix = () => {
 
 const copyJson = () => {
   const jsonStr = JSON.stringify(displayData.value, null, 2)
-  navigator.clipboard.writeText(jsonStr).then(() => {
-    ElMessage.success('JSON已复制到剪贴板')
-  }).catch(err => {
+  
+  // 检查是否支持 clipboard API
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(jsonStr).then(() => {
+      ElMessage.success('JSON已复制到剪贴板')
+    }).catch(err => {
+      // 如果 clipboard API 失败，使用降级方案
+      fallbackCopy(jsonStr)
+    })
+  } else {
+    // 使用降级方案
+    fallbackCopy(jsonStr)
+  }
+}
+
+// 降级的复制方法
+const fallbackCopy = (text) => {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-999999px'
+  textarea.style.top = '-999999px'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  
+  try {
+    const successful = document.execCommand('copy')
+    if (successful) {
+      ElMessage.success('JSON已复制到剪贴板')
+    } else {
+      ElMessage.error('复制失败')
+    }
+  } catch (err) {
     ElMessage.error('复制失败: ' + err.message)
-  })
+  } finally {
+    document.body.removeChild(textarea)
+  }
 }
 
 const downloadJson = () => {
-  const jsonStr = JSON.stringify(displayData.value, null, 2)
-  const blob = new Blob([jsonStr], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${displayData.value.title || 'data'}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-  
-  ElMessage.success('JSON文件已下载')
+  try {
+    const jsonStr = JSON.stringify(displayData.value, null, 2)
+    const blob = new Blob([jsonStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${displayData.value.title || 'data'}.json`
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    
+    // 触发下载
+    a.click()
+    
+    // 清理
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 100)
+    
+    ElMessage.success('JSON文件已下载')
+  } catch (error) {
+    console.error('Download error:', error)
+    ElMessage.error('下载失败: ' + error.message)
+    
+    // 降级方案：使用 data URI
+    try {
+      const jsonStr = JSON.stringify(displayData.value, null, 2)
+      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr)
+      const a = document.createElement('a')
+      a.href = dataUri
+      a.download = `${displayData.value.title || 'data'}.json`
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      ElMessage.success('JSON文件已下载（使用备用方法）')
+    } catch (fallbackError) {
+      ElMessage.error('下载失败，请尝试复制内容')
+    }
+  }
 }
 
 const previewAsCard = () => {

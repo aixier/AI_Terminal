@@ -3,7 +3,7 @@ FROM node:22-alpine
 
 # 设置环境变量（MVP阶段硬编码所有配置）
 ENV NODE_ENV=production \
-    PORT=3000 \
+    PORT=6000 \
     LOG_LEVEL=info \
     # JWT配置 - 使用固定值确保前端能正常登录
     JWT_SECRET=mvp-jwt-secret-2025 \
@@ -12,7 +12,7 @@ ENV NODE_ENV=production \
     MAX_TERMINAL_SESSIONS=10 \
     TERMINAL_TIMEOUT=600000 \
     # CORS配置 - 允许所有常见端口
-    ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:5174,http://localhost:8080 \
+    ALLOWED_ORIGINS=http://localhost:5173,http://localhost:6000,http://localhost:5174,http://localhost:8080 \
     # 路径配置 - 使用容器内部路径
     DATA_PATH=/app/data \
     LOG_PATH=/app/logs \
@@ -76,11 +76,11 @@ RUN echo '{"id":"default-folder","name":"默认文件夹","description":"默认�
     chown nodeuser:nodeuser /app/data/users/default/folders/default-folder/metadata.json
 
 # 暴露端口
-EXPOSE 3000
+EXPOSE 6000
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/terminal/health', (r) => {r.statusCode === 200 ? process.exit(0) : process.exit(1)})" || exit 1
+  CMD node -e "require('http').get('http://localhost:6000/api/terminal/health', (r) => {r.statusCode === 200 ? process.exit(0) : process.exit(1)})" || exit 1
 
 # 使用非root用户运行应用
 USER nodeuser

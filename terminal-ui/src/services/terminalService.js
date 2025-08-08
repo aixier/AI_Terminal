@@ -68,7 +68,7 @@ class TerminalService {
       // 显示错误信息
       if (this.terminal) {
         this.terminal.write('\r\n\x1b[31m⚠ 无法连接到后端服务器\x1b[0m\r\n')
-        this.terminal.write('\x1b[33m请确保后端服务运行在 http://localhost:3000\x1b[0m\r\n')
+        this.terminal.write('\x1b[33m请确保后端服务运行在 http://localhost:6000\x1b[0m\r\n')
         this.terminal.write('\r\n运行后端: cd terminal-backend && npm start\r\n')
       }
       throw error

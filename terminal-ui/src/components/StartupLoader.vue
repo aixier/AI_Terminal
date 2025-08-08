@@ -52,6 +52,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getApiBaseUrl } from '../config/api.config'
 
 const router = useRouter()
 const emit = defineEmits(['initialized'])
@@ -80,7 +81,7 @@ const connectSocket = async () => {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
     
-    const testConnection = await fetch('http://localhost:3000/api/terminal/health', {
+    const testConnection = await fetch(`${getApiBaseUrl()}/terminal/health`, {
       signal: controller.signal,
       method: 'GET',
       headers: {

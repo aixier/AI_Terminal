@@ -8,8 +8,8 @@
       <el-form :model="settings" label-width="120px">
         <el-form-item label="服务器选择">
           <el-select v-model="settings.apiServer" placeholder="请选择服务器" @change="handleServerChange">
-            <el-option label="本地服务器 (localhost:3000)" value="local" />
-            <el-option label="Docker服务 (localhost:3001)" value="docker" />
+            <el-option label="本地服务器 (localhost:6000)" value="local" />
+            <el-option label="Docker服务 (localhost:6001)" value="docker" />
             <el-option label="云端服务器 (阿里云)" value="cloud" />
           </el-select>
         </el-form-item>

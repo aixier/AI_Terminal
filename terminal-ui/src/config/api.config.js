@@ -55,8 +55,8 @@ export const API_SERVERS = {
   // AWS云服务器
   aws: {
     name: 'AWS云服务器',
-    url: 'http://3.91.230.6:6000',
-    ws: 'ws://3.91.230.6:6000',
+    url: 'http://3.91.230.6',
+    ws: 'ws://3.91.230.6',
     protocol: 'socket.io',
     default: false
   }

@@ -32,7 +32,9 @@ const io = new Server(httpServer, {
           origin?.startsWith('http://172.') ||         // 局域网地址
           origin === 'http://8.130.86.152' ||          // 云服务器IP
           origin === 'http://8.130.86.152:5173' ||     // 云服务器IP:端口
-          origin === 'http://188.8.9.99:5173') {       // 本地IP
+          origin === 'http://188.8.9.99:5173' ||       // 本地IP
+          origin === 'http://card.paitongai.com' ||    // 添加域名支持
+          origin === 'https://card.paitongai.com') {   // 添加HTTPS域名支持
         callback(null, true)
       } else {
         logger.warn(`Socket.IO CORS rejected origin: ${origin}`)
@@ -65,14 +67,18 @@ app.use(cors({
         origin?.startsWith('http://172.') ||         // 局域网地址
         origin === 'http://8.130.86.152' ||          // 云服务器IP
         origin === 'http://8.130.86.152:5173' ||     // 云服务器IP:端口
-        origin === 'http://188.8.9.99:5173') {       // 本地IP
+        origin === 'http://188.8.9.99:5173' ||       // 本地IP
+        origin === 'http://card.paitongai.com' ||    // 添加域名支持
+        origin === 'https://card.paitongai.com') {   // 添加HTTPS域名支持
       callback(null, true)
     } else {
       logger.warn(`CORS rejected origin: ${origin}`)
       callback(new Error('Not allowed by CORS'))
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }))
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))

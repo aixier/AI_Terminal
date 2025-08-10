@@ -31,10 +31,22 @@ NODE_ENV=production PORT=80 SERVE_STATIC=true node src/index.js
 npm install -g pm2
 ```
 
-#### 启动服务
+#### 方式一：后端托管前端（推荐）
 ```bash
 # 在terminal-backend目录下
 pm2 start ecosystem.config.cjs
+```
+
+#### 方式二：前后端分离部署
+```bash
+# 启动后端（端口3000或6000）
+cd terminal-backend
+pm2 start ecosystem.config.cjs --name terminal-backend
+
+# 启动前端（端口80）
+cd ../terminal-ui
+npm run build  # 先构建
+pm2 start ecosystem.config.cjs --name terminal-ui
 ```
 
 #### PM2常用命令

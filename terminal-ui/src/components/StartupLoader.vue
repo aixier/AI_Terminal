@@ -52,7 +52,6 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getApiBaseUrl } from '../config/api.config'
 
 const router = useRouter()
 const emit = defineEmits(['initialized'])
@@ -81,7 +80,7 @@ const connectSocket = async () => {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
     
-    const testConnection = await fetch(`${getApiBaseUrl()}/terminal/health`, {
+    const testConnection = await fetch(`/api/terminal/health`, {
       signal: controller.signal,
       method: 'GET',
       headers: {
@@ -154,7 +153,7 @@ const initialize = async () => {
   
   // Even if connection fails, continue with initialization
   if (!socketConnected) {
-    console.warn('[StartupLoader] Backend connection failed, continuing anyway...')
+    console.warn('[StartupLoader] Backend connection failed, continuing anyway...]')
     steps.value.socketConnected = false
     socketStatus.value = '离线模式'
   }

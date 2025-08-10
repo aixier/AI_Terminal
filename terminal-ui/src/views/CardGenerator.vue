@@ -1,11 +1,6 @@
 <template>
   <!-- Main Layout (直接显示，不等待初始化) -->
   <div class="card-generator-layout">
-    <!-- Server Selector -->
-    <div class="server-selector-container">
-      <ServerSelector />
-    </div>
-    
     <!-- Left Sidebar - My Cards -->
     <div class="left-sidebar">
       <div class="sidebar-header">
@@ -229,7 +224,6 @@ import cardGeneratorAPI from '../api/cardGenerator'
 import sseService from '../services/sseService'
 import ValidatedJsonViewer from '../components/ValidatedJsonViewer.vue'
 import SmartUrlPreview from '../components/SmartUrlPreview.vue'
-import ServerSelector from '../components/ServerSelector.vue'
 
 // State
 const currentTopic = ref('')
@@ -601,8 +595,7 @@ const loadCardContent = async (cardId, folderId) => {
     } else if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
       previewType.value = 'html'
       // HTML文件：使用后端静态服务URL
-      const { getCurrentServer } = await import('../config/api.config')
-      const baseUrl = getCurrentServer().url
+      const baseUrl = window.location.origin
       previewContent.value = `${baseUrl}/api/terminal/card/html/${folder.id}/${encodeURIComponent(card.name)}`
       console.log('[CardContent] HTML file URL:', previewContent.value)
     } else if (fileName.endsWith('.json')) {

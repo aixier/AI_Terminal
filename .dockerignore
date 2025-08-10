@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+Dockerfile*
+.dockerignore
+.git
+.gitignore
+.vscode
+.idea
+**/.DS_Store
+**/dist
+**/coverage
+**/.env*
+terminal-ui/node_modules
+terminal-backend/node_modules
+terminal-ui/.vite 

@@ -32,6 +32,18 @@ export default defineConfig({
         target: process.env.VITE_API_URL || 'http://localhost:6000',
         changeOrigin: true,
         rewrite: (path) => path
+      },
+      // 代理 Socket.IO 到后端（开发模式下前端同源连接到5173，再由Vite转发到6000）
+      '/socket.io': {
+        target: process.env.VITE_API_URL || 'http://localhost:6000',
+        changeOrigin: true,
+        ws: true
+      },
+      // 代理原生 WebSocket
+      '/ws': {
+        target: process.env.VITE_API_URL || 'http://localhost:6000',
+        changeOrigin: true,
+        ws: true
       }
     }
   }

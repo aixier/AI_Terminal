@@ -16,7 +16,9 @@ const router = express.Router()
 const clients = new Set()
 
 // 监控的目录 - 精确到cards目录
-const WATCH_DIR = path.join(process.cwd(), 'data/users/default/folders/default-folder/cards')
+// 支持Docker环境：优先使用DATA_PATH环境变量
+const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+const WATCH_DIR = path.join(dataPath, 'users/default/folders/default-folder/cards')
 
 // 文件系统监控器
 let watcher = null
@@ -126,9 +128,9 @@ const startHealthCheck = () => {
     } catch (error) {
       console.error('[SSE] Health check error:', error)
     }
-  }, 5000) // 每5秒检查一次
+  }, 2000) // 每2秒检查一次（更及时）
   
-  console.log('[SSE] Health check started (5s interval)')
+  console.log('[SSE] Health check started (2s interval)')
 }
 
 /**
@@ -137,21 +139,22 @@ const startHealthCheck = () => {
 const initWatcher = () => {
   if (watcher) return
 
-  // 检测是否在WSL环境
+  // 检测是否在WSL或/mnt 挂载盘（Windows 文件系统）
   const isWSL = process.platform === 'linux' && process.env.WSL_DISTRO_NAME
+  const isMnt = WATCH_DIR.startsWith('/mnt/')
   
   watcher = chokidar.watch(WATCH_DIR, {
     persistent: true,
     ignoreInitial: true,  // 忽略初始扫描，只监控新的变化
     depth: 3,  // cards目录下3层深度足够
     awaitWriteFinish: {
-      stabilityThreshold: 300,  // 减少到300ms
+      stabilityThreshold: 400,  // 稍作等待，确保写入完成
       pollInterval: 100
     },
-    // WSL环境下使用轮询模式
-    usePolling: isWSL || process.env.USE_POLLING === 'true',  // WSL下使用轮询
-    interval: isWSL ? 1000 : 100,  // 轮询间隔1秒
-    binaryInterval: isWSL ? 1000 : 300,  // 二进制文件轮询间隔
+    // WSL/挂载盘使用轮询模式，缩短轮询间隔以更及时
+    usePolling: isWSL || isMnt || process.env.USE_POLLING === 'true',
+    interval: (isWSL || isMnt) ? 300 : 100,   // 挂载盘/WSL下更快轮询
+    binaryInterval: (isWSL || isMnt) ? 500 : 300,
     alwaysStat: false,  // 不总是获取文件状态
     followSymlinks: false,  // 不跟踪符号链接
     ignorePermissionErrors: true  // 忽略权限错误
@@ -228,8 +231,9 @@ const initWatcher = () => {
   // 监控器准备就绪
   watcher.on('ready', async () => {
     const isWSL = process.platform === 'linux' && process.env.WSL_DISTRO_NAME
+    const isMnt = WATCH_DIR.startsWith('/mnt/')
     console.log('[SSE] File watcher is ready and monitoring:', WATCH_DIR)
-    console.log('[SSE] Watcher mode:', isWSL ? 'POLLING (WSL)' : 'EVENTS')
+    console.log('[SSE] Watcher mode:', (isWSL || isMnt) ? 'POLLING (WSL/mnt)' : 'EVENTS')
     console.log('[SSE] Watched paths:', watcher.getWatched())
     logger.info('[SSE] File watcher ready')
     
@@ -239,6 +243,9 @@ const initWatcher = () => {
     
     // 启动健康检查
     startHealthCheck()
+
+    // 通知前端进行一次目录刷新（确保初始状态立即同步）
+    broadcastEvent('refresh', { source: 'watcher-ready', timestamp: Date.now() })
   })
 
   // 错误处理
@@ -285,7 +292,7 @@ router.get('/stream', (req, res) => {
   // 设置SSE响应头
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
     'Access-Control-Allow-Origin': '*',
     'X-Accel-Buffering': 'no' // 禁用Nginx缓冲
@@ -318,6 +325,12 @@ router.get('/stream', (req, res) => {
   if (!watcher) {
     initWatcher()
   }
+
+  // 新连接后，立即触发一次仅对该客户端的刷新事件，确保首屏同步
+  try {
+    const initialMessage = JSON.stringify({ type: 'refresh', data: { source: 'on-connect' }, timestamp: new Date().toISOString() })
+    res.write(`event: refresh\ndata: ${initialMessage}\n\n`)
+  } catch {}
 })
 
 /**

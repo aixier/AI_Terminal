@@ -179,7 +179,9 @@ router.get('/cards-directory', async (req, res) => {
     const path = await import('path')
     
     const userId = 'default'
-    const cardsBasePath = path.join(process.cwd(), 'data', 'users', userId, 'folders', 'default-folder', 'cards')
+    // 支持Docker环境：优先使用DATA_PATH环境变量
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    const cardsBasePath = path.join(dataPath, 'users', userId, 'folders', 'default-folder', 'cards')
     
     const folders = []
     

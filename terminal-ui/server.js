@@ -13,9 +13,10 @@ const PORT = process.env.PORT || 80
 // 启用gzip压缩
 app.use(compression())
 
-// API代理配置 - 如果需要代理后端API
+// API代理配置 - 默认启用（设置 ENABLE_PROXY=false 可关闭）
 const API_TARGET = process.env.API_TARGET || 'http://localhost:6000'
-if (process.env.ENABLE_PROXY === 'true') {
+const ENABLE_PROXY = process.env.ENABLE_PROXY !== 'false'
+if (ENABLE_PROXY) {
   app.use('/api', createProxyMiddleware({
     target: API_TARGET,
     changeOrigin: true,
@@ -65,6 +66,6 @@ app.get('/health', (req, res) => {
 // 启动服务器
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Frontend server is running on port ${PORT}`)
-  console.log(`API Proxy: ${process.env.ENABLE_PROXY === 'true' ? `Enabled -> ${API_TARGET}` : 'Disabled'}`)
+  console.log(`API Proxy: ${ENABLE_PROXY ? `Enabled -> ${API_TARGET}` : 'Disabled'}`)
   console.log(`Environment: ${process.env.NODE_ENV || 'production'}`)
 })

@@ -7,7 +7,7 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { WebLinksAddon } from 'xterm-addon-web-links'
 import 'xterm/css/xterm.css'
-import { getCurrentServer } from '../config/api.config'
+// 同源部署
 
 class NativeWebSocketService {
   constructor() {
@@ -30,10 +30,9 @@ class NativeWebSocketService {
     
     // 获取WebSocket URL
     this.getWsUrl = () => {
-      const server = getCurrentServer()
-      // 转换为ws协议
-      const wsUrl = server.url.replace('http://', 'ws://').replace('https://', 'wss://')
-      return `${wsUrl}/ws/terminal`
+      const origin = window.location.origin
+      const wsBase = origin.replace('http://', 'ws://').replace('https://', 'wss://')
+      return `${wsBase}/ws/terminal`
     }
   }
 

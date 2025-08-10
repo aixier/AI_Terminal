@@ -3,7 +3,7 @@
  * 用于接收后端实时推送的文件系统变化事件
  */
 
-import { getApiBaseUrl } from '../config/api.config'
+// 同源 /api
 
 class SSEService {
   constructor() {
@@ -24,8 +24,8 @@ class SSEService {
       return
     }
 
-    // 动态获取SSE URL
-    const sseUrl = `${getApiBaseUrl()}/sse/stream`
+    // 动态获取SSE URL（同源）
+    const sseUrl = `/api/sse/stream`
     console.log('[SSE] Connecting to:', sseUrl)
 
     try {
@@ -198,7 +198,7 @@ class SSEService {
    */
   async triggerRefresh() {
     try {
-      const response = await fetch(`${API_BASE_URL}/sse/refresh`, {
+      const response = await fetch(`/api/sse/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -219,7 +219,7 @@ class SSEService {
    */
   async getStatus() {
     try {
-      const response = await fetch(`${API_BASE_URL}/sse/status`)
+      const response = await fetch(`/api/sse/status`)
       const status = await response.json()
       console.log('[SSE] Status:', status)
       return status

@@ -6,13 +6,6 @@
       </template>
       
       <el-form :model="settings" label-width="120px">
-        <el-form-item label="服务器选择">
-          <el-select v-model="settings.apiServer" placeholder="请选择服务器" @change="handleServerChange">
-            <el-option label="本地服务器 (localhost:6000)" value="local" />
-            <el-option label="Docker服务 (localhost:6001)" value="docker" />
-            <el-option label="云端服务器 (阿里云)" value="cloud" />
-          </el-select>
-        </el-form-item>
         
         <el-form-item label="终端主题">
           <el-select v-model="settings.theme" placeholder="请选择主题">
@@ -66,15 +59,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useTerminalStore } from '../store/terminal'
-import { switchServer, getCurrentServer } from '../config/api.config'
 
 const router = useRouter()
 const terminalStore = useTerminalStore()
 
 const settings = ref({
-  apiServer: 'local',
   theme: 'dark',
   fontSize: 14,
   historyLimit: 100,
@@ -97,32 +88,6 @@ const loadSettings = () => {
   if (savedSettings) {
     settings.value = JSON.parse(savedSettings)
   }
-  
-  // 获取当前服务器设置
-  const currentServer = getCurrentServer()
-  const serverKey = localStorage.getItem('api_server') || 'local'
-  settings.value.apiServer = serverKey
-}
-
-const handleServerChange = async (value) => {
-  try {
-    await ElMessageBox.confirm(
-      '切换服务器将会刷新页面，是否继续？',
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    // 切换服务器
-    await switchServer(value)
-  } catch {
-    // 用户取消，恢复原值
-    const currentKey = localStorage.getItem('api_server') || 'local'
-    settings.value.apiServer = currentKey
-  }
 }
 
 const saveSettings = () => {
@@ -133,7 +98,6 @@ const saveSettings = () => {
 
 const resetSettings = () => {
   settings.value = {
-    apiServer: 'local',
     theme: 'dark',
     fontSize: 14,
     historyLimit: 100,

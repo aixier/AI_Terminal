@@ -28,12 +28,9 @@ class TerminalService {
     
     // 动态获取WebSocket URL
     this.getWsUrl = () => {
-      const server = getCurrentServer()
-      console.log('[TerminalService] Current server config:', server)
-      // Socket.IO 使用 ws URL，但协议是 http/https
-      const url = server.ws ? server.ws.replace('ws://', 'http://').replace('wss://', 'https://') : server.url
-      console.log('[TerminalService] Using WebSocket URL:', url)
-      return url
+      const origin = window.location.origin
+      console.log('[TerminalService] Using same-origin WebSocket base:', origin)
+      return origin
     }
   }
 
@@ -134,15 +131,19 @@ class TerminalService {
           this.cleanup()
           reject(new Error('Connection timeout'))
         }
-      }, 15000) // 增加到15秒超时
+      }, 15000)
 
-      // 创建socket连接
+      // 创建socket连接（同源默认设置）
+      // 在Docker环境中，优先使用polling，避免WebSocket frame header问题
       this.socket = io(wsUrl, {
-        transports: ['polling'], // 只使用polling，避免WebSocket升级错误
+        path: '/socket.io',
+        transports: ['polling', 'websocket'], // 优先使用polling
+        perMessageDeflate: false,
         reconnection: true,
         reconnectionAttempts: 3,
         timeout: 10000,
-        upgrade: false // 禁用自动升级到WebSocket
+        upgrade: true, // 允许从polling升级到websocket
+        rememberUpgrade: true
       })
       
       console.log('[TerminalService] Socket created, waiting for connection...')

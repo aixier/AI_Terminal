@@ -26,6 +26,16 @@ class TerminalService {
     this.outputHandlers = []
     this.outputBuffer = []
     
+    // 重连相关
+    this.reconnectAttempts = 0
+    this.maxReconnectAttempts = 10
+    this.reconnectDelay = 1000
+    this.reconnectTimer = null
+    this.isReconnecting = false
+    
+    // 连接状态回调
+    this.onConnectionChange = null
+    
     // 动态获取WebSocket URL
     this.getWsUrl = () => {
       const origin = window.location.origin
@@ -134,16 +144,17 @@ class TerminalService {
       }, 15000)
 
       // 创建socket连接（同源默认设置）
-      // 在Docker环境中，优先使用polling，避免WebSocket frame header问题
+      // 在云环境中，强制使用polling，避免WebSocket frame header问题
       this.socket = io(wsUrl, {
         path: '/socket.io',
-        transports: ['polling', 'websocket'], // 优先使用polling
+        transports: ['polling'], // 仅使用polling，避免云环境WebSocket问题
         perMessageDeflate: false,
         reconnection: true,
-        reconnectionAttempts: 3,
-        timeout: 10000,
-        upgrade: true, // 允许从polling升级到websocket
-        rememberUpgrade: true
+        reconnectionAttempts: 5,
+        timeout: 30000, // 增加超时时间
+        upgrade: false, // 禁止升级到websocket
+        rememberUpgrade: false,
+        forceNew: true // 强制新连接
       })
       
       console.log('[TerminalService] Socket created, waiting for connection...')
@@ -193,8 +204,110 @@ class TerminalService {
       this.socket.on('disconnect', (reason) => {
         console.warn('[TerminalService] Disconnected:', reason)
         this.isConnected = false
+        
+        // 触发连接状态变更回调
+        if (this.onConnectionChange) {
+          this.onConnectionChange(false, reason)
+        }
+        
+        // 尝试重连
+        if (!this.isReconnecting && reason !== 'io client disconnect') {
+          this.attemptReconnect()
+        }
       })
     })
+  }
+  
+  /**
+   * 尝试重新连接
+   */
+  attemptReconnect() {
+    if (this.isReconnecting || this.reconnectAttempts >= this.maxReconnectAttempts) {
+      return
+    }
+    
+    this.isReconnecting = true
+    this.reconnectAttempts++
+    
+    console.log(`[TerminalService] Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`)
+    
+    if (this.terminal) {
+      this.terminal.write(`\r\n\x1b[33m⟳ 尝试重新连接... (${this.reconnectAttempts}/${this.maxReconnectAttempts})\x1b[0m\r\n`)
+    }
+    
+    // 清理现有连接
+    if (this.socket) {
+      this.socket.removeAllListeners()
+      this.socket.disconnect()
+      this.socket = null
+    }
+    
+    // 延迟重连
+    this.reconnectTimer = setTimeout(async () => {
+      try {
+        await this.connect()
+        
+        // 重连成功
+        this.reconnectAttempts = 0
+        this.isReconnecting = false
+        this.reconnectDelay = 1000 // 重置延迟
+        
+        if (this.terminal) {
+          this.terminal.write(`\r\n\x1b[32m✓ 重新连接成功！\x1b[0m\r\n`)
+        }
+        
+        // 重新设置数据流
+        this.setupDataFlow()
+        
+        // 触发连接状态变更回调
+        if (this.onConnectionChange) {
+          this.onConnectionChange(true, 'reconnected')
+        }
+      } catch (error) {
+        console.error('[TerminalService] Reconnect failed:', error)
+        this.isReconnecting = false
+        
+        // 增加延迟时间（指数退避）
+        this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000)
+        
+        // 继续尝试重连
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.attemptReconnect()
+        } else {
+          if (this.terminal) {
+            this.terminal.write(`\r\n\x1b[31m✗ 重连失败，请检查后端服务\x1b[0m\r\n`)
+          }
+          
+          // 触发连接失败回调
+          if (this.onConnectionChange) {
+            this.onConnectionChange(false, 'max_attempts_reached')
+          }
+        }
+      }
+    }, this.reconnectDelay)
+  }
+  
+  /**
+   * 检查连接状态
+   */
+  async checkConnection() {
+    try {
+      const response = await fetch(`${window.location.origin}/api/terminal/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        return data.success || data.code === 200
+      }
+      return false
+    } catch (error) {
+      console.error('[TerminalService] Health check failed:', error)
+      return false
+    }
   }
 
   /**
@@ -215,21 +328,28 @@ class TerminalService {
     // Server -> Terminal (流式输出)
     this.socket.on('terminal:output', (data) => {
       if (this.terminal) {
-        // 直接写入终端，实现流式显示
-        this.terminal.write(data)
-        
-        // 触发输出处理器
-        this.outputHandlers.forEach(handler => handler(data))
-        
-        // 保存到缓冲区（用于checkOutput等功能）
-        this.outputBuffer.push({
-          data,
-          timestamp: Date.now()
-        })
-        
-        // 限制缓冲区大小
-        if (this.outputBuffer.length > 1000) {
-          this.outputBuffer.shift()
+        try {
+          // 确保data是字符串
+          const outputData = typeof data === 'string' ? data : String(data)
+          
+          // 直接写入终端，实现流式显示
+          this.terminal.write(outputData)
+          
+          // 触发输出处理器
+          this.outputHandlers.forEach(handler => handler(outputData))
+          
+          // 保存到缓冲区（用于checkOutput等功能）
+          this.outputBuffer.push({
+            data: outputData,
+            timestamp: Date.now()
+          })
+          
+          // 限制缓冲区大小
+          if (this.outputBuffer.length > 1000) {
+            this.outputBuffer.shift()
+          }
+        } catch (error) {
+          console.error('[TerminalService] Error writing to terminal:', error)
         }
       }
     })

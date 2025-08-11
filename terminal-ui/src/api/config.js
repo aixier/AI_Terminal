@@ -36,8 +36,8 @@ service.interceptors.response.use(
     // 对响应数据做点什么
     const res = response.data
     
-    // 如果code不是200，则判断为错误
-    if (res.code !== 200) {
+    // 如果code存在且不是200，则判断为错误
+    if (res.code && res.code !== 200) {
       ElMessage({
         message: res.message || '请求失败',
         type: 'error',
@@ -52,17 +52,21 @@ service.interceptors.response.use(
       
       return Promise.reject(new Error(res.message || '请求失败'))
     } else {
+      // 返回完整的响应数据，而不是只返回res
       return res
     }
   },
   error => {
     // 对响应错误做点什么
     console.error('Response error:', error)
-    ElMessage({
-      message: error.message || '网络错误',
-      type: 'error',
-      duration: 5 * 1000
-    })
+    // 只在不是取消请求的情况下显示错误消息
+    if (error.code !== 'ECONNABORTED' && error.message !== 'Network Error') {
+      ElMessage({
+        message: error.message || '网络错误',
+        type: 'error',
+        duration: 5 * 1000
+      })
+    }
     return Promise.reject(error)
   }
 )

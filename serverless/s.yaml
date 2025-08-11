@@ -1,0 +1,29 @@
+edition: 3.0.0
+name: ai-terminal-app
+access: ai-terminal
+
+vars:
+  region: cn-hangzhou
+
+resources:
+  ai-terminal:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: ai-terminal-web
+      description: AI Terminal Web Function
+      runtime: nodejs20
+      code: ./code
+      handler: index.handler
+      memorySize: 1024
+      timeout: 60
+      environmentVariables:
+        NODE_ENV: production
+        PORT: 9000
+        JWT_SECRET: mvp-jwt-secret-2025
+        ANTHROPIC_AUTH_TOKEN: cr_54e6cbbcdc5711993b81e314ea6e470facb2b11b88d3c79b1be63619387199e3
+        ANTHROPIC_BASE_URL: http://44.212.20.73:3000/api/
+        DATA_PATH: /tmp/data
+        LOG_PATH: /tmp/logs
+        STATIC_PATH: /code/static
+        SERVE_STATIC: "true"

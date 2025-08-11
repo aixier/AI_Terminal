@@ -1,0 +1,222 @@
+{
+  "theme": {
+    "name": "daily-tea-knowledge",
+    "pageTitle": "茶知识点：茶的种类",
+    "sectionTitle": "你知道茶有几种吗？",
+    "sectionSubtitle": "每天学习一个茶文化知识点 · 第1期",
+    "gradientColor1": "#10B981",
+    "gradientColor2": "#34D399",
+    "gradientColor1RGB": "16, 185, 129",
+    "accentColor": "#10B981",
+    "accentColorRGB": "16, 185, 129"
+  },
+  "copy": {
+    "title": "🍵 喝了这么多年茶，你知道茶有几种吗？六大茶类了解一下！",
+    "content": "每天一个茶文化小知识，今天聊聊茶的种类。\n\n你有没有发现：\n• 去茶店买茶，各种名字让人眼花缭乱？\n• 绿茶、红茶、普洱茶到底有什么区别？\n• 为什么有的茶是绿色，有的是红色？\n• 同一片茶叶为什么能做出不同的茶？\n\n这就要从六大茶类说起了！\n\n🎯 一句话解释：\n中国茶按照制作工艺和发酵程度，分为六大类：绿茶、白茶、黄茶、乌龙茶、红茶、黑茶。\n\n📚 7个要点搞懂茶的种类：\n\n1️⃣ 绿茶（不发酵）\n• 制作：杀青→揉捻→干燥\n• 特点：清汤绿叶，清香爽口\n• 代表：西湖龙井、碧螺春、信阳毛尖\n\n2️⃣ 白茶（轻微发酵）\n• 制作：萎凋→干燥\n• 特点：汤色清淡，口感清甜\n• 代表：白毫银针、白牡丹、寿眉\n\n3️⃣ 黄茶（微发酵）\n• 制作：杀青→闷黄→干燥\n• 特点：黄汤黄叶，醇厚回甘\n• 代表：君山银针、蒙顶黄芽\n\n4️⃣ 乌龙茶（半发酵）\n• 制作：萎凋→做青→炒青→揉捻\n• 特点：绿叶红镶边，花果香浓郁\n• 代表：铁观音、大红袍、冻顶乌龙\n\n5️⃣ 红茶（全发酵）\n• 制作：萎凋→揉捻→发酵→干燥\n• 特点：红汤红叶，甜醇温润\n• 代表：祁门红茶、滇红、正山小种\n\n6️⃣ 黑茶（后发酵）\n• 制作：杀青→揉捻→渥堆→干燥\n• 特点：汤色深褐，陈香醇厚\n• 代表：普洱茶、安化黑茶、六堡茶\n\n7️⃣ 记忆小窍门：\n按发酵程度从低到高：绿→白→黄→青（乌龙）→红→黑\n\n💡 小知识：\n同一片茶叶，用不同的制作工艺，可以做成不同种类的茶！\n\n明天预告：绿茶为什么这么受欢迎？",
+    "hashtags": "#茶文化 #六大茶类 #中国茶 #茶知识 #每日学习 #茶叶科普 #品茶 #茶道",
+    "tips": "发布时间：早8点或下午3点（茶歇时间）\n封面选择：第1张主卡片\n互动引导：分享自己最喜欢的茶类\n后续内容：可深入介绍每种茶的特点"
+  },
+  "cards": [
+    {
+      "type": "main",
+      "icon": "",
+      "header": "你知道茶有几种吗？",
+      "subtitle": "揭秘中国六大茶类",
+      "content": {
+        "highlight": {
+          "number": "六大\n茶类",
+          "description": "按发酵程度分类"
+        },
+        "points": [
+          {"icon": "→", "text": "一次搞懂所有茶的区别"}
+        ],
+        "tags": []
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🔍",
+      "header": "什么是六大茶类？",
+      "subtitle": "最简单的分类方法",
+      "content": {
+        "list": [
+          "按<strong style=\"color: #10B981;\">发酵程度</strong>分类",
+          "从不发酵到全发酵",
+          "制作工艺决定茶类",
+          "同一片叶子能做不同茶"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "核心区别",
+          "description": "发酵程度不同"
+        },
+        "tip": "🍃 发酵=氧化程度",
+        "tags": ["📖 概念"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🍃",
+      "header": "绿茶·不发酵",
+      "subtitle": "中国产量最大的茶",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "绿茶特点",
+          "items": [
+            "<strong>制作</strong>：高温杀青保持绿色",
+            "<strong>口感</strong>：清爽鲜醇，略带苦涩",
+            "<strong>功效</strong>：清热解毒，提神醒脑",
+            "<strong>代表</strong>：龙井、碧螺春、毛尖"
+          ]
+        },
+        "tip": "💚 保留最多茶多酚",
+        "tags": ["🌿 绿茶"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "⚪",
+      "header": "白茶·轻微发酵",
+      "subtitle": "最接近自然的茶",
+      "content": {
+        "list": [
+          "工艺<strong style=\"color: #34D399;\">最简单</strong>",
+          "自然萎凋，不炒不揉",
+          "汤色清淡，口感甘甜",
+          "越陈越香，收藏价值高"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "代表茶",
+          "description": "白毫银针、白牡丹"
+        },
+        "tip": "🤍 一年茶三年药七年宝",
+        "tags": ["⚪ 白茶"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "💛",
+      "header": "黄茶·微发酵",
+      "subtitle": "最稀少的茶类",
+      "content": {
+        "list": [
+          "多了<strong style=\"color: #10B981;\">闷黄</strong>工序",
+          "黄汤黄叶是特征",
+          "口感醇和，不苦不涩",
+          "产量稀少，价格较高"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "代表茶",
+          "description": "君山银针、蒙顶黄芽"
+        },
+        "tip": "💛 中国特有的茶类",
+        "tags": ["🟡 黄茶"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🟢",
+      "header": "乌龙茶·半发酵",
+      "subtitle": "工艺最复杂的茶",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "乌龙茶特点",
+          "items": [
+            "<strong>发酵度</strong>：20%-70%之间",
+            "<strong>特征</strong>：绿叶红镶边",
+            "<strong>香气</strong>：花果香浓郁持久",
+            "<strong>代表</strong>：铁观音、大红袍"
+          ]
+        },
+        "tip": "🍃 闽台地区特产",
+        "tags": ["🟢 乌龙"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🔴",
+      "header": "红茶·全发酵",
+      "subtitle": "世界消费量最大",
+      "content": {
+        "list": [
+          "发酵度<strong style=\"color: #10B981;\">80-90%</strong>",
+          "红汤红叶红叶底",
+          "口感甜醇，适合加奶",
+          "暖胃养胃，冬季佳品"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "代表茶",
+          "description": "祁红、滇红、正山小种"
+        },
+        "tip": "❤️ 英式下午茶首选",
+        "tags": ["🔴 红茶"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "⚫",
+      "header": "黑茶·后发酵",
+      "subtitle": "越陈越香的茶",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "黑茶特点",
+          "items": [
+            "<strong>渥堆发酵</strong>：微生物参与",
+            "<strong>陈化</strong>：存放越久越香",
+            "<strong>功效</strong>：消食解腻降三高",
+            "<strong>代表</strong>：普洱、安化黑茶"
+          ]
+        },
+        "tip": "⚫ 边疆民族生活必需品",
+        "tags": ["⚫ 黑茶"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📚",
+      "header": "今日总结",
+      "subtitle": "记住这个顺序",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "六大茶类速记",
+          "items": [
+            "绿茶→不发酵→清爽",
+            "白茶→轻发酵→清甜",
+            "黄茶→微发酵→醇和",
+            "乌龙→半发酵→花香",
+            "红茶→全发酵→甜醇",
+            "黑茶→后发酵→陈香"
+          ]
+        },
+        "tip": "🌈 明天聊：绿茶的功效",
+        "tags": ["✅ 总结"]
+      }
+    }
+  ],
+  "footer": {
+    "tags": ["🍵 茶文化", "📚 每日学习", "🌿 健康生活"]
+  },
+  "export": {
+    "mainCardFilename": "主卡片-六大茶类.png",
+    "cardFilenames": [
+      "2-什么是六大茶类.png",
+      "3-绿茶不发酵.png",
+      "4-白茶轻微发酵.png",
+      "5-黄茶微发酵.png",
+      "6-乌龙茶半发酵.png",
+      "7-红茶全发酵.png",
+      "8-黑茶后发酵.png",
+      "9-今日总结.png"
+    ],
+    "zipFilename": "茶知识-六大茶类-知识卡片.zip"
+  },
+  "customStyles": "",
+  "exportAdjustments": ""
+}

@@ -1,0 +1,216 @@
+{
+  "theme": {
+    "name": "daily-tea-brewing",
+    "pageTitle": "茶叶知识点：泡茶的艺术",
+    "sectionTitle": "功夫茶的功夫在哪里",
+    "sectionSubtitle": "每天学习一个茶叶知识点 · 第4期",
+    "gradientColor1": "#10B981",
+    "gradientColor2": "#059669",
+    "gradientColor1RGB": "16, 185, 129",
+    "accentColor": "#10B981",
+    "accentColorRGB": "16, 185, 129"
+  },
+  "copy": {
+    "title": "🍵 为什么茶艺师泡的茶特别好喝？掌握这些技巧你也可以！",
+    "content": "每天一个茶叶知识，今天聊聊泡茶技巧。\n\n你是否遇到过：\n• 为什么同样的茶叶味道差很多？\n• 第一泡要倒掉吗？\n• 功夫茶到底有什么讲究？\n\n🎯 一句话解释：\n泡茶是通过控制水温、时间、比例，让茶叶释放最佳风味的艺术。\n\n📚 泡茶的核心要素：\n\n1️⃣ 水质选择\n山泉水>纯净水>过滤水>自来水\n水的矿物质含量影响茶汤口感\n\n2️⃣ 温度控制\n• 绿茶：80-85°C（嫩芽怕烫）\n• 乌龙：90-95°C（半发酵需高温）\n• 红茶：95-100°C（全发酵要沸水）\n• 普洱：100°C（陈茶需沸水唤醒）\n\n3️⃣ 投茶比例\n• 绿茶：1:50（3g茶150ml水）\n• 乌龙：1:20（7g茶140ml水）\n• 红茶：1:30（5g茶150ml水）\n\n4️⃣ 冲泡时间\n• 绿茶：2-3分钟\n• 乌龙：30秒-1分钟（可泡7-8次）\n• 红茶：3-5分钟\n• 白茶：5-7分钟\n\n5️⃣ 功夫茶精髓\n快速出汤，高冲低斟，茶汤均匀\n\n💡 专业建议：\n第一泡叫\"洗茶\"或\"醒茶\"，5秒即出，唤醒茶叶香气。\n\n明天预告：咖啡vs茶，健康功效大比拼！",
+    "hashtags": "#茶艺 #泡茶技巧 #功夫茶 #茶文化 #每日学习",
+    "tips": "发布时间：下午3-4点（下午茶时间）\n封面：第1张主卡片\n互动：分享自己的泡茶心得"
+  },
+  "cards": [
+    {
+      "type": "main",
+      "icon": "",
+      "header": "功夫茶的功夫在哪里？",
+      "subtitle": "泡茶也是一门艺术",
+      "content": {
+        "highlight": {
+          "number": "泡茶\n艺术",
+          "description": "水温时间的魔法"
+        },
+        "points": [
+          {"icon": "→", "text": "学会泡茶，品味生活"}
+        ],
+        "tags": []
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "💧",
+      "header": "水质的重要性",
+      "subtitle": "好水出好茶",
+      "content": {
+        "list": [
+          "<strong style=\"color: #10B981;\">山泉水</strong>：矿物质适中最佳",
+          "<strong style=\"color: #10B981;\">纯净水</strong>：中性，不影响茶味",
+          "<strong style=\"color: #10B981;\">矿泉水</strong>：选TDS值50-300的",
+          "避免：含氯自来水、硬水"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "古人云",
+          "description": "\"水为茶之母，器为茶之父\""
+        },
+        "tip": "💎 陆羽：山水上，江水中，井水下",
+        "tags": ["💧 基础"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🌡️",
+      "header": "温度的学问",
+      "subtitle": "不同茶叶不同温度",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "温度指南",
+          "items": [
+            "<strong>绿茶80-85°C</strong>：保护维生素C",
+            "<strong>黄茶85-90°C</strong>：温和不伤茶",
+            "<strong>乌龙90-95°C</strong>：激发香气",
+            "<strong>红茶95-100°C</strong>：充分释放",
+            "<strong>黑茶100°C</strong>：唤醒陈味"
+          ]
+        },
+        "tip": "🔥 记住：越嫩越怕烫",
+        "tags": ["🌡️ 关键"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "⚖️",
+      "header": "投茶比例",
+      "subtitle": "浓淡适中最重要",
+      "content": {
+        "list": [
+          "盖碗（110ml）：",
+          "• 绿茶<strong style=\"color: #059669;\">3g</strong>",
+          "• 红茶<strong style=\"color: #059669;\">5g</strong>",
+          "• 乌龙<strong style=\"color: #059669;\">7-8g</strong>",
+          "• 普洱<strong style=\"color: #059669;\">8-10g</strong>"
+        ],
+        "special": {
+          "type": "progress",
+          "value": 80,
+          "label": "黄金比例：茶水1:50"
+        },
+        "tip": "📏 宁淡勿浓，可以加泡",
+        "tags": ["⚖️ 比例"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "⏱️",
+      "header": "时间控制",
+      "subtitle": "快慢有度",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "冲泡时间",
+          "items": [
+            "<strong>绿茶</strong>：第1泡2分钟，递增30秒",
+            "<strong>乌龙</strong>：洗茶5秒，正泡30秒起",
+            "<strong>红茶</strong>：3-5分钟一次出汤",
+            "<strong>普洱</strong>：生茶快出，熟茶稍久"
+          ]
+        },
+        "tip": "⏰ 功夫茶诀窍：快冲快出",
+        "tags": ["⏱️ 时间"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🏺",
+      "header": "功夫茶技法",
+      "subtitle": "潮州功夫茶精髓",
+      "content": {
+        "list": [
+          "<strong style=\"color: #10B981;\">高冲</strong>：提壶高冲激发香气",
+          "<strong style=\"color: #10B981;\">低斟</strong>：低位倒茶保温保香",
+          "<strong style=\"color: #10B981;\">刮沫</strong>：去除茶沫更纯净",
+          "<strong style=\"color: #10B981;\">巡城</strong>：来回倒茶浓淡均匀",
+          "<strong style=\"color: #10B981;\">点兵</strong>：最后点滴精华均分"
+        ],
+        "tip": "🎭 关公巡城，韩信点兵",
+        "tags": ["🏺 技法"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🔄",
+      "header": "多次冲泡技巧",
+      "subtitle": "一茶多味",
+      "content": {
+        "list": [
+          "绿茶：<strong style=\"color: #059669;\">3-4泡</strong>",
+          "红茶：<strong style=\"color: #059669;\">5-6泡</strong>",
+          "乌龙：<strong style=\"color: #059669;\">7-9泡</strong>",
+          "普洱：<strong style=\"color: #059669;\">10-20泡</strong>",
+          "每泡增加5-10秒"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "品茶口诀",
+          "description": "一泡水二泡茶，三泡四泡是精华"
+        },
+        "tip": "♻️ 好茶不怕泡",
+        "tags": ["🔄 技巧"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎯",
+      "header": "常见错误",
+      "subtitle": "避开这些坑",
+      "content": {
+        "list": [
+          "❌ 用沸水泡绿茶→苦涩",
+          "❌ 茶叶泡太久→浓苦",
+          "❌ 保温杯泡茶→闷坏",
+          "❌ 隔夜茶再喝→变质",
+          "✅ 现泡现喝最佳"
+        ],
+        "tip": "⚠️ 泡坏一壶好茶很可惜",
+        "tags": ["🎯 提醒"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📚",
+      "header": "今日总结",
+      "subtitle": "泡茶要诀",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "记住四要素",
+          "items": [
+            "水质要好",
+            "温度要对",
+            "比例要准",
+            "时间要控"
+          ]
+        },
+        "tip": "☕ 明天：咖啡vs茶健康大比拼",
+        "tags": ["✅ 总结"]
+      }
+    }
+  ],
+  "footer": {
+    "tags": ["🍵 茶艺", "📚 学习", "🎨 生活"]
+  },
+  "export": {
+    "mainCardFilename": "主卡片-泡茶艺术.png",
+    "cardFilenames": [
+      "2-水质的重要性.png",
+      "3-温度的学问.png",
+      "4-投茶比例.png",
+      "5-时间控制.png",
+      "6-功夫茶技法.png",
+      "7-多次冲泡技巧.png",
+      "8-常见错误.png",
+      "9-今日总结.png"
+    ],
+    "zipFilename": "茶叶知识-泡茶技巧-知识卡片.zip"
+  },
+  "customStyles": "",
+  "exportAdjustments": ""
+}

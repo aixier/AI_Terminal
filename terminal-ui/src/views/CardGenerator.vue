@@ -1,10 +1,25 @@
 <template>
   <!-- Main Layout (直接显示，不等待初始化) -->
   <div class="card-generator-layout">
+    <!-- Connection Status Bar -->
+    <div v-if="!isConnected" class="connection-status-bar">
+      <span class="status-icon">⚠️</span>
+      <span class="status-text">{{ connectionStatusText }}</span>
+      <button v-if="!isReconnecting" @click="manualReconnect" class="reconnect-btn">
+        重新连接
+      </button>
+    </div>
+    
     <!-- Left Sidebar - My Cards -->
     <div class="left-sidebar">
       <div class="sidebar-header">
         <span class="sidebar-title">我的卡片</span>
+        <span v-if="isConnected" class="connection-indicator" title="已连接">
+          🟢
+        </span>
+        <span v-else class="connection-indicator" title="未连接">
+          🔴
+        </span>
         <button class="refresh-btn" @click="refreshCardFolders" title="刷新">
           🔄
         </button>
@@ -263,6 +278,11 @@ const isSSEConnected = ref(false)
 // Terminal Service
 let terminalService = null
 
+// WebSocket连接状态
+const isConnected = ref(false)
+const isReconnecting = ref(false)
+const connectionStatusText = ref('未连接到后端服务')
+
 // Methods
 // 切换预览Tab
 const switchPreviewTab = (tab) => {
@@ -346,7 +366,33 @@ const initializeClaude = async () => {
 const generateCard = async () => {
   if (!currentTopic.value.trim() || isGenerating.value) return
   
-  // Check if Claude is initialized (should be done during startup)
+  // 首先检查连接状态
+  if (!terminalService.isConnected) {
+    ElMessage.warning('终端未连接，正在尝试重新连接...')
+    
+    // 尝试重新连接
+    try {
+      const isHealthy = await terminalService.checkConnection()
+      if (!isHealthy) {
+        ElMessage.error('后端服务不可用，请检查服务状态')
+        return
+      }
+      
+      // 尝试重新初始化终端
+      await initializeXTerm()
+      
+      // 重新初始化Claude
+      if (!isClaudeInitialized.value) {
+        await initializeClaude()
+      }
+    } catch (error) {
+      console.error('[GenerateCard] Reconnection failed:', error)
+      ElMessage.error('无法连接到后端服务：' + error.message)
+      return
+    }
+  }
+  
+  // Check if Claude is initialized
   if (!isClaudeInitialized.value) {
     ElMessage.warning('Claude 尚未就绪，请稍后再试')
     return
@@ -370,15 +416,31 @@ const generateCard = async () => {
     generatingHint.value = '正在连接到Claude...'
     const template = templates.value[selectedTemplate.value]
     const templateFileName = template.fileName || 'daily-knowledge-card-template.md'
-    // 模板文件的完整路径
-    const templatePath = `/mnt/d/work/AI_Terminal/terminal-backend/data/public_template/${templateFileName}`
     
-    // 构建用户卡片目录路径（使用绝对路径）
-    const sanitizedTopic = currentTopic.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
-    // 使用绝对路径确保文件创建在正确位置
-    const userCardPath = `/mnt/d/work/AI_Terminal/terminal-backend/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
+    // 根据环境使用不同的路径
+    // Docker环境和远程环境使用相对路径，本地开发使用绝对路径
+    let templatePath, userCardPath
     
-    // 构建完整的命令，使用完整路径
+    // 检测是否在本地开发环境（WSL路径）
+    const isLocalDev = window.location.hostname === 'localhost' && window.location.port === '5173'
+    
+    if (isLocalDev) {
+      // 本地开发环境 - 使用完整的WSL路径
+      templatePath = `/mnt/d/work/AI_Terminal/terminal-backend/data/public_template/${templateFileName}`
+      const sanitizedTopic = currentTopic.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+      userCardPath = `/mnt/d/work/AI_Terminal/terminal-backend/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
+    } else {
+      // Docker或远程环境 - 使用容器内的相对路径
+      templatePath = `/app/data/public_template/${templateFileName}`
+      const sanitizedTopic = currentTopic.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+      userCardPath = `/app/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
+    }
+    
+    console.log('[GenerateCard] Environment:', isLocalDev ? 'Local Dev' : 'Docker/Remote')
+    console.log('[GenerateCard] Template path:', templatePath)
+    console.log('[GenerateCard] User card path:', userCardPath)
+    
+    // 构建完整的命令
     const prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${userCardPath}]：${currentTopic.value}`
     
     ElMessage.info('正在生成卡片...')
@@ -439,11 +501,33 @@ const initializeXTerm = async () => {
     // 获取终端服务实例
     terminalService = TerminalServiceFactory.getService()
     
+    // 设置连接状态回调
+    terminalService.onConnectionChange = (connected, reason) => {
+      isConnected.value = connected
+      isReconnecting.value = terminalService.isReconnecting
+      
+      if (connected) {
+        connectionStatusText.value = '已连接到后端服务'
+        ElMessage.success('终端连接已恢复')
+      } else {
+        if (reason === 'max_attempts_reached') {
+          connectionStatusText.value = '连接失败，请检查后端服务'
+        } else if (terminalService.isReconnecting) {
+          connectionStatusText.value = `正在重新连接... (${terminalService.reconnectAttempts}/${terminalService.maxReconnectAttempts})`
+        } else {
+          connectionStatusText.value = '连接已断开: ' + reason
+        }
+      }
+    }
+    
     // 使用统一的terminalService初始化
     await terminalService.init(terminalContainer.value, {
       cols: 120,
       rows: 30
     })
+    
+    // 设置连接状态
+    isConnected.value = terminalService.isConnected
     
     // 在终端中显示欢迎信息
     if (terminalService.terminal) {
@@ -460,6 +544,10 @@ const initializeXTerm = async () => {
   } catch (error) {
     console.error('[Terminal] Failed to initialize:', error)
     
+    // 设置连接状态
+    isConnected.value = false
+    connectionStatusText.value = '终端初始化失败: ' + error.message
+    
     // 即使初始化失败，也尝试在容器中显示错误信息
     if (terminalContainer.value) {
       terminalContainer.value.innerHTML = `
@@ -472,6 +560,38 @@ const initializeXTerm = async () => {
     }
     
     ElMessage.error('终端初始化失败: ' + error.message)
+  }
+}
+
+// 手动重新连接
+const manualReconnect = async () => {
+  if (isReconnecting.value) return
+  
+  isReconnecting.value = true
+  connectionStatusText.value = '正在重新连接...'
+  
+  try {
+    // 首先检查后端健康状态
+    const isHealthy = await terminalService.checkConnection()
+    if (!isHealthy) {
+      throw new Error('后端服务不可用')
+    }
+    
+    // 重新初始化终端
+    await initializeXTerm()
+    
+    // 如果Claude未初始化，尝试初始化
+    if (!isClaudeInitialized.value) {
+      await initializeClaude()
+    }
+    
+    ElMessage.success('重新连接成功')
+  } catch (error) {
+    console.error('[ManualReconnect] Failed:', error)
+    ElMessage.error('重新连接失败: ' + error.message)
+    connectionStatusText.value = '连接失败: ' + error.message
+  } finally {
+    isReconnecting.value = false
   }
 }
 
@@ -1458,6 +1578,73 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Connection Status Bar */
+.connection-status-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, #ff6b6b 0%, #ff8787 100%);
+  color: white;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.status-icon {
+  font-size: 18px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.reconnect-btn {
+  background: white;
+  color: #ff6b6b;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.reconnect-btn:hover {
+  background: #f0f0f0;
+  transform: translateY(-1px);
+}
+
+.connection-indicator {
+  font-size: 12px;
+  margin-left: 8px;
+}
 .card-generator-layout {
   display: flex;
   height: 100vh;

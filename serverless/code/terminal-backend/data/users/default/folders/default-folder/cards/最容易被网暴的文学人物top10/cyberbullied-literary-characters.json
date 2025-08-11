@@ -1,0 +1,232 @@
+{
+  "theme": {
+    "name": "daily-literature-knowledge",
+    "pageTitle": "文学人物分析：最容易被网暴的文学人物TOP10",
+    "sectionTitle": "如果文学人物有微博，谁最容易被网暴？",
+    "sectionSubtitle": "每天学习一个文学知识点 · 特别篇",
+    "gradientColor1": "#8B5CF6",
+    "gradientColor2": "#A78BFA",
+    "gradientColor1RGB": "139, 92, 246",
+    "accentColor": "#8B5CF6",
+    "accentColorRGB": "139, 92, 246"
+  },
+  "copy": {
+    "title": "📚 如果文学人物有微博，谁最容易被网暴？盘点最惨TOP10！",
+    "content": "今天来个有趣的话题：如果文学人物活在社交媒体时代，谁最容易被网暴？\n\n你有没有想过：\n• 林黛玉发个朋友圈会被骂矫情吗？\n• 包法利夫人会被当成拜金女批判吗？\n• 哈姆雷特会被说优柔寡断吗？\n\n让我们从现代网络视角，重新审视这些经典人物！\n\n🎯 核心观点：\n文学人物的复杂性在网络时代可能被简化成标签，引发群体攻击。\n\n📚 TOP10榜单（从轻到重）：\n\n第10名：简·爱\n\"凭什么你一个家庭教师能嫁给富豪？\"\n\n第9名：安娜·卡列尼娜\n\"出轨就是出轨，别找借口！\"\n\n第8名：哈姆雷特\n\"犹豫什么？是男人就直接报仇！\"\n\n第7名：贾宝玉\n\"整天和女孩混在一起，娘炮！\"\n\n第6名：林黛玉\n\"作精本精，整天哭哭啼啼恶心谁呢？\"\n\n第5名：包法利夫人\n\"败家女人，活该悲剧收场！\"\n\n第4名：祥林嫂\n\"翻来覆去就一句话，烦不烦？\"\n\n第3名：孔乙己\n\"读书人？就是个偷书贼！\"\n\n第2名：阿Q\n\"精神胜利法？就是个loser！\"\n\n第1名：潘金莲\n\"荡妇！谋杀亲夫！不得好死！\"\n\n💡 深度思考：\n这个榜单反映了网络暴力的几个特点：\n• 简化复杂人物\n• 道德审判优先\n• 忽视时代背景\n• 缺乏同理心\n\n🔍 启示：\n文学的魅力在于人物的复杂性和多面性，而网络暴力恰恰抹杀了这种复杂性。\n\n今日互动：你觉得还有哪些文学人物容易被网暴？",
+    "hashtags": "#文学知识 #经典人物 #网络暴力 #文学思考 #名著解读 #社会现象 #批判思维 #文化反思",
+    "tips": "发布时间：晚8-9点（阅读高峰期）\n封面选择：第1张主卡片\n互动引导：让读者分享自己的看法\n后续内容：可深入分析每个人物"
+  },
+  "cards": [
+    {
+      "type": "main",
+      "icon": "",
+      "header": "如果文学人物有微博会怎样？",
+      "subtitle": "重新审视经典人物的现代命运",
+      "content": {
+        "highlight": {
+          "number": "网暴\nTOP10",
+          "description": "最容易被误解的文学人物"
+        },
+        "points": [
+          {"icon": "→", "text": "理解复杂性，拒绝标签化"}
+        ],
+        "tags": []
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎭",
+      "header": "什么是网暴视角？",
+      "subtitle": "用现代眼光看古典人物",
+      "content": {
+        "list": [
+          "把<strong style=\"color: #8B5CF6;\">复杂人物</strong>简化成标签",
+          "忽略<strong style=\"color: #8B5CF6;\">时代背景</strong>和处境",
+          "用<strong style=\"color: #8B5CF6;\">道德审判</strong>代替理解",
+          "缺乏<strong style=\"color: #8B5CF6;\">同理心</strong>和包容"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "核心问题",
+          "description": "网络简化了人性的复杂"
+        },
+        "tip": "💭 每个人物都有其时代性",
+        "tags": ["📖 概念"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🥉",
+      "header": "TOP 10-8",
+      "subtitle": "轻度网暴受害者",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "第10-8名",
+          "items": [
+            "<strong>简·爱</strong>：被骂心机攀高枝",
+            "<strong>安娜·卡列尼娜</strong>：出轨渣女",
+            "<strong>哈姆雷特</strong>：优柔寡断废物"
+          ]
+        },
+        "list": [
+          "主要被质疑<strong style=\"color: #A78BFA;\">道德</strong>",
+          "忽略了<strong style=\"color: #A78BFA;\">内心挣扎</strong>"
+        ],
+        "tip": "😔 复杂情感被简单化",
+        "tags": ["🏆 榜单"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🥈",
+      "header": "TOP 7-5",
+      "subtitle": "中度网暴受害者",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "第7-5名",
+          "items": [
+            "<strong>贾宝玉</strong>：娘炮富二代",
+            "<strong>林黛玉</strong>：作精矫情女",
+            "<strong>包法利夫人</strong>：拜金败家女"
+          ]
+        },
+        "list": [
+          "被贴上<strong style=\"color: #A78BFA;\">刻板标签</strong>",
+          "性格特点被<strong style=\"color: #A78BFA;\">恶意解读</strong>"
+        ],
+        "tip": "😢 个性成了原罪",
+        "tags": ["🏆 榜单"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🥇",
+      "header": "TOP 4-1",
+      "subtitle": "重度网暴受害者",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "第4-1名",
+          "items": [
+            "<strong>祥林嫂</strong>：祥林嫂烦人精",
+            "<strong>孔乙己</strong>：偷书贼装读书人",
+            "<strong>阿Q</strong>：底层loser",
+            "<strong>潘金莲</strong>：万恶淫妇"
+          ]
+        },
+        "list": [
+          "完全被<strong style=\"color: #8B5CF6;\">妖魔化</strong>",
+          "悲剧被当成<strong style=\"color: #8B5CF6;\">活该</strong>"
+        ],
+        "tip": "💔 弱者更容易被霸凌",
+        "tags": ["🏆 榜单"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📊",
+      "header": "网暴特征分析",
+      "subtitle": "为什么是他们？",
+      "content": {
+        "list": [
+          "<strong style=\"color: #8B5CF6;\">80%</strong>是女性角色",
+          "<strong style=\"color: #8B5CF6;\">70%</strong>是悲剧人物",
+          "<strong style=\"color: #8B5CF6;\">90%</strong>有性格缺陷",
+          "<strong style=\"color: #8B5CF6;\">100%</strong>被误解"
+        ],
+        "special": {
+          "type": "progress",
+          "value": 80,
+          "label": "女性角色受网暴比例"
+        },
+        "tip": "📈 数据揭示偏见",
+        "tags": ["📉 分析"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎯",
+      "header": "网暴话术套路",
+      "subtitle": "键盘侠常用语录",
+      "content": {
+        "list": [
+          "\"<strong style=\"color: #A78BFA;\">活该</strong>，自作自受\"",
+          "\"<strong style=\"color: #A78BFA;\">矫情</strong>，无病呻吟\"",
+          "\"<strong style=\"color: #A78BFA;\">三观不正</strong>，带坏风气\"",
+          "\"<strong style=\"color: #A78BFA;\">圣母婊</strong>，装可怜\""
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "套路总结",
+          "description": "标签化+道德审判+人身攻击"
+        },
+        "tip": "🚫 拒绝语言暴力",
+        "tags": ["💬 话术"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "💡",
+      "header": "深层反思",
+      "subtitle": "网暴背后的问题",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "三个维度",
+          "items": [
+            "<strong>文学维度</strong>：简化削弱文学价值",
+            "<strong>社会维度</strong>：反映现实偏见",
+            "<strong>人性维度</strong>：缺乏共情能力"
+          ]
+        },
+        "list": [
+          "网暴摧毁<strong style=\"color: #8B5CF6;\">理解的可能</strong>",
+          "标签取代<strong style=\"color: #8B5CF6;\">深度思考</strong>"
+        ],
+        "tip": "🤔 理解比评判更重要",
+        "tags": ["🎓 深入"]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📚",
+      "header": "今日总结",
+      "subtitle": "记住这几点",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "核心启示",
+          "items": [
+            "文学人物的<strong>复杂性</strong>值得珍视",
+            "避免用<strong>标签</strong>简化人物",
+            "理解需要<strong>时代背景</strong>",
+            "培养<strong>同理心</strong>很重要"
+          ]
+        },
+        "tip": "🌟 拒绝网暴，理解万岁",
+        "tags": ["✅ 总结"]
+      }
+    }
+  ],
+  "footer": {
+    "tags": ["📚 文学", "🎭 人物分析", "💭 社会思考"]
+  },
+  "export": {
+    "mainCardFilename": "主卡片-最容易被网暴的文学人物.png",
+    "cardFilenames": [
+      "2-什么是网暴视角.png",
+      "3-TOP10-8.png",
+      "4-TOP7-5.png",
+      "5-TOP4-1.png",
+      "6-网暴特征分析.png",
+      "7-网暴话术套路.png",
+      "8-深层反思.png",
+      "9-今日总结.png"
+    ],
+    "zipFilename": "文学人物-网暴TOP10-知识卡片.zip"
+  },
+  "customStyles": "",
+  "exportAdjustments": ""
+}

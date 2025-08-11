@@ -1,0 +1,38 @@
+{
+  "name": "ai-terminal-serverless",
+  "version": "1.0.0",
+  "description": "AI Terminal Serverless Deployment for Aliyun Function Compute",
+  "main": "code/index.js",
+  "scripts": {
+    "build:frontend": "cd ../terminal-ui && npm install && npm run build",
+    "build:backend": "cd ../terminal-backend && npm install --production",
+    "prepare:code": "rm -rf code/terminal-backend code/static && mkdir -p code/terminal-backend code/static",
+    "copy:frontend": "cp -r ../terminal-ui/dist/* code/static/",
+    "copy:backend": "cp -r ../terminal-backend/* code/terminal-backend/",
+    "copy:data": "mkdir -p code/terminal-backend/data && cp -r ../terminal-backend/data/* code/terminal-backend/data/ && cp -r ../terminal-backend/src/data/* code/terminal-backend/data/",
+    "build": "npm run build:frontend && npm run build:backend && npm run prepare:code && npm run copy:frontend && npm run copy:backend && npm run copy:data",
+    "deploy": "s deploy",
+    "deploy:function": "s deploy function",
+    "logs": "s logs -t",
+    "info": "s info",
+    "remove": "s remove",
+    "local": "s local start"
+  },
+  "dependencies": {
+    "ali-oss": "^6.18.1",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "@serverless-devs/s": "^3.0.0"
+  },
+  "keywords": [
+    "serverless",
+    "aliyun",
+    "function-compute",
+    "ai-terminal"
+  ],
+  "author": "",
+  "license": "MIT"
+}

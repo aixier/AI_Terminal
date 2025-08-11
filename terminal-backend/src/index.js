@@ -14,6 +14,7 @@ import commandsRoutes from './routes/commands.js'
 import claudeRoutes from './routes/claude.js'
 import sseRoutes from './routes/sse.js'
 import previewRoutes from './routes/preview.js'
+import generateRoutes from './routes/generate.js'
 import { setupSocketHandlers } from './services/socketService.js'
 import websocketService from './services/websocketService.js'
 // import { preventCommandInjection, limitRequestSize, auditLog, rateLimit } from './middleware/security.js'
@@ -193,6 +194,9 @@ console.log('     ✓ /api/commands route registered')
 
 app.use('/api/claude', claudeRoutes)
 console.log('     ✓ /api/claude route registered')
+
+app.use('/api/generate', generateRoutes)
+console.log('     ✓ /api/generate route registered')
 
 app.use('/api/sse', sseRoutes)
 console.log('     ✓ /api/sse route registered')

@@ -73,7 +73,8 @@ router.get('/folders', async (req, res) => {
     
     // 使用默认用户
     const userId = 'default'
-    const userFoldersPath = path.join(process.cwd(), 'data', 'users', userId, 'folders')
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    const userFoldersPath = path.join(dataPath, 'users', userId, 'folders')
     
     // 确保目录存在
     try {
@@ -258,7 +259,7 @@ router.get('/folders/:folderId/cards', async (req, res) => {
     
     const userId = 'default'
     const { folderId } = req.params
-    const cardsPath = path.join(process.cwd(), 'data', 'users', userId, 'folders', folderId, 'cards')
+    const cardsPath = path.join(dataPath, 'users', userId, 'folders', folderId, 'cards')
     
     const cards = []
     
@@ -450,7 +451,9 @@ router.get('/templates', async (req, res) => {
     const fs = await import('fs/promises')
     const path = await import('path')
     
-    const templatesPath = path.join(process.cwd(), 'data', 'public_template')
+    // 支持Docker环境：优先使用DATA_PATH环境变量
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    const templatesPath = path.join(dataPath, 'public_template')
     
     // 确保目录存在
     try {
@@ -549,10 +552,10 @@ router.get('/card/html/:folderId/:fileName', async (req, res) => {
     const userId = 'default'
     
     // 构建文件路径
-    const filePath = path.join(process.cwd(), 'data', 'users', userId, 'folders', 'default-folder', 'cards', folderId, fileName)
+    const filePath = path.join(dataPath, 'users', userId, 'folders', 'default-folder', 'cards', folderId, fileName)
     
     // 安全检查：确保文件在允许的目录内
-    const allowedBasePath = path.join(process.cwd(), 'data', 'users')
+    const allowedBasePath = path.join(dataPath, 'users')
     const resolvedPath = path.resolve(filePath)
     
     if (!resolvedPath.startsWith(allowedBasePath)) {
@@ -725,7 +728,7 @@ router.post('/save-html', async (req, res) => {
       // 使用备用逻辑
       const userId = 'default'
       const folderName = folderId || 'default-folder'
-      const cardsPath = path.join(process.cwd(), 'data', 'users', userId, 'folders', folderName, 'cards')
+      const cardsPath = path.join(dataPath, 'users', userId, 'folders', folderName, 'cards')
       
       // 简单处理：创建一个临时目录
       const tempDir = path.join(cardsPath, 'generated')
@@ -734,7 +737,7 @@ router.post('/save-html', async (req, res) => {
     }
     
     // 安全检查：确保路径在允许的目录内
-    const allowedBasePath = path.join(process.cwd(), 'data', 'users')
+    const allowedBasePath = path.join(dataPath, 'users')
     if (!finalPath.startsWith(allowedBasePath)) {
       return res.status(403).json({
         code: 403,
@@ -786,7 +789,8 @@ router.get('/card', async (req, res) => {
     }
     
     // 安全检查：确保路径在允许的目录内
-    const allowedBasePath = path.join(process.cwd(), 'data', 'users')
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    const allowedBasePath = path.join(dataPath, 'users')
     const resolvedPath = path.resolve(cardPath)
     
     if (!resolvedPath.startsWith(allowedBasePath)) {
@@ -856,7 +860,7 @@ router.get('/templates/:templateId', async (req, res) => {
     
     const { templateId } = req.params
     const templateFile = templateId.endsWith('.md') ? templateId : `${templateId}.md`
-    const templatePath = path.join(process.cwd(), 'data', 'public_template', templateFile)
+    const templatePath = path.join(dataPath, 'public_template', templateFile)
     
     // 检查文件是否存在
     try {
@@ -913,7 +917,8 @@ router.post('/save-card', async (req, res) => {
     }
     
     // 安全检查：确保路径在允许的目录内
-    const allowedBasePath = path.join(process.cwd(), 'data', 'users')
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    const allowedBasePath = path.join(dataPath, 'users')
     const resolvedPath = path.resolve(cardPath)
     
     if (!resolvedPath.startsWith(allowedBasePath)) {
@@ -973,7 +978,8 @@ router.delete('/card', async (req, res) => {
     }
     
     // 安全检查：确保路径在允许的目录内
-    const allowedBasePath = path.join(process.cwd(), 'data', 'users')
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    const allowedBasePath = path.join(dataPath, 'users')
     const resolvedPath = path.resolve(targetPath)
     
     if (!resolvedPath.startsWith(allowedBasePath)) {

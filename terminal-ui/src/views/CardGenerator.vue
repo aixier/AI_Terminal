@@ -2979,6 +2979,43 @@ const openLink = (which) => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  text-align: left; /* 强制左对齐 */
+  align-items: stretch; /* 内容占满宽度，避免居中 */
+}
+
+/* 模板选择区域左对齐 */
+.mobile-template-section,
+.mobile-template-grid,
+.mobile-template-card,
+.template-header,
+.topic-suggestions,
+.mobile-input-section,
+.input-row {
+  text-align: left;
+}
+
+/* 文件 Tab 列表左对齐 */
+.mobile-folder-tree,
+.folder-container,
+.folder-item,
+.cards-list,
+.card-item,
+.file-action-bar,
+.mobile-sidebar-header {
+  text-align: left;
+}
+
+/* Tab 容器不居中内容 */
+.mobile-tab-content.create-tab,
+.mobile-tab-content.files-tab {
+  display: block;
+  text-align: left;
+}
+
+/* 适配极窄屏，保持左对齐 */
+@media (max-width: 400px) {
+  .mobile-create-container,
+  .mobile-folder-tree { text-align: left; }
 }
 
 .mobile-input-section {

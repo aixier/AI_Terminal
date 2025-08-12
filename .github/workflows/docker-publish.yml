@@ -1,0 +1,64 @@
+name: Docker Hub Publish
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  DOCKER_HUB_USERNAME: aixier
+  IMAGE_NAME: ai-terminal
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ env.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=registry,ref=${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache
+        cache-to: type=registry,ref=${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+    
+    - name: Update Docker Hub Description
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        username: ${{ env.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        repository: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+        readme-filepath: ./DOCKER_HUB_README.md
+        short-description: |
+          🚀 Claude Code API Platform - Transform CLI tools into REST APIs in 30 seconds!

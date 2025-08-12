@@ -237,28 +237,8 @@
       <div class="mobile-view-content">
         <!-- 创建卡片 Tab -->
         <div v-if="currentMobileTab === 'create'" class="mobile-tab-content create-tab">
-          <!-- 移动端紧凑型创建界面 -->
+          <!-- 模板优先展示 -->
           <div class="mobile-create-container">
-            <!-- 主题输入区域 - 置顶 -->
-            <div class="mobile-input-section">
-              <div class="input-label">📝 输入主题</div>
-              <div class="input-wrapper">
-                <input 
-                  v-model="currentTopic"
-                  type="text"
-                  class="mobile-topic-input"
-                  placeholder="请输入想要创建的卡片主题..."
-                />
-                <button 
-                  class="mobile-create-btn"
-                  @click="generateCard"
-                  :disabled="!currentTopic.trim() || isGenerating"
-                >
-                  {{ isGenerating ? '生成中...' : '创建卡片' }}
-                </button>
-              </div>
-            </div>
-            
             <!-- 模板选择区域 - 紧凑型 -->
             <div class="mobile-template-section">
               <div class="template-header">
@@ -266,7 +246,6 @@
                 <span class="header-text">选择模板</span>
                 <span class="template-count">({{ templates.length }}个)</span>
               </div>
-              
               <div class="mobile-template-grid">
                 <div 
                   v-for="(template, index) in templates" 
@@ -284,21 +263,33 @@
                 </div>
               </div>
             </div>
-            
-            <!-- 快速操作区域 -->
-            <div class="mobile-quick-actions">
-              <button class="quick-action-btn" @click="clearTopic">
-                <span class="btn-icon">🗑️</span>
-                <span class="btn-text">清空</span>
-              </button>
-              <button class="quick-action-btn" @click="randomTopic">
-                <span class="btn-icon">🎲</span>
-                <span class="btn-text">随机主题</span>
-              </button>
-              <button class="quick-action-btn" @click="showHistory">
-                <span class="btn-icon">📚</span>
-                <span class="btn-text">历史</span>
-              </button>
+
+            <!-- 主题建议（从模板或示例生成） -->
+            <div v-if="suggestedTopics.length" class="topic-suggestions">
+              <div class="suggestions-title">主题建议</div>
+              <div class="suggestions-list">
+                <button v-for="(s, i) in suggestedTopics" :key="i" class="suggestion-chip" @click="currentTopic = s">{{ s }}</button>
+              </div>
+            </div>
+
+            <!-- 输入区域置底（紧贴底栏上方） -->
+            <div class="mobile-input-section sticky-bottom">
+              <div class="input-label">📝 输入主题</div>
+              <div class="input-wrapper">
+                <input 
+                  v-model="currentTopic"
+                  type="text"
+                  class="mobile-topic-input"
+                  placeholder="请输入想要创建的卡片主题..."
+                />
+                <button 
+                  class="mobile-create-btn bordered"
+                  @click="generateCard"
+                  :disabled="!currentTopic.trim() || isGenerating"
+                >
+                  {{ isGenerating ? '生成中...' : '创建卡片' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -311,6 +302,15 @@
             <span v-if="isConnected" class="connection-indicator" title="已连接">🟢</span>
             <span v-else class="connection-indicator" title="未连接">🔴</span>
             <button class="refresh-btn" @click="refreshCardFolders" title="刷新">🔄</button>
+          </div>
+          
+          <!-- 文件操作栏（根据选中项上下文展示） -->
+          <div v-if="selectedCard && selectedFolder" class="file-action-bar">
+            <button class="action-btn primary" @click="handlePreviewSelected">
+              {{ canPreviewSelected ? '预览' : '生成预览' }}
+            </button>
+            <button v-if="canPreviewSelected && responseUrls.shareLink" class="action-btn" @click="copyShareLink">复制链接</button>
+            <button v-if="canPreviewSelected && responseUrls.shareLink" class="action-btn" @click="openExternal">外部打开</button>
           </div>
           
           <div class="mobile-folder-tree">
@@ -403,6 +403,26 @@
         </div>
       </div>
     </template>
+
+    <!-- 全屏预览内容（覆盖层） -->
+    <template #fullscreen-content>
+      <div class="mobile-preview-content">
+        <div v-if="isGenerating" class="generating-state">
+          <div class="generating-loader">
+            <div class="loader-spinner"></div>
+            <div class="generating-text">正在生成...</div>
+            <div class="generating-hint">{{ generatingHint }}</div>
+          </div>
+        </div>
+        <SmartUrlPreview 
+          v-else-if="(previewType === 'html' || previewType === 'iframe') && (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
+          :url="activePreviewTab === 'originalUrl' ? (responseUrls.originalUrl || previewContent) : (responseUrls.shareLink || previewContent)"
+          :key="activePreviewTab + (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
+        />
+        <ValidatedJsonViewer v-else-if="previewContent && previewType === 'json'" :data="previewContent" class="json-viewer-preview" />
+        <div v-else class="empty-state">暂无可预览内容</div>
+      </div>
+    </template>
     
     <!-- Mobile Navigation -->
     <template #mobile-navigation>
@@ -474,6 +494,14 @@ const currentMobileTab = computed(() => layoutStore.activeMobileTab)
 const isConnected = ref(false)
 const isReconnecting = ref(false)
 const connectionStatusText = ref('未连接到后端服务')
+
+// 建议话题（取前几个模板名或示例）
+const suggestedTopics = computed(() => {
+  const names = (templates.value || []).map(t => t.name).filter(Boolean)
+  const uniq = Array.from(new Set(names)).slice(0, 6)
+  if (uniq.length) return uniq
+  return ['效率提升', '学习计划', '旅行攻略', '产品介绍', '技术要点']
+})
 
 // Methods
 // 切换预览Tab
@@ -1821,6 +1849,59 @@ onUnmounted(() => {
 watch(currentMobileTab, (to, from) => {
   console.log('[CardGenerator] currentMobileTab changed:', { from, to })
 })
+
+// 是否可预览（选中的卡片）
+const canPreviewSelected = computed(() => {
+  if (!selectedCard.value || !selectedFolder.value) return false
+  const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
+  const card = folder?.cards?.find(c => c.id === selectedCard.value)
+  if (!card) return false
+  const name = (card.name || '').toLowerCase()
+  return name.endsWith('-response.json') || name.endsWith('.html') || name.endsWith('.htm') || previewType.value || responseUrls.value.shareLink
+})
+
+const handlePreviewSelected = async () => {
+  try {
+    const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
+    const card = folder?.cards?.find(c => c.id === selectedCard.value)
+    if (!card) return
+    const name = (card.name || '').toLowerCase()
+
+    if (name.includes('-response.json')) {
+      await loadCardContent(card.id, folder.id)
+      // 打开全屏预览
+      layoutStore.toggleFullScreen('preview')
+    } else if (name.endsWith('.html') || name.endsWith('.htm')) {
+      await loadCardContent(card.id, folder.id)
+      layoutStore.toggleFullScreen('preview')
+    } else if (name.endsWith('.json')) {
+      await generateHtmlFromJson(card, folder)
+      layoutStore.toggleFullScreen('preview')
+    } else {
+      ElMessage.info('该文件不支持预览')
+    }
+  } catch (e) {
+    console.error('[Preview] Failed:', e)
+    ElMessage.error('预览失败：' + e.message)
+  }
+}
+
+const copyShareLink = async () => {
+  try {
+    const url = responseUrls.value.shareLink || responseUrls.value.originalUrl
+    if (!url) return
+    await navigator.clipboard.writeText(url)
+    ElMessage.success('链接已复制')
+  } catch (e) {
+    ElMessage.info('复制失败，请手动复制')
+  }
+}
+
+const openExternal = () => {
+  const url = responseUrls.value.shareLink || responseUrls.value.originalUrl
+  if (!url) return
+  window.open(url, '_blank')
+}
 </script>
 
 <style scoped>
@@ -3011,4 +3092,36 @@ watch(currentMobileTab, (to, from) => {
     font-size: 11px;
   }
 }
+
+/* 文件操作栏 */
+.file-action-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(22,27,34,0.9);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #30363d;
+}
+.action-btn {
+  padding: 8px 12px;
+  background: #2a2f3a;
+  border: 1px solid #3a3f4a;
+  color: #c9d1d9;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.action-btn.primary { background: #238636; border-color: #2ea043; color: #fff; }
+
+/* 主题建议 */
+.topic-suggestions { padding: 12px 16px; }
+.suggestions-title { color: #8b949e; font-size: 14px; margin-bottom: 8px; }
+.suggestions-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggestion-chip { padding: 8px 12px; background:#1b1f24; border:1px solid #30363d; color:#c9d1d9; border-radius:9999px; font-size:12px; }
+
+/* 输入置底 */
+.sticky-bottom { position: sticky; bottom: 0; padding-bottom: calc(var(--spacing-mobile-safe-area, env(safe-area-inset-bottom)) + 6px); background: linear-gradient(180deg, rgba(22,27,34,0), rgba(22,27,34,.9) 30%); backdrop-filter: blur(6px); }
+.mobile-create-btn.bordered { border:1px solid #58a6ff; background: transparent; color:#58a6ff; }
 </style>

@@ -23,7 +23,7 @@
 
 ```bash
 # Quick Start - Claude Code API in 30 seconds
-docker run -d -p 8082:6000 aixier/ai-terminal:latest
+docker run -d -p 8082:6000 coopotfan/ai-terminal:latest
 
 # Test Claude Code API
 curl -X POST http://localhost:8082/api/generate/card \

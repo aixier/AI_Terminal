@@ -12,7 +12,7 @@
 
 ```bash
 # Option 1: Using Docker Hub (Fastest)
-docker run -d -p 8082:6000 --name claude-code-api aixier/ai-terminal:latest
+docker run -d -p 8082:6000 --name claude-code-api coopotfan/ai-terminal:latest
 
 # Option 2: Build from source
 git clone https://github.com/aixier/AI_Terminal.git

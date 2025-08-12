@@ -28,6 +28,8 @@ let fileSystemCache = new Map()
 
 // 定期检查定时器
 let healthCheckInterval = null
+// 节流健康检查日志，避免控制台刷屏
+let lastHealthLogTime = 0
 
 /**
  * 扫描目录并更新缓存
@@ -70,7 +72,12 @@ const startHealthCheck = () => {
   if (healthCheckInterval) return
   
   healthCheckInterval = setInterval(async () => {
-    console.log('[SSE] Running health check...')
+    // 每60秒打印一次健康检查tick，避免日志刷屏
+    const now = Date.now()
+    if (now - lastHealthLogTime > 60000) {
+      logger.debug('[SSE] Health check tick')
+      lastHealthLogTime = now
+    }
     
     try {
       const currentFiles = await scanDirectory(WATCH_DIR)

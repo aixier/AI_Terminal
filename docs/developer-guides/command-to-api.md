@@ -298,7 +298,7 @@ export default new ApiTerminalService()
 
 ### 步骤2: 创建专用命令API
 
-#### Claude命令API示例
+#### Claude命令API示例（包含完整初始化流程）
 ```javascript
 // routes/claude.js
 import express from 'express'
@@ -344,11 +344,11 @@ router.post('/generate', async (req, res) => {
       }
     })
     
-    // 初始化Claude
+    // 初始化Claude（处理完整流程）
     await initializeClaude(apiId)
     
     // 发送生成命令
-    await apiTerminalService.sendTextAndControl(apiId, command, '\r', 1000)
+    await apiTerminalService.sendTextAndControl(apiId, command, '\r', 100)
     
     // 等待文件生成
     const result = await waitForFileGeneration(outputPath, 180000)
@@ -377,27 +377,107 @@ router.post('/generate', async (req, res) => {
 })
 
 /**
- * 初始化Claude环境
+ * 初始化Claude环境 - 完整流程
+ * 
+ * Claude在Docker容器中的完整初始化时序：
+ * 1. 发送启动命令: claude --dangerously-skip-permissions
+ * 2. 处理主题选择界面（首次运行）
+ * 3. 处理安全提示
+ * 4. 处理危险模式确认
+ * 5. 等待命令提示符出现
  */
 async function initializeClaude(apiId) {
   console.log(`[Claude API] Initializing Claude: ${apiId}`)
   
-  // 获取终端
   const terminal = apiTerminalService.terminals.get(apiId)
   if (!terminal) {
     throw new Error('Terminal session not found')
   }
   
-  // 启动Claude
+  // 步骤1: 启动Claude
+  console.log(`[Claude API] Step 1: Starting Claude...`)
   terminal.pty.write('claude --dangerously-skip-permissions\r')
+  await apiTerminalService.delay(2000)
   
-  // 等待启动完成
-  await apiTerminalService.delay(3000)
+  // 获取输出检查需要处理哪些界面
+  let outputBuffer = apiTerminalService.outputBuffers.get(apiId) || []
+  let fullOutput = outputBuffer.map(o => o.data).join('')
   
-  // 激活Claude shell
-  terminal.pty.write('\r')
+  // 步骤2: 处理主题选择（如果出现）
+  if (fullOutput.includes('Choose the text style that looks best with your terminal')) {
+    console.log(`[Claude API] Step 2: Theme selection detected, selecting Dark mode...`)
+    terminal.pty.write('1')  // 选择选项1 (Dark mode)
+    await apiTerminalService.delay(500)
+    terminal.pty.write('\r') // 确认选择
+    await apiTerminalService.delay(2000)
+    
+    // 步骤3: 处理安全提示（如果出现）
+    outputBuffer = apiTerminalService.outputBuffers.get(apiId) || []
+    fullOutput = outputBuffer.map(o => o.data).join('')
+    
+    if (fullOutput.includes('Press Enter to continue')) {
+      console.log(`[Claude API] Step 3: Security notes detected, pressing Enter...`)
+      terminal.pty.write('\r')
+      await apiTerminalService.delay(1000)
+    }
+    
+    // 步骤4: 处理危险模式确认
+    outputBuffer = apiTerminalService.outputBuffers.get(apiId) || []
+    fullOutput = outputBuffer.map(o => o.data).join('')
+    
+    if (fullOutput.includes('Yes, I accept')) {
+      console.log(`[Claude API] Step 4: Bypass permissions confirmation detected...`)
+      terminal.pty.write('2')  // 选择选项2 (Yes, I accept)
+      await apiTerminalService.delay(500)
+      terminal.pty.write('\r') // 确认选择
+      await apiTerminalService.delay(2000)
+    }
+    
+  } else if (fullOutput.includes('Yes, I accept')) {
+    // 直接进入危险模式确认（没有主题选择）
+    console.log(`[Claude API] Bypass mode confirmation detected directly...`)
+    terminal.pty.write('2')  // 选择选项2 (Yes, I accept)
+    await apiTerminalService.delay(500)
+    terminal.pty.write('\r') // 确认选择
+    await apiTerminalService.delay(2000)
+  }
   
-  console.log(`[Claude API] Claude initialized: ${apiId}`)
+  // 步骤5: 等待Claude命令提示符
+  console.log(`[Claude API] Step 5: Waiting for Claude prompt...`)
+  const promptReady = await waitForPrompt(apiId, 10000)
+  
+  if (!promptReady) {
+    throw new Error('Claude failed to initialize - no prompt detected')
+  }
+  
+  console.log(`[Claude API] ✅ Claude fully initialized: ${apiId}`)
+}
+
+/**
+ * 等待Claude命令提示符出现
+ */
+async function waitForPrompt(apiId, timeout = 10000) {
+  const startTime = Date.now()
+  
+  return new Promise((resolve) => {
+    const checkInterval = setInterval(() => {
+      const outputBuffer = apiTerminalService.outputBuffers.get(apiId) || []
+      const recentOutput = outputBuffer.slice(-5).map(o => o.data).join('')
+      
+      // 检查Claude提示符的各种形式
+      if (recentOutput.includes('> ') || 
+          recentOutput.includes('│\u001b[39m\u001b[22m > ') || 
+          recentOutput.includes('> \u001b[7m')) {
+        console.log(`[Claude API] Claude prompt detected`)
+        clearInterval(checkInterval)
+        resolve(true)
+      } else if (Date.now() - startTime > timeout) {
+        console.log(`[Claude API] Timeout waiting for prompt`)
+        clearInterval(checkInterval)
+        resolve(false)
+      }
+    }, 500)
+  })
 }
 
 /**
@@ -1376,6 +1456,55 @@ export const createOutputMatcher = (apiId, pattern, timeout = 30000) => {
 }
 ```
 
+### Claude初始化注意事项
+
+#### 重要：处理两种初始化场景
+
+Claude在Docker容器中有两种初始化场景，必须正确处理：
+
+1. **首次运行（未配置）**
+   - 显示主题选择界面
+   - 显示安全提示
+   - 显示危险模式确认
+
+2. **已配置运行**
+   - 直接进入交互模式
+   - 显示 "bypass permissions on" 状态
+   - 无需任何确认步骤
+
+#### 完整的初始化时序
+
+```javascript
+// 关键检测逻辑
+if (output.includes('Choose the text style')) {
+  // 场景1: 首次运行
+  // 步骤1: 选择主题（发送 '1' + 回车）
+  // 步骤2: 处理安全提示（发送回车）
+  // 步骤3: 确认危险模式（发送 '2' + 回车）
+} else if (output.includes('bypass permissions on')) {
+  // 场景2: 已配置，直接就绪
+  // 无需额外操作
+}
+```
+
+#### 文件生成检测优化
+
+非流式API需要并行检测文件生成，而不是串行等待：
+
+```javascript
+// ❌ 错误：串行等待
+const output = await waitForCompletion(timeout)  // 等待180秒
+const file = await waitForFile()  // 再等文件
+
+// ✅ 正确：并行检测
+const result = await Promise.race([
+  waitForFile(),  // 文件生成检测
+  new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('超时')), timeout)
+  )
+])
+```
+
 ### 配置管理
 
 ```javascript
@@ -1384,7 +1513,7 @@ export const COMMAND_CONFIGS = {
   claude: {
     initialize: 'claude --dangerously-skip-permissions',
     initDelay: 3000,
-    timeout: 180000,
+    timeout: 180000,  // 建议至少180秒，Claude生成需要时间
     env: {
       ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN,
       ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL

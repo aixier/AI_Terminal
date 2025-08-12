@@ -83,36 +83,99 @@ class ApiTerminalService extends EventEmitter {
   }
 
   /**
-   * 初始化Claude (与前端initializeClaude完全一致)
+   * 初始化Claude - 完整流程处理
    */
   async initializeClaude(apiId) {
     const terminal = await this.createTerminalSession(apiId)
     
     console.log(`[ApiTerminalService] Initializing Claude for API: ${apiId}`)
     
-    // 发送claude --dangerously-skip-permissions
-    console.log(`[ApiTerminalService] Sending claude command...`)
+    // 步骤1: 发送claude --dangerously-skip-permissions
+    console.log(`[ApiTerminalService] Step 1: Sending claude command...`)
     terminal.pty.write('claude --dangerously-skip-permissions\r')
     
-    // 等待Claude启动（与前端一致的3秒等待）
-    console.log(`[ApiTerminalService] Waiting 3 seconds for Claude to initialize...`)
-    await this.delay(3000)
+    // 等待响应
+    await this.delay(2000)
     
-    // 发送回车激活Claude shell
-    console.log(`[ApiTerminalService] Sending carriage return to activate Claude...`)
-    terminal.pty.write('\r')
+    // 步骤2: 检查是否出现主题选择界面
+    let outputBuffer = this.outputBuffers.get(apiId) || []
+    let fullOutput = outputBuffer.map(o => o.data).join('')
+    
+    if (fullOutput.includes('Choose the text style that looks best with your terminal')) {
+      console.log(`[ApiTerminalService] Step 2: Theme selection detected, selecting option 1 (Dark mode)...`)
+      // 选择主题1并确认
+      terminal.pty.write('1')
+      await this.delay(500)
+      terminal.pty.write('\r')
+      await this.delay(2000) // 等待主题选择完成
+      
+      // 检查是否出现安全提示
+      outputBuffer = this.outputBuffers.get(apiId) || []
+      fullOutput = outputBuffer.map(o => o.data).join('')
+      
+      if (fullOutput.includes('Press Enter to continue')) {
+        // 有安全提示，按回车继续
+        console.log(`[ApiTerminalService] Step 3: Security notes detected, pressing Enter to continue...`)
+        terminal.pty.write('\r')
+        await this.delay(1000)
+      }
+      
+      // 现在应该出现危险模式确认
+      outputBuffer = this.outputBuffers.get(apiId) || []
+      fullOutput = outputBuffer.map(o => o.data).join('')
+      
+      if (fullOutput.includes('Yes, I accept') || fullOutput.includes('Bypass Permissions mode')) {
+        console.log(`[ApiTerminalService] Step 4: Bypass permissions confirmation detected...`)
+        console.log(`[ApiTerminalService] Step 5: Selecting option 2 (Yes, I accept)...`)
+        terminal.pty.write('2')
+        await this.delay(500)
+        terminal.pty.write('\r')
+        await this.delay(2000)
+      }
+      
+    } else if (fullOutput.includes('Yes, I accept') || fullOutput.includes('Bypass Permissions mode')) {
+      // 直接进入了危险模式确认（没有主题选择）
+      console.log(`[ApiTerminalService] Bypass mode confirmation detected, selecting option 2...`)
+      terminal.pty.write('2')
+      await this.delay(500)
+      terminal.pty.write('\r')
+      await this.delay(1000)
+    } else if (fullOutput.includes('bypass permissions on') || fullOutput.includes('Tips for getting started')) {
+      // Claude已经配置好了，直接进入了交互模式
+      console.log(`[ApiTerminalService] Claude already configured, ready for commands...`)
+      // 不需要额外操作，Claude已经准备好了
+    }
+    
+    // 步骤7: 等待Claude命令提示符
+    console.log(`[ApiTerminalService] Step 7: Waiting for Claude command prompt...`)
+    const promptReady = await this.waitForPrompt(apiId, 10000)
+    
+    if (!promptReady) {
+      // 如果没有检测到提示符，可能Claude已经在等待输入了
+      // 再次检查输出
+      outputBuffer = this.outputBuffers.get(apiId) || []
+      fullOutput = outputBuffer.map(o => o.data).join('')
+      
+      if (fullOutput.includes('bypass permissions on') || fullOutput.includes('Tips for getting started')) {
+        // Claude确实已经准备好了，只是提示符格式不同
+        console.log(`[ApiTerminalService] Claude is ready (bypass permissions mode)`)
+        return true
+      }
+      
+      throw new Error('Claude failed to initialize - no prompt detected')
+    }
     
     // 更新活动时间
     terminal.lastActivity = Date.now()
     
-    console.log(`[ApiTerminalService] ✅ Claude initialized for API: ${apiId}`)
+    console.log(`[ApiTerminalService] ✅ Claude fully initialized and ready for API: ${apiId}`)
     return true
   }
 
   /**
    * 发送命令到Claude (与前端sendTextAndControl完全一致)
    */
-  async sendTextAndControl(apiId, text, control = '\r', delay = 1000) {
+  async sendTextAndControl(apiId, text, control = '\r', delay = 100) {
     const terminal = this.terminals.get(apiId)
     if (!terminal) {
       throw new Error(`Terminal session not found for API: ${apiId}`)
@@ -123,7 +186,7 @@ class ApiTerminalService extends EventEmitter {
     // 发送文本
     terminal.pty.write(text)
     
-    // 等待指定延迟后发送控制字符
+    // 短暂延迟后发送控制字符（100ms足够了，因为Claude已经准备好）
     await this.delay(delay)
     
     console.log(`[ApiTerminalService] Sending control character to ${apiId}:`, JSON.stringify(control))
@@ -138,8 +201,8 @@ class ApiTerminalService extends EventEmitter {
   /**
    * 等待命令执行完成
    */
-  async waitForCompletion(apiId, timeout = 60000) {
-    console.log(`[ApiTerminalService] Waiting for completion: ${apiId}`)
+  async waitForCompletion(apiId, timeout = 180000) { // 默认3分钟
+    console.log(`[ApiTerminalService] Waiting for completion: ${apiId} (timeout: ${timeout/1000}s)`)
     
     return new Promise((resolve) => {
       const startTime = Date.now()
@@ -147,17 +210,17 @@ class ApiTerminalService extends EventEmitter {
         // 检查是否超时
         if (Date.now() - startTime > timeout) {
           clearInterval(checkInterval)
-          console.log(`[ApiTerminalService] Completion timeout for ${apiId}`)
+          console.log(`[ApiTerminalService] Completion timeout for ${apiId} after ${timeout/1000}s`)
           resolve(this.getOutput(apiId))
         }
       }, 1000)
       
-      // 30秒后自动完成（与原实现一致）
+      // 使用传入的timeout时间自动完成
       setTimeout(() => {
         clearInterval(checkInterval)
-        console.log(`[ApiTerminalService] Auto completion after 30s: ${apiId}`)
+        console.log(`[ApiTerminalService] Auto completion after ${timeout/1000}s: ${apiId}`)
         resolve(this.getOutput(apiId))
-      }, 30000)
+      }, timeout)
     })
   }
 
@@ -195,6 +258,55 @@ class ApiTerminalService extends EventEmitter {
     console.log(`[ApiTerminalService] ✅ Session destroyed: ${apiId}`)
   }
 
+  /**
+   * 等待特定文本出现
+   */
+  async waitForText(apiId, text, timeout = 10000) {
+    const startTime = Date.now()
+    
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        const outputBuffer = this.outputBuffers.get(apiId) || []
+        const fullOutput = outputBuffer.map(o => o.data).join('')
+        
+        if (fullOutput.includes(text)) {
+          console.log(`[ApiTerminalService] Text "${text}" detected for ${apiId}`)
+          clearInterval(checkInterval)
+          resolve(true)
+        } else if (Date.now() - startTime > timeout) {
+          console.log(`[ApiTerminalService] Timeout waiting for text "${text}" for ${apiId}`)
+          clearInterval(checkInterval)
+          resolve(false)
+        }
+      }, 500)
+    })
+  }
+  
+  /**
+   * 等待Claude提示符出现
+   */
+  async waitForPrompt(apiId, timeout = 10000) {
+    const startTime = Date.now()
+    
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        const outputBuffer = this.outputBuffers.get(apiId) || []
+        const recentOutput = outputBuffer.slice(-5).map(o => o.data).join('')
+        
+        // 检查是否出现了Claude的命令提示符（> 符号）
+        if (recentOutput.includes('> ') || recentOutput.includes('│\u001b[39m\u001b[22m > ') || recentOutput.includes('> \u001b[7m')) {
+          console.log(`[ApiTerminalService] Claude prompt detected for ${apiId}`)
+          clearInterval(checkInterval)
+          resolve(true)
+        } else if (Date.now() - startTime > timeout) {
+          console.log(`[ApiTerminalService] Timeout waiting for prompt for ${apiId}`)
+          clearInterval(checkInterval)
+          resolve(false)
+        }
+      }, 500)
+    })
+  }
+  
   /**
    * 延迟函数
    */

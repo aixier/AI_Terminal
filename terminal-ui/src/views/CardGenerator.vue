@@ -631,26 +631,36 @@ const generateCard = async () => {
   // 移动端：通过 HTTP API 创建卡片
   if (device.isMobile.value) {
     isGenerating.value = true
+    let fallbackToTerminal = false
     try {
-      const templateObj = templates.value[selectedTemplate.value]
+      const templateObj = templates.value[selectedTemplate.value] || {}
+      const templateName = templateObj.fileName || 'daily-knowledge-card-template.md'
       const resp = await axios.post('/api/generate/card', {
-        templateFileName: templateObj.fileName,
-        topic: currentTopic.value.trim()
+        topic: currentTopic.value.trim(),
+        templateName
       })
-      if (resp.data.success) {
+      if (resp.data?.success) {
         ElMessage.success('卡片创建成功')
         await refreshCardFolders()
         layoutStore.switchMobileTab(MOBILE_TABS.FILES)
+        isGenerating.value = false
+        return
       } else {
-        ElMessage.error('创建失败：' + (resp.data.error || resp.data.message || '未知错误'))
+        const msg = resp.data?.message || resp.data?.error || '未知错误'
+        console.warn('[GenerateCard API] Non-success response:', msg)
+        ElMessage.warning('创建接口失败，将切换终端方式：' + msg)
+        fallbackToTerminal = true
       }
     } catch (error) {
+      const detail = error?.response?.data?.message || error?.response?.data?.error || error.message
       console.error('[GenerateCard API] Error:', error)
-      ElMessage.error('创建失败：' + error.message)
-    } finally {
-      isGenerating.value = false
+      ElMessage.warning('创建接口异常，将切换终端方式：' + detail)
+      fallbackToTerminal = true
     }
-    return
+    if (!fallbackToTerminal) {
+      return
+    }
+    // 否则继续走下方终端流程（保持 isGenerating 为 true）
   }
   
   // 首先检查连接状态
@@ -744,7 +754,7 @@ const generateCard = async () => {
     // 使用分离发送方式：先发送文本内容，等待终端准备好，再发送控制符
     await terminalService.sendTextAndControl(prompt, '\r', 1000)
     
-    generatingHint.value = '内容生成中，请耐心等待...' 
+    generatingHint.value = '内容生成中，请耐心等待...'
     
     // 不再显示临时的HTML内容，保持生成状态
     // 等待生成完成后显示实际的URL

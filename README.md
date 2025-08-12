@@ -1,562 +1,202 @@
-# AI卡片系统
-
-> 一个现代化的AI驱动的知识卡片生成和管理平台
+# AI Terminal
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-green)](https://nodejs.org/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Docker](https://img.shields.io/badge/docker-ready-blue)](https://hub.docker.com)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/contributing/CONTRIBUTING.md)
 
-AI卡片系统是一个智能的知识管理平台，结合AI技术和直观的Web界面，帮助用户高效地创建、编辑和管理知识卡片。系统集成了强大的终端功能，为高级用户提供更多操作选项。
+> 🚀 一个现代化的AI驱动终端与知识卡片生成平台
 
-## ✨ 功能特性
+AI Terminal是一个创新的平台，它将AI技术与终端操作完美结合，提供智能的知识卡片生成、管理和预览功能。通过集成Claude AI和先进的Web技术，为用户提供前所未有的智能终端体验。
 
-- 🎨 **智能卡片生成** - 基于AI技术自动生成结构化知识卡片
-- 📝 **多样化模板** - 提供丰富的卡片模板，适用于不同场景
-- 🔄 **实时预览** - 即时预览卡片效果，所见即所得
-- 💾 **多格式导出** - 支持JSON、PDF、图片等多种格式导出
-- 🖥️ **现代化界面** - 基于Vue 3 + Element Plus的直观用户界面
-- 🔒 **安全认证** - JWT认证机制，确保数据安全
-- 🌐 **Docker部署** - 支持容器化部署，公共镜像可直接使用
-- 🤖 **Claude集成** - 集成Claude AI服务，提供智能内容生成
+## ✨ 核心特性
 
-## 技术栈
+### 🤖 AI智能终端
+- **Claude集成**: 深度集成Anthropic Claude AI，支持自然语言命令
+- **实时交互**: WebSocket驱动的实时终端体验
+- **会话管理**: 智能会话隔离和资源管理
+- **命令转API**: 将任何命令行工具转换为REST API
 
-### 前端
-- Vue 3 + Vite
-- Element Plus UI
-- Pinia 状态管理
-- Socket.io Client
+### 🎨 知识卡片系统
+- **智能生成**: AI驱动的结构化知识卡片自动生成
+- **丰富模板**: 多样化的卡片模板，适用于不同场景
+- **实时预览**: 即时预览效果，所见即所得
+- **多格式导出**: 支持JSON、HTML、PDF等多种格式
 
-### 后端
-- Node.js + Express
-- Socket.io (实时通信)
-- JWT 认证
-- Claude AI API 集成
+### 📱 响应式设计
+- **移动优先**: 完整的移动端适配和触控优化
+- **自适应布局**: 智能响应不同屏幕尺寸
+- **原生体验**: 类原生应用的交互体验
 
-## 快速开始
+### 🔧 开发者友好
+- **API优先**: 完整的REST API和实时通信支持
+- **容器化**: 完整的Docker支持，一键部署
+- **可扩展**: 模块化架构，易于扩展和定制
+- **文档完善**: 详细的开发和部署文档
 
-### 1. 克隆项目
-```bash
-git clone https://github.com/aixier/AI_Terminal.git
-cd AI_Terminal
-```
+## 🚀 快速开始
 
-### 2. 安装依赖
-
-后端：
-```bash
-cd terminal-backend
-npm install
-```
-
-前端：
-```bash
-cd terminal-ui
-npm install
-```
-
-### 3. 配置环境变量
-
-后端配置 `terminal-backend/.env`：
-```env
-PORT=6000
-NODE_ENV=development
-JWT_SECRET=your-secret-key-here-change-in-production
-```
-
-### 4. 启动服务
-
-启动后端：
-```bash
-cd terminal-backend
-npm run dev
-```
-
-启动前端：
-```bash
-cd terminal-ui
-npm run dev
-```
-
-### 5. 访问系统
-
-打开浏览器访问：`http://localhost:5173`
-
-默认账号：`admin / admin123`
-
-## 🚀 生产环境部署
-
-### 环境要求
-
-- **Node.js**: 18+ 
-- **系统**: Ubuntu 20.04+ / CentOS 7+
-- **内存**: 至少 2GB RAM
-- **端口**: 80 (前端)、6000 (后端API)
-
-### 1. 安装系统依赖
-
-```bash
-# 安装 Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# 验证版本
-node --version  # 应该 >= 18.0.0
-npm --version
-
-# 安装 PM2 进程管理器
-npm install -g pm2
-
-# 安装 Claude Code (可选)
-npm install -g @anthropic-ai/claude-code
-```
-
-### 2. 克隆并部署
+### 🐳 Docker部署（推荐）
 
 ```bash
 # 克隆项目
 git clone https://github.com/aixier/AI_Terminal.git
 cd AI_Terminal
 
-# 设置权限
-chmod +x terminal-backend/deploy.sh
-chmod +x terminal-ui/deploy.sh
+# 构建并运行
+docker build -t ai-terminal .
+docker run -d -p 8080:6000 \
+  -e ANTHROPIC_AUTH_TOKEN=your_token \
+  -e ANTHROPIC_BASE_URL=your_base_url \
+  ai-terminal
 ```
 
-### 3. 部署后端 (端口 6000)
+### 💻 本地开发
 
 ```bash
-cd ~/AI_Terminal/terminal-backend
-
-# 方式1: 一键部署脚本 (推荐)
-npm run deploy
-
-# 方式2: 手动部署
-npm ci                           # 安装依赖
-pm2 start ecosystem.config.cjs   # 启动服务
-```
-
-### 4. 部署前端 (端口 80)
-
-```bash
-cd ~/AI_Terminal/terminal-ui
-
-# 方式1: 一键部署脚本 (推荐)  
-npm run deploy
-
-# 方式2: 手动部署
-npm ci                           # 安装依赖
-npm run build                    # 构建项目
-pm2 start ecosystem.config.cjs   # 启动服务
-```
-
-### 5. 验证部署
-
-```bash
-# 查看服务状态
-pm2 status
-
-# 查看日志
-pm2 logs
-
-# 测试访问
-curl http://localhost:6000/health  # 后端健康检查
-curl http://localhost/             # 前端页面
-```
-
-## 🔧 PM2 进程管理
-
-### 启动服务
-
-```bash
-# 启动所有服务
-pm2 start all
-
-# 启动单个服务
-pm2 start terminal-backend
-pm2 start terminal-ui
-```
-
-### 停止服务
-
-```bash
-# 停止所有服务
-pm2 stop all
-
-# 停止单个服务
-pm2 stop terminal-backend
-pm2 stop terminal-ui
-```
-
-### 重启服务
-
-```bash
-# 重启所有服务
-pm2 restart all
-
-# 重启单个服务
-pm2 restart terminal-backend
-pm2 restart terminal-ui
-```
-
-### 查看状态和日志
-
-```bash
-# 查看进程状态
-pm2 status
-pm2 list
-
-# 查看日志
-pm2 logs                    # 所有日志
-pm2 logs terminal-backend   # 后端日志
-pm2 logs terminal-ui        # 前端日志
-pm2 logs --lines 50         # 最近50行日志
-
-# 实时监控
-pm2 monit
-```
-
-### 开机自启
-
-```bash
-# 保存当前PM2配置
-pm2 save
-
-# 设置开机自启
-pm2 startup
-```
-
-### 删除服务
-
-```bash
-# 删除单个服务
-pm2 delete terminal-backend
-pm2 delete terminal-ui
-
-# 删除所有服务
-pm2 delete all
-```
-
-## 📦 NPM 脚本命令
-
-### 后端 (`terminal-backend`)
-
-```bash
-npm start          # 直接启动
-npm run dev        # 开发模式
-npm run prod       # 生产模式
-npm run deploy     # 一键部署
-
-# PM2 管理
-npm run pm2:start    # PM2启动
-npm run pm2:stop     # PM2停止  
-npm run pm2:restart  # PM2重启
-npm run pm2:delete   # PM2删除
-```
-
-### 前端 (`terminal-ui`)
-
-```bash
-npm run dev        # 开发模式
-npm run build      # 构建项目
-npm run serve      # 启动服务器
-npm run deploy     # 一键部署
-
-# PM2 管理  
-npm run pm2:start    # PM2启动
-npm run pm2:stop     # PM2停止
-npm run pm2:restart  # PM2重启
-npm run pm2:delete   # PM2删除
-```
-
-## 🐛 常见问题
-
-### 1. 端口被占用
-```bash
-# 查看端口占用
-sudo lsof -i :80
-sudo lsof -i :6000
-
-# 杀死进程
-sudo kill -9 <PID>
-```
-
-### 2. 权限问题
-```bash
-# 如果80端口需要root权限
-sudo pm2 start ecosystem.config.cjs
-```
-
-### 3. 内存不足
-```bash
-# 检查内存使用
-free -h
-pm2 monit
-
-# 重启服务释放内存
-pm2 restart all
-```
-
-### 4. 依赖安装失败
-```bash
-# 清理缓存重新安装
-npm cache clean --force
-rm -rf node_modules package-lock.json
+# 安装依赖
 npm install
+
+# 后端开发
+cd terminal-backend
+npm install
+npm run dev
+
+# 前端开发（新终端）
+cd terminal-ui  
+npm install
+npm run dev
 ```
 
-## 🔄 更新部署
+### 🌐 在线访问
 
-当有代码更新时，按以下步骤重新部署：
+部署完成后访问 `http://localhost:8080` 即可使用完整功能。
 
-```bash
-# 1. 拉取最新代码
-cd ~/AI_Terminal
-git pull
+## 📖 文档导航
 
-# 2. 停止现有服务
-pm2 stop all
+### 📚 用户指南
+- [🚀 快速入门](docs/user-guides/quickstart.md) - 5分钟上手指南
+- [🎨 卡片生成](docs/user-guides/card-generation.md) - 知识卡片创建与管理
+- [🖥️ 终端使用](docs/user-guides/terminal-usage.md) - AI终端操作指南
+- [📱 移动端使用](docs/user-guides/mobile-guide.md) - 移动设备使用指南
 
-# 3. 更新后端
-cd ~/AI_Terminal/terminal-backend
-npm ci                          # 更新依赖
-pm2 start ecosystem.config.cjs  # 重启服务
+### 🛠️ 开发指南
+- [🏗️ 架构概览](docs/architecture/system-architecture.md) - 系统架构设计
+- [⚡ 命令转API](docs/developer-guides/command-to-api.md) - 命令行API化指南
+- [🔌 API文档](docs/api/README.md) - 完整API参考
+- [🎨 前端开发](docs/developer-guides/frontend-development.md) - UI开发指南
+- [🔧 后端开发](docs/developer-guides/backend-development.md) - 服务端开发
 
-# 4. 更新前端  
-cd ~/AI_Terminal/terminal-ui
-npm ci                          # 更新依赖
-npm run build                   # 重新构建
-pm2 start ecosystem.config.cjs  # 重启服务
+### 🚀 部署运维  
+- [🐳 Docker部署](docs/deployment/docker.md) - 容器化部署方案
+- [☁️ 云平台部署](docs/deployment/cloud-deployment.md) - 各云平台部署指南
+- [🔧 配置管理](docs/deployment/configuration.md) - 环境配置说明
 
-# 5. 验证部署
-pm2 status
-pm2 logs --lines 10
-```
+### 🤝 贡献指南
+- [📋 贡献指南](docs/contributing/CONTRIBUTING.md) - 如何参与项目
+- [🐛 问题报告](docs/contributing/bug-report.md) - Bug反馈模板
+- [💡 功能建议](docs/contributing/feature-request.md) - 新功能建议
 
-**或使用一键更新脚本：**
-```bash
-cd ~/AI_Terminal/terminal-backend && npm run deploy
-cd ~/AI_Terminal/terminal-ui && npm run deploy
-```
+## 🛠️ 技术栈
 
-## 🐳 Docker 部署 (推荐)
+### 前端技术
+- **框架**: Vue 3 + TypeScript
+- **构建**: Vite + ESBuild  
+- **UI库**: Element Plus + 自定义组件
+- **状态管理**: Pinia
+- **通信**: Socket.io + Axios
+- **样式**: CSS3 + 响应式设计
 
-### 快速开始 - 使用公共镜像
+### 后端技术
+- **运行时**: Node.js 18+
+- **框架**: Express.js
+- **实时通信**: Socket.io + WebSocket
+- **终端**: node-pty
+- **AI集成**: Anthropic Claude API
+- **容器化**: Docker + Multi-stage Build
 
-我们提供了预构建的公共Docker镜像，任何人都可以免费使用：
+### 基础设施
+- **部署**: Docker + Docker Compose
+- **代理**: Nginx（可选）
+- **监控**: 内置健康检查
+- **日志**: 结构化日志系统
 
-```bash
-# 1. 下载配置文件
-wget https://raw.githubusercontent.com/aixier/AI_Terminal/main/docker-compose.yml
-
-# 2. 一键启动
-docker-compose up -d
-
-# 3. 访问应用
-# 前端: http://your-server-ip/
-# 后端API: http://your-server-ip:6000/
-```
-
-### Docker镜像信息
-
-**公共镜像仓库：**
-- 🖥️ 前端: `coopotfan/ai-terminal-ui:latest`
-- ⚙️ 后端: `coopotfan/ai-terminal-backend:latest`
-
-**单独运行镜像：**
-```bash
-# 运行后端
-docker run -d -p 6000:6000 --name ai-terminal-backend coopotfan/ai-terminal-backend:latest
-
-# 运行前端  
-docker run -d -p 80:80 --name ai-terminal-ui coopotfan/ai-terminal-ui:latest
-```
-
-### 生产环境 Docker 部署
-
-```bash
-# 1. 克隆配置文件
-git clone https://github.com/aixier/AI_Terminal.git
-cd AI_Terminal
-
-# 2. 配置环境变量
-cp .env.example .env
-nano .env  # 修改JWT_SECRET等配置
-
-# 3. 使用生产配置启动
-docker-compose -f docker-compose.prod.yml up -d
-
-# 4. 查看状态
-docker-compose ps
-docker-compose logs -f
-```
-
-### Docker 管理命令
-
-```bash
-# 启动服务
-docker-compose up -d
-
-# 停止服务
-docker-compose down
-
-# 查看状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f
-
-# 更新镜像
-docker-compose pull
-docker-compose up -d
-
-# 清理数据
-docker-compose down -v
-```
-
-### 自建镜像
-
-如果需要自定义构建：
-
-```bash
-# 构建镜像
-docker build -t your-username/ai-terminal-backend:latest ./terminal-backend
-docker build -t your-username/ai-terminal-ui:latest ./terminal-ui
-
-# 推送到Docker Hub
-chmod +x push-to-dockerhub.sh
-./push-to-dockerhub.sh
-```
-
-## 项目结构
+## 📊 项目结构
 
 ```
 AI_Terminal/
-├── terminal-ui/          # 前端项目
-│   ├── src/
-│   │   ├── api/         # API配置
-│   │   ├── components/  # Vue组件
-│   │   ├── router/      # 路由配置
-│   │   ├── store/       # 状态管理
-│   │   ├── services/    # 服务层
-│   │   └── views/       # 页面视图
-│   └── package.json
-│
-├── terminal-backend/     # 后端项目
-│   ├── src/
-│   │   ├── config/      # 配置文件
-│   │   ├── middleware/  # 中间件
-│   │   ├── routes/      # API路由
-│   │   ├── services/    # 业务逻辑
-│   │   ├── utils/       # 工具函数
-│   │   └── data/        # 数据文件
-│   └── package.json
-│
-├── tasklist.md          # 任务清单
-└── README.md           # 项目说明
-
+├── 📁 docs/                    # 📖 项目文档
+│   ├── user-guides/            # 👤 用户指南
+│   ├── developer-guides/       # 🛠️ 开发指南  
+│   ├── api/                    # 🔌 API文档
+│   ├── deployment/             # 🚀 部署文档
+│   ├── architecture/           # 🏗️ 架构文档
+│   └── contributing/           # 🤝 贡献指南
+├── 📁 terminal-backend/        # 🔧 后端服务
+│   ├── src/                    # 📝 源代码
+│   ├── services/               # 🔄 核心服务
+│   └── routes/                 # 🛣️ API路由
+├── 📁 terminal-ui/             # 🎨 前端应用
+│   ├── src/                    # 📝 源代码
+│   ├── components/             # 🧩 Vue组件
+│   └── views/                  # 📄 页面视图
+├── 📁 serverless/              # ☁️ 无服务器部署
+└── 🐳 Dockerfile              # 📦 容器配置
 ```
 
-## 核心功能说明
+## 🎯 核心功能展示
 
-### 1. 终端执行
-- 基于 node-pty 实现真实的终端环境
-- 支持流式输出，实时显示执行结果
-- 会话隔离，多用户同时使用
+### 🤖 AI终端交互
+```bash
+# 自然语言命令
+> 帮我生成一个关于机器学习的知识卡片
 
-### 2. 自然语言处理
-- 集成 Claude Code 服务
-- 支持自然语言转命令
-- 智能命令建议
+# 文件操作
+> 在data/cards目录创建新的卡片文件
 
-### 3. 安全机制
-- 命令白名单验证
-- 参数注入防护
-- 用户权限控制
-- 操作审计日志
+# 智能建议
+> 优化这个JSON结构的可读性
+```
 
-### 4. 界面组件
-- 终端面板：命令输入和输出显示
-- Chat面板：自然语言交互
-- 命令面板：预设命令快捷操作
-- 进度显示：执行状态可视化
-- 结果展示：文件预览和导出
+### 🎨 知识卡片生成
+- **智能模板**: 根据主题自动选择最适合的模板
+- **结构化数据**: 生成标准化的JSON格式卡片
+- **即时预览**: 实时查看卡片的渲染效果
+- **批量处理**: 支持批量生成和管理
 
-## 开发指南
+### 📱 移动端体验
+- **触控优化**: 专为触屏设备优化的交互
+- **离线支持**: 核心功能支持离线使用
+- **手势操作**: 支持滑动、缩放等手势
+- **响应式布局**: 完美适配各种屏幕尺寸
 
-### 添加新命令
-1. 编辑 `terminal-backend/src/data/commands.json`
-2. 添加命令配置，包括名称、描述、参数等
-3. 重启后端服务
+## 🔗 相关链接
 
-### 扩展Claude Code功能
-1. 编辑 `terminal-backend/src/services/claudeCodeService.js`
-2. 添加新的命令模式匹配
-3. 实现智能推断逻辑
+- [📖 在线文档](https://your-docs-site.com) 
+- [🐛 问题反馈](https://github.com/aixier/AI_Terminal/issues)
+- [💬 讨论区](https://github.com/aixier/AI_Terminal/discussions)
+- [📦 Docker镜像](https://hub.docker.com/r/your-username/ai-terminal)
 
-### 自定义UI主题
-1. 修改 `terminal-ui/src/assets/styles/`
-2. 调整 Element Plus 主题变量
-3. 重新构建前端
+## 📄 开源协议
 
-## 安全注意事项
+本项目基于 [MIT License](LICENSE) 开源协议。
 
-1. **生产环境部署前必须**：
-   - 修改 JWT_SECRET
-   - 配置 HTTPS
-   - 限制 CORS 来源
-   - 启用速率限制
+## 🙏 致谢
 
-2. **命令白名单**：
-   - 仔细审查 commands.json
-   - 避免添加危险命令
-   - 定期审计命令使用
+感谢以下开源项目和贡献者：
 
-3. **用户权限**：
-   - 实施最小权限原则
-   - 定期审查用户权限
-   - 监控异常操作
+- [Vue.js](https://vuejs.org/) - 渐进式JavaScript框架
+- [Element Plus](https://element-plus.org/) - Vue 3组件库
+- [Anthropic Claude](https://www.anthropic.com/) - AI语言模型
+- [Socket.io](https://socket.io/) - 实时通信库
+- 所有为本项目贡献代码的开发者们
 
-## 性能优化建议
+## 📞 联系我们
 
-1. **前端优化**：
-   - 启用路由懒加载
-   - 使用虚拟滚动显示大量日志
-   - 压缩静态资源
+- 项目维护者: [@aixier](https://github.com/aixier)
+- 邮箱: your-email@example.com
+- 官网: https://your-website.com
 
-2. **后端优化**：
-   - 使用 Redis 缓存会话
-   - 实施连接池管理
-   - 异步处理耗时操作
+---
 
-3. **WebSocket优化**：
-   - 启用消息压缩
-   - 实施心跳检测
-   - 合理设置超时时间
-
-## 故障排查
-
-### 终端无法连接
-1. 检查后端服务是否正常运行
-2. 确认 WebSocket 端口未被占用
-3. 查看浏览器控制台错误信息
-
-### 命令执行失败
-1. 检查命令是否在白名单中
-2. 验证用户权限是否足够
-3. 查看后端日志文件
-
-### 性能问题
-1. 检查并发会话数量
-2. 监控内存使用情况
-3. 优化数据库查询
-
-## 贡献指南
-
-欢迎提交 Issue 和 Pull Request！
-
-## 许可证
-
-本项目基于 MIT License 开源，详见 [LICENSE](LICENSE) 文件。
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+⭐ 如果这个项目对你有帮助，请给我们一个Star支持！

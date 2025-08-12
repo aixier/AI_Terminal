@@ -1,8 +1,38 @@
 {
-  "name": "ai-terminal-connection-test",
-  "version": "1.0.0",
-  "description": "AI Terminal connection test script",
+  "name": "ai-terminal",
+  "version": "2.3.0",
+  "description": "AI-Powered Terminal with Claude AI Integration - Knowledge Card Generator, Web Terminal Emulator, Command to API Converter",
   "main": "connection-test.js",
+  "keywords": [
+    "ai",
+    "terminal",
+    "claude-ai",
+    "knowledge-management",
+    "content-creation",
+    "websocket",
+    "docker",
+    "terminal-emulator",
+    "api-generator",
+    "web-terminal",
+    "ai-powered",
+    "real-time",
+    "automation",
+    "developer-tools",
+    "productivity",
+    "nodejs",
+    "vue3",
+    "typescript"
+  ],
+  "author": "aixier",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aixier/AI_Terminal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aixier/AI_Terminal/issues"
+  },
+  "homepage": "https://github.com/aixier/AI_Terminal#readme",
   "scripts": {
     "test": "node connection-test.js"
   },

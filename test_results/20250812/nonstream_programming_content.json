@@ -1,0 +1,224 @@
+{
+  "theme": {
+    "name": "daily-programming-knowledge",
+    "pageTitle": "编程技巧：代码注释的艺术",
+    "sectionTitle": "好注释胜过千行文档",
+    "sectionSubtitle": "每天学习一个编程技巧 · 第2期",
+    "gradientColor1": "#10B981",
+    "gradientColor2": "#06B6D4",
+    "gradientColor1RGB": "16, 185, 129",
+    "accentColor": "#10B981",
+    "accentColorRGB": "16, 185, 129"
+  },
+  "copy": {
+    "title": "📝 为什么你的代码注释总是画蛇添足？学会这招！",
+    "content": "每天一个编程小技巧，今天聊聊代码注释。\n\n写注释时你是否遇到过：\n• 代码改了，注释忘记更新？\n• 注释写得比代码还长？\n• 明明很简单的逻辑也要注释一遍？\n• 看别人代码，注释和实际功能对不上？\n\n注释不是越多越好！\n\n🎯 一句话解释：\n好注释解释为什么这样做，而不是做了什么。\n\n📚 7个要点写出高质量注释：\n\n1️⃣ 注释的黄金原则\n解释Why（为什么），不解释What（是什么）\n\n2️⃣ 什么时候需要注释？\n• 复杂算法的思路\n• 业务逻辑的背景\n• 临时解决方案的原因\n• 性能优化的考量\n\n3️⃣ 什么时候不需要注释？\n• 变量名已经很清楚\n• 简单的逻辑判断\n• 标准的API调用\n\n4️⃣ 注释的分类\n• 文档注释：API说明\n• 行内注释：特殊逻辑\n• TODO注释：待办事项\n• 警告注释：注意事项\n\n5️⃣ 注释的格式规范\n统一风格，方便工具生成文档\n\n6️⃣ 注释的维护\n代码变了，注释也要跟着改\n\n7️⃣ 好注释的特征\n简洁、准确、有价值、易维护\n\n💡 小测试：\n检查你最近的代码，有多少注释是在重复代码逻辑？\n\n明天预告：什么是函数设计的单一职责原则？",
+    "hashtags": "#编程技巧 #代码注释 #代码规范 #每日学习 #程序员 #代码可读性 #编程最佳实践 #软件开发",
+    "tips": "发布时间：晚8-9点（程序员学习时间）\n封面选择：第1张主卡片\n互动引导：分享见过的奇葩注释\n后续内容：编程技巧系列持续更新"
+  },
+  "cards": [
+    {
+      "type": "main",
+      "icon": "",
+      "header": "好注释胜过千行文档",
+      "subtitle": "写注释是门艺术活",
+      "content": {
+        "highlight": {
+          "number": "代码\\n注释",
+          "description": "解释Why不解释What"
+        },
+        "points": [
+          {
+            "icon": "→",
+            "text": "掌握后告别无效注释"
+          }
+        ],
+        "tags": []
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎯",
+      "header": "注释的黄金原则",
+      "subtitle": "Why比What更重要",
+      "content": {
+        "list": [
+          "❌ <strong style=\"color: #EF4444;\">// 设置用户名为John</strong>",
+          "✅ <strong style=\"color: #10B981;\">// 使用默认用户名避免登录失败</strong>",
+          "❌ <strong style=\"color: #EF4444;\">// 循环遍历数组</strong>",
+          "✅ <strong style=\"color: #10B981;\">// 按优先级排序提升用户体验</strong>"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "记住",
+          "description": "代码告诉你做什么，注释告诉你为什么"
+        },
+        "tip": "🔑 好注释解释背后的思考过程",
+        "tags": [
+          "📖 原则"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "✅",
+      "header": "什么时候需要注释？",
+      "subtitle": "这些场景必须写",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "必须注释的情况",
+          "items": [
+            "<strong>复杂算法</strong>：解释核心思路",
+            "<strong>业务规则</strong>：说明业务背景",
+            "<strong>性能优化</strong>：解释为什么这样写",
+            "<strong>临时方案</strong>：说明后续计划"
+          ]
+        },
+        "tip": "💡 别人（包括未来的你）看不懂时就需要",
+        "tags": [
+          "🔧 场景"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "❌",
+      "header": "什么时候不需要注释？",
+      "subtitle": "避免无效注释",
+      "content": {
+        "list": [
+          "变量名已经很清楚：<strong style=\"color: #10B981;\">isValidEmail</strong>",
+          "简单的逻辑：<strong style=\"color: #10B981;\">if (age >= 18)</strong>",
+          "标准API调用：<strong style=\"color: #10B981;\">JSON.parse()</strong>",
+          "显而易见的操作：<strong style=\"color: #10B981;\">return result</strong>"
+        ],
+        "tip": "🚫 过度注释等于没有注释",
+        "tags": [
+          "⚠️ 避免"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📂",
+      "header": "注释的四大分类",
+      "subtitle": "不同类型不同用法",
+      "content": {
+        "list": [
+          "<strong style=\"color: #10B981;\">文档注释</strong>：/** API说明 */",
+          "<strong style=\"color: #10B981;\">行内注释</strong>：// 特殊逻辑说明",
+          "<strong style=\"color: #10B981;\">TODO注释</strong>：// TODO: 优化算法",
+          "<strong style=\"color: #10B981;\">警告注释</strong>：// WARNING: 不要修改"
+        ],
+        "tip": "🏷️ 用对类型，注释更有条理",
+        "tags": [
+          "📝 分类"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📏",
+      "header": "注释格式规范",
+      "subtitle": "统一风格很重要",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "常见格式",
+          "items": [
+            "<strong>JSDoc</strong>：/** @param {string} name */",
+            "<strong>Python</strong>：\"\"\"函数说明\"\"\"",
+            "<strong>Java</strong>：/* 多行注释 */",
+            "<strong>行内</strong>：// 简短说明"
+          ]
+        },
+        "tip": "🎨 统一格式，工具能自动生成文档",
+        "tags": [
+          "📐 格式"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🔄",
+      "header": "注释的维护问题",
+      "subtitle": "最容易被忽视的点",
+      "content": {
+        "list": [
+          "<strong style=\"color: #EF4444;\">代码改了</strong> → 注释没改",
+          "<strong style=\"color: #EF4444;\">功能删了</strong> → 注释还在",
+          "<strong style=\"color: #EF4444;\">逻辑变了</strong> → 注释过时",
+          "解决：<strong style=\"color: #10B981;\">代码审查时检查注释</strong>"
+        ],
+        "tip": "⚠️ 过时的注释比没注释更糟糕",
+        "tags": [
+          "🛠️ 维护"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "⭐",
+      "header": "好注释的标准",
+      "subtitle": "这样的注释才有价值",
+      "content": {
+        "list": [
+          "<strong style=\"color: #10B981;\">简洁明了</strong>：一句话说清楚",
+          "<strong style=\"color: #10B981;\">准确无误</strong>：与代码保持一致",
+          "<strong style=\"color: #10B981;\">有价值</strong>：提供额外信息",
+          "<strong style=\"color: #10B981;\">易维护</strong>：代码变化时容易同步"
+        ],
+        "tip": "🌟 好注释让代码更容易理解",
+        "tags": [
+          "🎯 标准"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📚",
+      "header": "今日总结",
+      "subtitle": "记住这些注释要点",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "划重点",
+          "items": [
+            "注释解释Why，不是What",
+            "复杂逻辑和业务规则要注释",
+            "避免显而易见的无效注释",
+            "注释要与代码同步维护"
+          ]
+        },
+        "tip": "🌈 明天见：函数设计的单一职责原则",
+        "tags": [
+          "✅ 总结"
+        ]
+      }
+    }
+  ],
+  "footer": {
+    "tags": [
+      "💻 编程技巧",
+      "📚 每日学习",
+      "📝 代码规范"
+    ]
+  },
+  "export": {
+    "mainCardFilename": "主卡片-代码注释.png",
+    "cardFilenames": [
+      "2-注释黄金原则.png",
+      "3-什么时候需要注释.png",
+      "4-什么时候不需要注释.png",
+      "5-注释四大分类.png",
+      "6-注释格式规范.png",
+      "7-注释维护问题.png",
+      "8-好注释标准.png",
+      "9-今日总结.png"
+    ],
+    "zipFilename": "编程技巧-代码注释-知识卡片.zip"
+  },
+  "customStyles": "",
+  "exportAdjustments": ""
+}

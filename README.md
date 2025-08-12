@@ -1,13 +1,17 @@
-# AI Terminal
+# AI Terminal - 智能终端与AI知识卡片生成平台 | Claude AI Integration | Docker Web Terminal
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-green)](https://nodejs.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](https://hub.docker.com)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/contributing/CONTRIBUTING.md)
+[![GitHub stars](https://img.shields.io/github/stars/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/issues)
 
-> 🚀 一个现代化的AI驱动终端与知识卡片生成平台
+> 🚀 AI-Powered Terminal | AI Knowledge Card Generator | Claude AI Integration | Web-based Terminal Emulator | Docker Terminal | Real-time WebSocket Terminal
 
-AI Terminal是一个创新的平台，它将AI技术与终端操作完美结合，提供智能的知识卡片生成、管理和预览功能。通过集成Claude AI和先进的Web技术，为用户提供前所未有的智能终端体验。
+**AI Terminal** 是一个革命性的开源项目，将人工智能（AI）与终端操作无缝融合。基于 Claude AI 的强大能力，提供智能知识卡片自动生成、Web终端模拟器、实时命令执行、API转换等功能。适用于AI内容创作、知识管理、开发工具集成、教育培训等多种场景。
+
+🔥 **关键词**: AI Terminal, Claude AI, Web Terminal, Knowledge Card Generator, AI Content Creation, Terminal Emulator, Docker Terminal, WebSocket Terminal, AI-powered CLI, Command to API, 智能终端, AI知识卡片, 知识管理系统
 
 ## ✨ 核心特性
 

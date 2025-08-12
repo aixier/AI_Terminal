@@ -7,11 +7,29 @@
 [![GitHub stars](https://img.shields.io/github/stars/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/issues)
 
-> 🚀 AI-Powered Terminal | AI Knowledge Card Generator | Claude AI Integration | Web-based Terminal Emulator | Docker Terminal | Real-time WebSocket Terminal
+> 🚀 **Claude Code API** | Transform Claude Code CLI into REST API | Streaming & Non-Streaming Support | AI-Powered Terminal | Knowledge Card Generator | Docker Ready
 
-**AI Terminal** 是一个革命性的开源项目，将人工智能（AI）与终端操作无缝融合。基于 Claude AI 的强大能力，提供智能知识卡片自动生成、Web终端模拟器、实时命令执行、API转换等功能。适用于AI内容创作、知识管理、开发工具集成、教育培训等多种场景。
+## 🔥 Hot Feature: Claude Code as REST API!
 
-🔥 **关键词**: AI Terminal, Claude AI, Web Terminal, Knowledge Card Generator, AI Content Creation, Terminal Emulator, Docker Terminal, WebSocket Terminal, AI-powered CLI, Command to API, 智能终端, AI知识卡片, 知识管理系统
+**Transform Claude Code (Anthropic's coding assistant) into powerful REST APIs with streaming support!** Perfect for developers who want to integrate Claude Code into their applications without CLI limitations.
+
+```bash
+# Quick Start - Claude Code API in 30 seconds
+docker run -d -p 8082:6000 aixier/ai-terminal:latest
+
+# Test Claude Code API
+curl -X POST http://localhost:8082/api/generate/card \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "Your Topic"}'
+```
+
+📖 **[Full Claude Code API Documentation →](CLAUDE_CODE_API.md)**
+
+---
+
+**AI Terminal** 是一个革命性的开源项目，**核心特性是将 Claude Code 转换为 REST API**，支持流式和非流式响应。同时提供智能知识卡片自动生成、Web终端模拟器、实时命令执行等功能。
+
+🔥 **热点功能**: Claude Code API化, Claude Code REST API, Claude Code Streaming, 流式API, 非流式API, Claude集成, AI Terminal, 智能终端, AI知识卡片
 
 ## ✨ 核心特性
 

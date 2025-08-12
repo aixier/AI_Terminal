@@ -1,11 +1,13 @@
-# AI Terminal - 智能终端与AI知识卡片生成平台 | Claude AI Integration | Docker Web Terminal
+# AI Terminal - Transform Claude Code & Any CLI into REST API | One-Click Deploy
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-green)](https://nodejs.org/)
-[![Docker](https://img.shields.io/badge/docker-ready-blue)](https://hub.docker.com)
+[![Docker Ready](https://img.shields.io/badge/Docker-Ready-blue)](https://hub.docker.com/r/aixier/ai-terminal)
+[![Claude Code API](https://img.shields.io/badge/Claude%20Code-API-purple)](CLAUDE_CODE_API.md)
+[![Deploy Time](https://img.shields.io/badge/Deploy-30%20seconds-green)](DEMO.md)
+[![GitHub stars](https://img.shields.io/github/stars/aixier/AI_Terminal?style=social)](https://github.com/aixier/AI_Terminal/stargazers)
+[![GitHub last commit](https://img.shields.io/github/last-commit/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/commits)
+[![GitHub release](https://img.shields.io/github/v/release/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/releases)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/contributing/CONTRIBUTING.md)
-[![GitHub stars](https://img.shields.io/github/stars/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/issues)
 
 > 🚀 **Universal CLI-to-API Platform** | Transform ANY CLI Tool into REST API | Claude Code, Gemini, Cursor & More | Streaming Support | Docker Ready
 
@@ -16,6 +18,8 @@
 ### 🔥 Current Hot Feature: Claude Code API!
 
 **Transform Claude Code into REST APIs with streaming support!** This is just the beginning - imagine having API access to every professional CLI tool.
+
+### 🎬 [See Live Demo](DEMO.md) | 🚀 [Quick Start](CLAUDE_CODE_API_QUICKSTART.md) | 📖 [Full Docs](CLAUDE_CODE_API.md)
 
 ```bash
 # Quick Start - Claude Code API in 30 seconds

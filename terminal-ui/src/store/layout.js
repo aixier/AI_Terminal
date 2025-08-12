@@ -19,7 +19,8 @@ export const MOBILE_TABS = {
 export const MOBILE_TAB_ORDER = [
   MOBILE_TABS.CREATE,
   MOBILE_TABS.FILES,
-  MOBILE_TABS.PREVIEW,
+  // 移动端不再保留独立预览Tab
+  // MOBILE_TABS.PREVIEW,
   MOBILE_TABS.TERMINAL
 ]
 

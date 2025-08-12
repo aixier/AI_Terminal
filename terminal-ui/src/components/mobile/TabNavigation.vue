@@ -126,13 +126,6 @@ const tabs = computed(() => {
       badge: 0
     },
     {
-      key: MOBILE_TABS.PREVIEW,
-      label: '预览',
-      icon: '👁️',
-      description: '卡片内容预览显示',
-      badge: 0
-    },
-    {
       key: MOBILE_TABS.TERMINAL,
       label: 'Terminal',
       icon: '💻',

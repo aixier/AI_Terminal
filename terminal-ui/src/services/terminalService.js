@@ -40,6 +40,12 @@ class TerminalService {
     this.getWsUrl = () => {
       const origin = window.location.origin
       console.log('[TerminalService] Using same-origin WebSocket base:', origin)
+      console.log('[TerminalService] Current location:', {
+        protocol: window.location.protocol,
+        hostname: window.location.hostname,
+        port: window.location.port,
+        origin: window.location.origin
+      })
       return origin
     }
   }
@@ -145,6 +151,12 @@ class TerminalService {
 
       // 创建socket连接（同源默认设置）
       // 在云环境中，强制使用polling，避免WebSocket frame header问题
+      console.log('[TerminalService] 开始创建Socket.IO连接:', {
+        wsUrl,
+        path: '/socket.io',
+        transports: ['polling']
+      })
+      
       this.socket = io(wsUrl, {
         path: '/socket.io',
         transports: ['polling'], // 仅使用polling，避免云环境WebSocket问题
@@ -156,6 +168,8 @@ class TerminalService {
         rememberUpgrade: false,
         forceNew: true // 强制新连接
       })
+      
+      console.log('[TerminalService] Socket.IO实例已创建:', this.socket)
       
       console.log('[TerminalService] Socket created, waiting for connection...')
 

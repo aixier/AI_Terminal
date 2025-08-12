@@ -1,6 +1,9 @@
 <template>
-  <!-- Main Layout (直接显示，不等待初始化) -->
-  <div class="card-generator-layout">
+  <!-- ResponsiveLayout Wrapper -->
+  <ResponsiveLayout>
+    <!-- Desktop Layout -->
+    <template #desktop-layout>
+      <div class="card-generator-layout">
     <!-- Connection Status Bar -->
     <div v-if="!isConnected" class="connection-status-bar">
       <span class="status-icon">⚠️</span>
@@ -226,11 +229,254 @@
         </div>
       </div>
     </div>
-  </div>
+      </div>
+    </template>
+    
+    <!-- Mobile Layout -->
+    <template #mobile-layout="slotProps">
+      <div class="mobile-view-content">
+        <!-- 创建卡片 Tab -->
+        <div v-if="currentMobileTab === 'create'" class="mobile-tab-content create-tab">
+          <!-- 移动端紧凑型创建界面 -->
+          <div class="mobile-create-container">
+            <!-- 主题输入区域 - 置顶 -->
+            <div class="mobile-input-section">
+              <div class="input-label">📝 输入主题</div>
+              <div class="input-wrapper">
+                <input 
+                  v-model="currentTopic"
+                  type="text"
+                  class="mobile-topic-input"
+                  placeholder="请输入想要创建的卡片主题..."
+                />
+                <button 
+                  class="mobile-create-btn"
+                  @click="generateCard"
+                  :disabled="!currentTopic.trim() || isGenerating"
+                >
+                  {{ isGenerating ? '生成中...' : '创建卡片' }}
+                </button>
+              </div>
+            </div>
+            
+            <!-- 模板选择区域 - 紧凑型 -->
+            <div class="mobile-template-section">
+              <div class="template-header">
+                <span class="header-icon">🎨</span>
+                <span class="header-text">选择模板</span>
+                <span class="template-count">({{ templates.length }}个)</span>
+              </div>
+              
+              <div class="mobile-template-grid">
+                <div 
+                  v-for="(template, index) in templates" 
+                  :key="index"
+                  class="mobile-template-card"
+                  :class="{ active: selectedTemplate === index }"
+                  @click="selectTemplate(index)"
+                >
+                  <div class="template-icon">📄</div>
+                  <div class="template-info">
+                    <div class="template-name">{{ template.name }}</div>
+                    <div class="template-desc">{{ template.description }}</div>
+                  </div>
+                  <div class="template-check" v-if="selectedTemplate === index">✓</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 快速操作区域 -->
+            <div class="mobile-quick-actions">
+              <button class="quick-action-btn" @click="clearTopic">
+                <span class="btn-icon">🗑️</span>
+                <span class="btn-text">清空</span>
+              </button>
+              <button class="quick-action-btn" @click="randomTopic">
+                <span class="btn-icon">🎲</span>
+                <span class="btn-text">随机主题</span>
+              </button>
+              <button class="quick-action-btn" @click="showHistory">
+                <span class="btn-icon">📚</span>
+                <span class="btn-text">历史</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 文件 Tab -->
+        <div v-else-if="currentMobileTab === 'files'" class="mobile-tab-content files-tab">
+          <!-- Left Sidebar Content (My Cards) -->
+          <div class="mobile-sidebar-header">
+            <span class="sidebar-title">我的卡片</span>
+            <span v-if="isConnected" class="connection-indicator" title="已连接">🟢</span>
+            <span v-else class="connection-indicator" title="未连接">🔴</span>
+            <button class="refresh-btn" @click="refreshCardFolders" title="刷新">🔄</button>
+          </div>
+          
+          <div class="mobile-folder-tree">
+            <div 
+              v-for="folder in cardFolders" 
+              :key="folder.id"
+              class="folder-container"
+            >
+              <div 
+                class="folder-item"
+                :class="{ expanded: expandedFolders.includes(folder.id) }"
+                @click="toggleFolder(folder.id)"
+              >
+                <span class="folder-icon">{{ expandedFolders.includes(folder.id) ? '📂' : '📁' }}</span>
+                <span class="folder-name">{{ folder.name }}</span>
+                <span class="folder-count">({{ folder.cards?.length || 0 }})</span>
+                <button 
+                  class="delete-folder-btn"
+                  @click.stop="deleteFolder(folder)"
+                  title="删除文件夹"
+                >
+                  🗑️
+                </button>
+              </div>
+              
+              <div v-if="expandedFolders.includes(folder.id)" class="cards-list">
+                <div 
+                  v-for="card in folder.cards" 
+                  :key="card.id"
+                  class="card-item"
+                  :class="{ active: selectedCard === card.id }"
+                  @click="selectCard(card.id, folder.id)"
+                >
+                  <span class="card-icon">{{ getFileIcon(card.name) }}</span>
+                  <span class="card-name">{{ card.name }}</span>
+                  <div class="card-actions">
+                    <button 
+                      class="delete-card-btn"
+                      @click.stop="deleteCardFile(card, folder)"
+                      title="删除文件"
+                    >
+                      ❌
+                    </button>
+                    <span class="card-type">{{ getFileType(card.name) }}</span>
+                    <button 
+                      v-if="card.name.toLowerCase().endsWith('.json')"
+                      :id="`generate-html-btn-${card.id}`"
+                      class="generate-html-btn"
+                      @click.stop="generateHtmlFromJson(card, folder)"
+                      :disabled="isGeneratingHtml[card.id]"
+                      title="生成HTML"
+                    >
+                      <svg v-if="!isGeneratingHtml[card.id]" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                        <path d="M8.646 6.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L10.293 9 8.646 7.354a.5.5 0 0 1 0-.708z"/>
+                      </svg>
+                      <span v-else class="loading-spinner">⟳</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div v-if="cardFolders.length === 0" class="empty-message">
+              暂无卡片文件夹
+            </div>
+          </div>
+        </div>
+        
+        <!-- 预览 Tab -->
+        <div v-else-if="currentMobileTab === 'preview'" class="mobile-tab-content preview-tab">
+          <div class="mobile-preview-header">
+            <span>{{ selectedCard ? '卡片内容预览' : '生成结果预览' }}</span>
+            <span v-if="selectedCard && previewType" class="preview-type-tag">{{ previewType.toUpperCase() }}</span>
+          </div>
+          
+          <!-- Tab 切换区域 (移动端版本) -->
+          <div v-if="previewType === 'iframe' && responseUrls.shareLink && responseUrls.originalUrl" class="mobile-preview-tabs">
+            <div 
+              class="mobile-preview-tab" 
+              :class="{ active: activePreviewTab === 'shareLink' }"
+              @click="switchPreviewTab('shareLink')"
+            >
+              <span class="tab-icon">🔗</span>
+              <span class="tab-label">分享链接</span>
+            </div>
+            <div 
+              class="mobile-preview-tab" 
+              :class="{ active: activePreviewTab === 'originalUrl' }"
+              @click="switchPreviewTab('originalUrl')"
+            >
+              <span class="tab-icon">📄</span>
+              <span class="tab-label">原始HTML</span>
+            </div>
+          </div>
+          
+          <div class="mobile-preview-content">
+            <!-- 生成中的进度提示 -->
+            <div v-if="isGenerating" class="generating-state">
+              <div class="generating-loader">
+                <div class="loader-spinner"></div>
+                <div class="generating-text">正在生成...</div>
+                <div class="generating-hint">{{ generatingHint }}</div>
+              </div>
+            </div>
+            
+            <!-- SmartUrlPreview 组件 -->
+            <SmartUrlPreview 
+              v-else-if="(previewType === 'html' || previewType === 'iframe') && responseUrls.shareLink && responseUrls.originalUrl"
+              :url="activePreviewTab === 'originalUrl' ? responseUrls.originalUrl : responseUrls.shareLink"
+              :key="activePreviewTab"
+            />
+            
+            <SmartUrlPreview 
+              v-else-if="(previewType === 'html' || previewType === 'iframe') && previewContent"
+              :url="previewContent"
+            />
+            
+            <!-- JSON文件使用验证JSON查看器 -->
+            <ValidatedJsonViewer 
+              v-else-if="previewContent && previewType === 'json'"
+              :data="previewContent"
+              class="json-viewer-preview"
+              @fixed="handleJsonFixed"
+            />
+            
+            <!-- 默认内容 -->
+            <div v-else class="empty-state">
+              {{ selectedCard ? '加载卡片内容...' : '等待生成卡片...' }}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Terminal Tab -->
+        <div v-else-if="currentMobileTab === 'terminal'" class="mobile-tab-content terminal-tab">
+          <div class="mobile-terminal-header">
+            <span class="terminal-title">Terminal</span>
+            <div class="terminal-status">
+              <span v-if="isInitializingClaude">🔄 初始化中...</span>
+              <span v-else-if="isClaudeInitialized">✅ Claude已就绪</span>
+              <span v-else>⚪ Claude未初始化</span>
+              
+              <!-- 流式状态指示器 -->
+              <div v-if="streamingStatus.isStreaming" class="streaming-indicator">
+                <span class="streaming-dot"></span>
+                <span>接收中... ({{ Math.round(streamingStatus.bufferLength / 1024) }}KB)</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mobile-terminal-content" ref="terminalContainer">
+            <!-- Terminal will be mounted here -->
+          </div>
+        </div>
+      </div>
+    </template>
+    
+    <!-- Mobile Navigation -->
+    <template #mobile-navigation>
+      <TabNavigation />
+    </template>
+  </ResponsiveLayout>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import 'xterm/css/xterm.css'
 import terminalAPI from '../api/terminal'
@@ -239,6 +485,10 @@ import cardGeneratorAPI from '../api/cardGenerator'
 import sseService from '../services/sseService'
 import ValidatedJsonViewer from '../components/ValidatedJsonViewer.vue'
 import SmartUrlPreview from '../components/SmartUrlPreview.vue'
+import ResponsiveLayout from '../layouts/ResponsiveLayout.vue'
+import TabNavigation from '../components/mobile/TabNavigation.vue'
+import { useDevice } from '../composables/useDevice.js'
+import { useLayoutStore } from '../store/layout.js'
 
 // State
 const currentTopic = ref('')
@@ -277,6 +527,12 @@ const isSSEConnected = ref(false)
 
 // Terminal Service
 let terminalService = null
+let terminalInitialized = ref(false)
+
+// 设备和布局检测
+const device = useDevice()
+const layoutStore = useLayoutStore()
+const currentMobileTab = computed(() => layoutStore.activeMobileTab)
 
 // WebSocket连接状态
 const isConnected = ref(false)
@@ -491,9 +747,34 @@ const generateCard = async () => {
   }
 }
 
+// Smart Terminal initialization - only when needed
+const initializeTerminalWhenNeeded = async () => {
+  // 桌面端直接初始化
+  if (device.isDesktop.value) {
+    return await initializeXTerm()
+  }
+  
+  // 移动端只在切换到Terminal Tab时初始化
+  if (device.isMobile.value && layoutStore.activeMobileTab === 'terminal') {
+    return await initializeXTerm()
+  }
+  
+  // 其他情况延迟初始化
+  console.log('[Terminal] Delaying terminal initialization for mobile device')
+  return true
+}
+
 // Initialize XTerm
 const initializeXTerm = async () => {
-  if (!terminalContainer.value) return
+  if (!terminalContainer.value) {
+    console.log('[Terminal] Terminal container not available, skipping initialization')
+    return false
+  }
+  
+  if (terminalInitialized.value) {
+    console.log('[Terminal] Terminal already initialized')
+    return true
+  }
   
   try {
     console.log('[Terminal] Starting terminal initialization...')
@@ -540,6 +821,7 @@ const initializeXTerm = async () => {
       terminalService.terminal.write('\r\n')
     }
     
+    terminalInitialized.value = true
     console.log('[Terminal] Initialized successfully')
   } catch (error) {
     console.error('[Terminal] Failed to initialize:', error)
@@ -1517,8 +1799,29 @@ const deleteCardFile = async (card, folder) => {
   }
 }
 
+// Watch for mobile tab changes to initialize terminal when needed
+watch(() => layoutStore.activeMobileTab, async (newTab) => {
+  if (newTab === 'terminal' && device.isMobile.value && !terminalInitialized.value) {
+    console.log('[Terminal] Mobile user switched to terminal tab, initializing...')
+    try {
+      await nextTick() // Wait for DOM update
+      await initializeXTerm()
+      // Initialize Claude after terminal is ready
+      setTimeout(() => {
+        console.log('[CardGenerator] Attempting to initialize Claude for mobile...')
+        initializeClaude().catch(err => {
+          console.warn('[CardGenerator] Claude initialization failed on mobile:', err)
+        })
+      }, 1000)
+    } catch (err) {
+      console.warn('[CardGenerator] Mobile terminal initialization failed:', err)
+    }
+  }
+}, { immediate: false })
+
 // Initialize
 onMounted(async () => {
+  console.log('[CardGenerator] mounted. device:', device.deviceType.value, 'mobile?', device.isMobile.value, 'tab:', currentMobileTab.value)
   console.log('[CardGenerator] Component mounted, starting initialization...')
   
   // Load initial data (non-blocking)
@@ -1533,21 +1836,23 @@ onMounted(async () => {
     checkAndGenerateMissingHtml()
   }, 3000)  // 延迟3秒，让页面完全加载
   
-  // Initialize terminal after DOM is ready (non-blocking)
+  // Initialize terminal smartly based on device type
   nextTick(() => {
     setTimeout(async () => {
       try {
-        await initializeXTerm()
-        console.log('[CardGenerator] Terminal initialized')
-        
-        // Try to initialize Claude after terminal is ready (non-blocking)
-        setTimeout(() => {
-          console.log('[CardGenerator] Attempting to initialize Claude...')
-          initializeClaude().catch(err => {
-            console.warn('[CardGenerator] Claude initialization failed:', err)
-            ElMessage.warning('Claude 初始化失败，部分功能可能不可用')
-          })
-        }, 2000)
+        const initialized = await initializeTerminalWhenNeeded()
+        if (initialized && terminalInitialized.value) {
+          console.log('[CardGenerator] Terminal initialized')
+          
+          // Try to initialize Claude after terminal is ready (non-blocking)
+          setTimeout(() => {
+            console.log('[CardGenerator] Attempting to initialize Claude...')
+            initializeClaude().catch(err => {
+              console.warn('[CardGenerator] Claude initialization failed:', err)
+              ElMessage.warning('Claude 初始化失败，部分功能可能不可用')
+            })
+          }, 2000)
+        }
       } catch (err) {
         console.warn('[CardGenerator] Terminal initialization failed:', err)
         ElMessage.warning('终端初始化失败，部分功能可能不可用')
@@ -1559,6 +1864,7 @@ onMounted(async () => {
 
 // Cleanup
 onUnmounted(() => {
+  console.log('[CardGenerator] unmounted')
   console.log('[CardGenerator] Component unmounting, cleaning up...')
   
   // 断开SSE连接
@@ -1574,6 +1880,10 @@ onUnmounted(() => {
   if (terminalService) {
     terminalService.cleanup()
   }
+})
+
+watch(currentMobileTab, (to, from) => {
+  console.log('[CardGenerator] currentMobileTab changed:', { from, to })
 })
 </script>
 
@@ -2493,5 +2803,276 @@ onUnmounted(() => {
   top: 10px;
   right: 340px; /* 右侧栏宽度320px + 20px间距 */
   z-index: 100;
+}
+
+/* ===========================
+   移动端优化样式
+   =========================== */
+
+.mobile-create-container {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mobile-input-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.input-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #58a6ff;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-topic-input {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #f0f6fc;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.mobile-topic-input:focus {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.1);
+}
+
+.mobile-topic-input::placeholder {
+  color: #8b949e;
+}
+
+.mobile-create-btn {
+  background: linear-gradient(135deg, #58a6ff, #0969da);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 48px;
+}
+
+.mobile-create-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+}
+
+.mobile-create-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mobile-template-section {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.template-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 12px 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #f0f6fc;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+.header-icon {
+  font-size: 18px;
+}
+
+.header-text {
+  flex: 1;
+}
+
+.template-count {
+  color: #8b949e;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.mobile-template-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.mobile-template-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  position: relative;
+}
+
+.mobile-template-card:hover {
+  border-color: #58a6ff;
+  background: rgba(88, 166, 255, 0.05);
+}
+
+.mobile-template-card.active {
+  border-color: #58a6ff;
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.template-icon {
+  font-size: 24px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.template-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.template-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f0f6fc;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.template-desc {
+  font-size: 12px;
+  color: #8b949e;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.template-check {
+  color: #58a6ff;
+  font-size: 18px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.mobile-quick-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quick-action-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px 8px;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 60px;
+}
+
+.quick-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f6fc;
+  transform: translateY(-1px);
+}
+
+.btn-icon {
+  font-size: 18px;
+}
+
+.btn-text {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* 移动端滚动条优化 */
+.mobile-template-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mobile-template-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mobile-template-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* 确保移动端Tab内容不被底部导航遮挡 */
+.mobile-tab-content {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 移动端响应式优化 */
+@media (max-width: 400px) {
+  .mobile-create-container {
+    padding: 12px;
+    gap: 16px;
+  }
+  
+  .mobile-input-section {
+    padding: 12px;
+  }
+  
+  .mobile-topic-input {
+    font-size: 14px;
+    padding: 12px;
+  }
+  
+  .mobile-create-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .template-name {
+    font-size: 13px;
+  }
+  
+  .template-desc {
+    font-size: 11px;
+  }
 }
 </style>

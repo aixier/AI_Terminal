@@ -3,6 +3,7 @@ import './style.css'
 import './styles/fluent-theme.css'
 // 导入设计系统
 import './design-system/global.css'
+import './design-system/responsive.css'
 import { DesignSystemPlugin } from './design-system'
 import App from './App.vue'
 

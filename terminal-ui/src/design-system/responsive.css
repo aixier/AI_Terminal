@@ -1,0 +1,510 @@
+/**
+ * 响应式CSS工具类库
+ * 为AI Terminal提供跨设备的样式工具类
+ */
+
+/* ===========================
+   响应式CSS变量定义
+   =========================== */
+
+:root {
+  /* 响应式断点 */
+  --breakpoint-mobile: 320px;
+  --breakpoint-mobile-large: 425px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-laptop: 1024px;
+  --breakpoint-desktop: 1440px;
+  --breakpoint-wide: 1920px;
+  
+  /* 移动端间距变量 */
+  --spacing-mobile-tabbar: 60px;
+  --spacing-mobile-padding: 12px;
+  --spacing-mobile-gap: 8px;
+  --spacing-mobile-margin: 8px;
+  --spacing-mobile-touch-target: 44px;
+  --spacing-mobile-safe-area: env(safe-area-inset-bottom);
+  --spacing-mobile-view-height: calc(100vh - 60px);
+  
+  /* 平板端间距变量 */
+  --spacing-tablet-sidebar: 200px;
+  --spacing-tablet-padding: 16px;
+  --spacing-tablet-gap: 12px;
+  --spacing-tablet-margin: 12px;
+  --spacing-tablet-drawer-width: 280px;
+  
+  /* 桌面端间距变量 */
+  --spacing-desktop-sidebar: 240px;
+  --spacing-desktop-right-sidebar: 320px;
+  --spacing-desktop-padding: 20px;
+  --spacing-desktop-gap: 16px;
+  --spacing-desktop-margin: 16px;
+}
+
+/* ===========================
+   显示/隐藏工具类
+   =========================== */
+
+/* 移动端显示/隐藏 */
+.hide-mobile {
+  @media (max-width: 767px) {
+    display: none !important;
+  }
+}
+
+.show-mobile {
+  display: none !important;
+  
+  @media (max-width: 767px) {
+    display: block !important;
+  }
+}
+
+.show-mobile-flex {
+  display: none !important;
+  
+  @media (max-width: 767px) {
+    display: flex !important;
+  }
+}
+
+.show-mobile-inline {
+  display: none !important;
+  
+  @media (max-width: 767px) {
+    display: inline !important;
+  }
+}
+
+/* 平板端显示/隐藏 */
+.hide-tablet {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    display: none !important;
+  }
+}
+
+.show-tablet {
+  display: none !important;
+  
+  @media (min-width: 768px) and (max-width: 1023px) {
+    display: block !important;
+  }
+}
+
+.show-tablet-flex {
+  display: none !important;
+  
+  @media (min-width: 768px) and (max-width: 1023px) {
+    display: flex !important;
+  }
+}
+
+/* 桌面端显示/隐藏 */
+.hide-desktop {
+  @media (min-width: 1024px) {
+    display: none !important;
+  }
+}
+
+.show-desktop {
+  display: none !important;
+  
+  @media (min-width: 1024px) {
+    display: block !important;
+  }
+}
+
+.show-desktop-flex {
+  display: none !important;
+  
+  @media (min-width: 1024px) {
+    display: flex !important;
+  }
+}
+
+/* 触摸设备显示/隐藏 */
+.hide-touch {
+  @media (hover: none) and (pointer: coarse) {
+    display: none !important;
+  }
+}
+
+.show-touch {
+  display: none !important;
+  
+  @media (hover: none) and (pointer: coarse) {
+    display: block !important;
+  }
+}
+
+/* 悬停设备显示/隐藏 */
+.hide-hover {
+  @media (hover: hover) and (pointer: fine) {
+    display: none !important;
+  }
+}
+
+.show-hover {
+  display: none !important;
+  
+  @media (hover: hover) and (pointer: fine) {
+    display: block !important;
+  }
+}
+
+/* ===========================
+   响应式布局工具类
+   =========================== */
+
+/* 弹性布局响应式 */
+.flex-mobile-column {
+  display: flex;
+  
+  @media (max-width: 767px) {
+    flex-direction: column;
+  }
+}
+
+.flex-tablet-column {
+  display: flex;
+  
+  @media (min-width: 768px) and (max-width: 1023px) {
+    flex-direction: column;
+  }
+}
+
+.flex-desktop-row {
+  display: flex;
+  
+  @media (min-width: 1024px) {
+    flex-direction: row;
+  }
+}
+
+.flex-mobile-center {
+  @media (max-width: 767px) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+/* 响应式网格布局 */
+.grid-mobile-1 {
+  @media (max-width: 767px) {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+.grid-tablet-2 {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.grid-desktop-3 {
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.grid-desktop-4 {
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ===========================
+   响应式间距工具类
+   =========================== */
+
+/* 内边距响应式 */
+.p-mobile-sm {
+  @media (max-width: 767px) {
+    padding: var(--spacing-mobile-padding);
+  }
+}
+
+.p-tablet-md {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    padding: var(--spacing-tablet-padding);
+  }
+}
+
+.p-desktop-lg {
+  @media (min-width: 1024px) {
+    padding: var(--spacing-desktop-padding);
+  }
+}
+
+/* 外边距响应式 */
+.m-mobile-sm {
+  @media (max-width: 767px) {
+    margin: var(--spacing-mobile-margin);
+  }
+}
+
+.m-tablet-md {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    margin: var(--spacing-tablet-margin);
+  }
+}
+
+.m-desktop-lg {
+  @media (min-width: 1024px) {
+    margin: var(--spacing-desktop-margin);
+  }
+}
+
+/* 间隙响应式 */
+.gap-mobile-sm {
+  @media (max-width: 767px) {
+    gap: var(--spacing-mobile-gap);
+  }
+}
+
+.gap-tablet-md {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    gap: var(--spacing-tablet-gap);
+  }
+}
+
+.gap-desktop-lg {
+  @media (min-width: 1024px) {
+    gap: var(--spacing-desktop-gap);
+  }
+}
+
+/* ===========================
+   响应式文字工具类
+   =========================== */
+
+/* 字体大小响应式 */
+.text-mobile-sm {
+  @media (max-width: 767px) {
+    font-size: 14px;
+  }
+}
+
+.text-mobile-md {
+  @media (max-width: 767px) {
+    font-size: 16px;
+  }
+}
+
+.text-mobile-lg {
+  @media (max-width: 767px) {
+    font-size: 18px;
+  }
+}
+
+.text-tablet-base {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    font-size: 15px;
+  }
+}
+
+.text-desktop-base {
+  @media (min-width: 1024px) {
+    font-size: 14px;
+  }
+}
+
+/* 文字对齐响应式 */
+.text-mobile-center {
+  @media (max-width: 767px) {
+    text-align: center;
+  }
+}
+
+.text-tablet-left {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    text-align: left;
+  }
+}
+
+.text-desktop-left {
+  @media (min-width: 1024px) {
+    text-align: left;
+  }
+}
+
+/* ===========================
+   移动端专用工具类
+   =========================== */
+
+/* 移动端底部Tab栏高度 */
+.mobile-tabbar-height {
+  @media (max-width: 767px) {
+    height: var(--spacing-mobile-tabbar);
+  }
+}
+
+/* 移动端视图容器高度 */
+.mobile-view-height {
+  @media (max-width: 767px) {
+    height: var(--spacing-mobile-view-height);
+  }
+}
+
+/* 移动端安全区域适配 */
+.mobile-safe-area {
+  @media (max-width: 767px) {
+    padding-bottom: var(--spacing-mobile-safe-area);
+  }
+}
+
+/* 移动端触摸目标尺寸 */
+.mobile-touch-target {
+  @media (max-width: 767px) {
+    min-height: var(--spacing-mobile-touch-target);
+    min-width: var(--spacing-mobile-touch-target);
+  }
+}
+
+/* 移动端全屏容器 */
+.mobile-fullscreen {
+  @media (max-width: 767px) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+  }
+}
+
+/* 移动端滚动容器 */
+.mobile-scroll {
+  @media (max-width: 767px) {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ===========================
+   平板端专用工具类
+   =========================== */
+
+/* 平板端抽屉宽度 */
+.tablet-drawer-width {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    width: var(--spacing-tablet-drawer-width);
+  }
+}
+
+/* 平板端侧栏宽度 */
+.tablet-sidebar-width {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    width: var(--spacing-tablet-sidebar);
+  }
+}
+
+/* ===========================
+   桌面端专用工具类
+   =========================== */
+
+/* 桌面端左侧栏宽度 */
+.desktop-sidebar-width {
+  @media (min-width: 1024px) {
+    width: var(--spacing-desktop-sidebar);
+  }
+}
+
+/* 桌面端右侧栏宽度 */
+.desktop-right-sidebar-width {
+  @media (min-width: 1024px) {
+    width: var(--spacing-desktop-right-sidebar);
+  }
+}
+
+/* ===========================
+   响应式容器工具类
+   =========================== */
+
+.container-mobile {
+  @media (max-width: 767px) {
+    width: 100%;
+    padding: 0 var(--spacing-mobile-padding);
+  }
+}
+
+.container-tablet {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    width: 100%;
+    max-width: 768px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-tablet-padding);
+  }
+}
+
+.container-desktop {
+  @media (min-width: 1024px) {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-desktop-padding);
+  }
+}
+
+/* ===========================
+   响应式动画和过渡
+   =========================== */
+
+/* 移动端优化的过渡效果 */
+.transition-mobile-fast {
+  @media (max-width: 767px) {
+    transition-duration: 200ms;
+  }
+}
+
+.transition-mobile-smooth {
+  @media (max-width: 767px) {
+    transition: transform 300ms ease-out;
+  }
+}
+
+/* 桌面端过渡效果 */
+.transition-desktop-smooth {
+  @media (min-width: 1024px) {
+    transition: all 250ms ease-in-out;
+  }
+}
+
+/* ===========================
+   响应式滚动条样式
+   =========================== */
+
+.scrollbar-mobile-thin {
+  @media (max-width: 767px) {
+    scrollbar-width: thin;
+  }
+  
+  @media (max-width: 767px) {
+    &::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+  }
+}
+
+.scrollbar-desktop {
+  @media (min-width: 1024px) {
+    &::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: var(--color-bg-subtle);
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: var(--color-border-default);
+      border-radius: 4px;
+    }
+  }
+}

@@ -14,7 +14,7 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
 }
 
 #app {
@@ -23,11 +23,11 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
   width: 100%;
-  height: 100vh;
+  height: 100%;
   position: relative;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: hidden; /* 局部控制，由内部容器负责滚动 */
 }
 
 * {

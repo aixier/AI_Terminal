@@ -5,10 +5,11 @@
 
 // 导入所有设计令牌
 import colors, { generateCSSVariables as generateColorVars } from './tokens/colors.js'
-import spacing, { generateSpacingVariables } from './tokens/spacing.js'
+import spacing, { generateSpacingVariables, generateResponsiveSpacingVariables } from './tokens/spacing.js'
 import typography, { generateTypographyVariables } from './tokens/typography.js'
 import animations from './tokens/animations.js'
 import shadows, { generateShadowVariables } from './tokens/shadows.js'
+import breakpoints, { generateBreakpointVariables } from './tokens/breakpoints.js'
 
 // 设计系统对象
 export const designSystem = {
@@ -16,7 +17,8 @@ export const designSystem = {
   spacing,
   typography,
   animations,
-  shadows
+  shadows,
+  breakpoints
 }
 
 // 生成所有CSS变量
@@ -24,8 +26,10 @@ export function generateAllCSSVariables() {
   return {
     ...generateColorVars(),
     ...generateSpacingVariables(),
+    ...generateResponsiveSpacingVariables(),
     ...generateTypographyVariables(),
-    ...generateShadowVariables()
+    ...generateShadowVariables(),
+    ...generateBreakpointVariables()
   }
 }
 
@@ -67,7 +71,7 @@ export const DesignSystemPlugin = {
 }
 
 // 导出所有令牌
-export { colors, spacing, typography, animations, shadows }
+export { colors, spacing, typography, animations, shadows, breakpoints }
 
 // 导出工具函数
 export * from './tokens/colors.js'
@@ -75,5 +79,6 @@ export * from './tokens/spacing.js'
 export * from './tokens/typography.js'
 export * from './tokens/animations.js'
 export * from './tokens/shadows.js'
+export * from './tokens/breakpoints.js'
 
 export default designSystem

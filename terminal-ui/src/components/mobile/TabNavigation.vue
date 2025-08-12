@@ -326,6 +326,7 @@ onUnmounted(() => {
   width: 100%;
   z-index: var(--z-fixed, 1000);
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+  padding-bottom: var(--spacing-mobile-safe-area, env(safe-area-inset-bottom));
 }
 
 .tab-bar {
@@ -394,6 +395,8 @@ onUnmounted(() => {
 .tab-active .tab-label {
   font-weight: var(--font-weight-medium, 500);
 }
+
+.tab-active .label-text { font-weight: 600; }
 
 /* ===========================
    Tab图标样式

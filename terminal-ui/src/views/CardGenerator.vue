@@ -183,6 +183,13 @@
               <span v-else-if="isClaudeInitialized">✅ Claude已就绪</span>
               <span v-else>⚪ Claude未初始化</span>
             </span>
+            <button
+              v-if="!isInitializingClaude && !isClaudeInitialized"
+              class="init-claude-btn"
+              @click="initializeClaude"
+            >
+              初始化 Claude
+            </button>
           </div>
         </div>
         <div class="terminal-content" ref="terminalContainer" v-show="showTerminal">
@@ -275,7 +282,7 @@
             <!-- 输入区域置底（紧贴底栏上方） -->
             <div class="mobile-input-section sticky-bottom">
               <div class="input-label">📝 输入主题</div>
-              <div class="input-wrapper">
+              <div class="input-row">
                 <input 
                   v-model="currentTopic"
                   type="text"
@@ -287,7 +294,7 @@
                   @click="generateCard"
                   :disabled="!currentTopic.trim() || isGenerating"
                 >
-                  {{ isGenerating ? '生成中...' : '创建卡片' }}
+                  {{ isGenerating ? '生成中...' : '创建' }}
                 </button>
               </div>
             </div>
@@ -478,7 +485,8 @@ import SmartUrlPreview from '../components/SmartUrlPreview.vue'
 import ResponsiveLayout from '../layouts/ResponsiveLayout.vue'
 import TabNavigation from '../components/mobile/TabNavigation.vue'
 import { useDevice } from '../composables/useDevice.js'
-import { useLayoutStore } from '../store/layout.js'
+import axios from 'axios'
+import { useLayoutStore, MOBILE_TABS } from '../store/layout.js'
 
 // State
 const currentTopic = ref('')
@@ -619,6 +627,31 @@ const initializeClaude = async () => {
 
 const generateCard = async () => {
   if (!currentTopic.value.trim() || isGenerating.value) return
+  
+  // 移动端：通过 HTTP API 创建卡片
+  if (device.isMobile.value) {
+    isGenerating.value = true
+    try {
+      const templateObj = templates.value[selectedTemplate.value]
+      const resp = await axios.post('/api/generate/card', {
+        templateFileName: templateObj.fileName,
+        topic: currentTopic.value.trim()
+      })
+      if (resp.data.success) {
+        ElMessage.success('卡片创建成功')
+        await refreshCardFolders()
+        layoutStore.switchMobileTab(MOBILE_TABS.FILES)
+      } else {
+        ElMessage.error('创建失败：' + (resp.data.error || resp.data.message || '未知错误'))
+      }
+    } catch (error) {
+      console.error('[GenerateCard API] Error:', error)
+      ElMessage.error('创建失败：' + error.message)
+    } finally {
+      isGenerating.value = false
+    }
+    return
+  }
   
   // 首先检查连接状态
   if (!terminalService.isConnected) {
@@ -2955,23 +2988,26 @@ const openLink = (which) => {
   gap: 8px;
 }
 
-.input-wrapper {
+.input-row {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
 }
 
 .mobile-topic-input {
-  background: #161b22;
-  border: 1px solid #30363d;
+  flex: 1;
+}
+
+.mobile-create-btn {
+  height: 44px;
+  padding: 0 16px;
   border-radius: 8px;
-  padding: 14px 16px;
-  color: #f0f6fc;
-  font-size: 16px;
-  width: 100%;
-  box-sizing: border-box;
-  outline: none;
-  transition: border-color 0.2s;
+}
+
+.mobile-create-btn.bordered {
+  border:1px solid #58a6ff;
+  background: transparent;
+  color:#58a6ff;
 }
 
 .mobile-topic-input:focus {
@@ -2981,132 +3017,6 @@ const openLink = (which) => {
 
 .mobile-topic-input::placeholder {
   color: #8b949e;
-}
-
-.mobile-create-btn {
-  background: linear-gradient(135deg, #58a6ff, #0969da);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 14px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-height: 48px;
-}
-
-.mobile-create-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
-}
-
-.mobile-create-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.mobile-template-section {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.template-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 4px 12px 4px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #f0f6fc;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 16px;
-}
-
-.header-icon {
-  font-size: 18px;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.template-count {
-  color: #8b949e;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-.mobile-template-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.mobile-template-card {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 8px;
-  padding: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 60px;
-  position: relative;
-}
-
-.mobile-template-card:hover {
-  border-color: #58a6ff;
-  background: rgba(88, 166, 255, 0.05);
-}
-
-.mobile-template-card.active {
-  border-color: #58a6ff;
-  background: rgba(88, 166, 255, 0.1);
-}
-
-.template-icon {
-  font-size: 24px;
-  opacity: 0.8;
-  flex-shrink: 0;
-}
-
-.template-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.template-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #f0f6fc;
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.template-desc {
-  font-size: 12px;
-  color: #8b949e;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.template-check {
-  color: #58a6ff;
-  font-size: 18px;
-  font-weight: bold;
-  flex-shrink: 0;
 }
 
 .mobile-quick-actions {
@@ -3228,7 +3138,6 @@ const openLink = (which) => {
 
 /* 输入置底 */
 .sticky-bottom { position: sticky; bottom: 0; padding-bottom: calc(var(--spacing-mobile-safe-area, env(safe-area-inset-bottom)) + 6px); background: linear-gradient(180deg, rgba(22,27,34,0), rgba(22,27,34,.9) 30%); backdrop-filter: blur(6px); }
-.mobile-create-btn.bordered { border:1px solid #58a6ff; background: transparent; color:#58a6ff; }
 
 /* 让全屏预览内容铺满可视区域 */
 .fill { position: absolute; inset: 0; }

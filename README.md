@@ -44,7 +44,7 @@ curl -X POST http://localhost:8082/api/generate/card \
 
 **AI Terminal** 是一个革命性的开源平台，将专业的命令行工具民主化，让每个人都能通过简单的API使用强大的CLI工具。从 Claude Code 开始，逐步支持所有主流AI CLI工具。
 
-🔥 **平台愿景**: Universal CLI-to-API Platform, 通用CLI转API平台, Claude Code API, Gemini CLI API, Cursor API, 多AI工具集成, 民主化专业工具
+🔥 **Key Features**: Claude Code API, Claude CLI, Gemini CLI, Cursor CLI, Grok CLI, CLI to API, Web Terminal, One-Click Deploy, Codex CLI Integration
 
 ## ✨ 核心特性
 

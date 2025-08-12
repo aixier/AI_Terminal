@@ -1,23 +1,29 @@
 # AI Terminal SEO优化关键词列表
 
-## 核心关键词 (Core Keywords)
+## 核心关键词 (Core Keywords) - UPDATED PRIORITY
 
-### 英文关键词
+### 最重要关键词 (Most Important)
+- Claude Code
+- Claude CLI
+- Claude Code API
+- Gemini CLI
+- Cursor CLI
+- Grok CLI
+- CLI to API
+- Codex CLI
+- Web Terminal
+- One-Click Deploy
+
+### 次要关键词 (Secondary)
 - AI Terminal
 - Claude AI Integration
-- AI-powered Terminal
-- Web Terminal Emulator
-- Knowledge Card Generator
-- AI Content Creation Tool
+- CLI API Generator
 - Terminal to API Converter
-- Docker Terminal Application
+- Docker Terminal
 - WebSocket Terminal
 - Real-time Terminal
-- Browser-based Terminal
-- AI Command Line Interface
-- Intelligent Terminal
+- AI-powered Terminal
 - Terminal Automation
-- AI Knowledge Management
 
 ### 中文关键词
 - AI终端

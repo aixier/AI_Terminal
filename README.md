@@ -7,11 +7,15 @@
 [![GitHub stars](https://img.shields.io/github/stars/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/aixier/AI_Terminal)](https://github.com/aixier/AI_Terminal/issues)
 
-> 🚀 **Claude Code API** | Transform Claude Code CLI into REST API | Streaming & Non-Streaming Support | AI-Powered Terminal | Knowledge Card Generator | Docker Ready
+> 🚀 **Universal CLI-to-API Platform** | Transform ANY CLI Tool into REST API | Claude Code, Gemini, Cursor & More | Streaming Support | Docker Ready
 
-## 🔥 Hot Feature: Claude Code as REST API!
+## 🌟 Vision: Democratizing Professional CLI Tools
 
-**Transform Claude Code (Anthropic's coding assistant) into powerful REST APIs with streaming support!** Perfect for developers who want to integrate Claude Code into their applications without CLI limitations.
+**AI Terminal is evolving into a universal platform that transforms ANY professional CLI tool into accessible APIs.** Starting with Claude Code, expanding to Gemini CLI, Cursor, GPT CLI, and beyond!
+
+### 🔥 Current Hot Feature: Claude Code API!
+
+**Transform Claude Code into REST APIs with streaming support!** This is just the beginning - imagine having API access to every professional CLI tool.
 
 ```bash
 # Quick Start - Claude Code API in 30 seconds
@@ -23,13 +27,24 @@ curl -X POST http://localhost:8082/api/generate/card \
   -d '{"topic": "Your Topic"}'
 ```
 
-📖 **[Full Claude Code API Documentation →](CLAUDE_CODE_API.md)**
+📖 **[Full Claude Code API Documentation →](CLAUDE_CODE_API.md)** | **[Platform Vision →](VISION.md)** | **[2025 Roadmap →](ROADMAP_2025.md)**
+
+## 🚀 Platform Roadmap - Coming Soon!
+
+| CLI Tool | Status | Release | Features |
+|----------|--------|---------|----------|
+| **Claude Code** | ✅ Live | Now | Full API, Streaming, Knowledge Cards |
+| **Gemini CLI** | 🚧 Development | Q1 2025 | Multimodal, Vision API |
+| **Cursor CLI** | 📋 Planned | Q1 2025 | Code Editing, Refactoring |
+| **GPT CLI** | 📋 Planned | Q2 2025 | GPT-4, Plugins |
+| **Ollama** | 📋 Planned | Q2 2025 | Local Models, Privacy |
+| **Your CLI** | 💡 [Request](https://github.com/aixier/AI_Terminal/issues) | TBD | Community Driven |
 
 ---
 
-**AI Terminal** 是一个革命性的开源项目，**核心特性是将 Claude Code 转换为 REST API**，支持流式和非流式响应。同时提供智能知识卡片自动生成、Web终端模拟器、实时命令执行等功能。
+**AI Terminal** 是一个革命性的开源平台，将专业的命令行工具民主化，让每个人都能通过简单的API使用强大的CLI工具。从 Claude Code 开始，逐步支持所有主流AI CLI工具。
 
-🔥 **热点功能**: Claude Code API化, Claude Code REST API, Claude Code Streaming, 流式API, 非流式API, Claude集成, AI Terminal, 智能终端, AI知识卡片
+🔥 **平台愿景**: Universal CLI-to-API Platform, 通用CLI转API平台, Claude Code API, Gemini CLI API, Cursor API, 多AI工具集成, 民主化专业工具
 
 ## ✨ 核心特性
 

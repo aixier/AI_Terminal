@@ -11,8 +11,9 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
-        drop_debugger: true
+        // 开发阶段保留 console/debugger 以便排查问题
+        drop_console: false,
+        drop_debugger: false
       }
     }
   },

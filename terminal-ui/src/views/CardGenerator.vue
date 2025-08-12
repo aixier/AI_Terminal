@@ -306,11 +306,19 @@
           
           <!-- 文件操作栏（根据选中项上下文展示） -->
           <div v-if="selectedCard && selectedFolder" class="file-action-bar">
-            <button class="action-btn primary" @click="handlePreviewSelected">
-              {{ canPreviewSelected ? '预览' : '生成预览' }}
-            </button>
-            <button v-if="canPreviewSelected && responseUrls.shareLink" class="action-btn" @click="copyShareLink">复制链接</button>
-            <button v-if="canPreviewSelected && responseUrls.shareLink" class="action-btn" @click="openExternal">外部打开</button>
+            <!-- response.json / html 直接预览 -->
+            <button v-if="isResponseJsonSelected || isHtmlSelected" class="action-btn primary" @click="handlePreviewSelected">预览</button>
+            <!-- 普通 json 同时提供两种模式 -->
+            <template v-else-if="isPlainJsonSelected">
+              <button class="action-btn primary" @click="viewJsonSelected">预览JSON</button>
+              <button class="action-btn" @click="generateFromSelectedJson" :disabled="isGeneratingHtml[selectedCard]">生成预览</button>
+            </template>
+            <!-- 其他类型不可预览时提示生成 -->
+            <button v-else class="action-btn" @click="handlePreviewSelected">生成预览</button>
+            <button class="action-btn" :disabled="!responseUrls.shareLink" @click="copyLink('share')">复制分享</button>
+            <button class="action-btn" :disabled="!responseUrls.shareLink" @click="openLink('share')">打开分享</button>
+            <button class="action-btn" :disabled="!responseUrls.originalUrl" @click="copyLink('original')">复制原始</button>
+            <button class="action-btn" :disabled="!responseUrls.originalUrl" @click="openLink('original')">打开原始</button>
           </div>
           
           <div class="mobile-folder-tree">
@@ -406,7 +414,7 @@
 
     <!-- 全屏预览内容（覆盖层） -->
     <template #fullscreen-content>
-      <div class="mobile-preview-content">
+      <div class="mobile-preview-content fill">
         <div v-if="isGenerating" class="generating-state">
           <div class="generating-loader">
             <div class="loader-spinner"></div>
@@ -414,13 +422,39 @@
             <div class="generating-hint">{{ generatingHint }}</div>
           </div>
         </div>
-        <SmartUrlPreview 
-          v-else-if="(previewType === 'html' || previewType === 'iframe') && (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
-          :url="activePreviewTab === 'originalUrl' ? (responseUrls.originalUrl || previewContent) : (responseUrls.shareLink || previewContent)"
-          :key="activePreviewTab + (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
-        />
-        <ValidatedJsonViewer v-else-if="previewContent && previewType === 'json'" :data="previewContent" class="json-viewer-preview" />
-        <div v-else class="empty-state">暂无可预览内容</div>
+        
+        <!-- 移动端预览Tab：分享链接 / 原始HTML -->
+        <div
+          v-else-if="previewType === 'html' || previewType === 'iframe'"
+          class="mobile-preview-tabs"
+        >
+          <button
+            class="mobile-preview-tab"
+            :class="{ active: activePreviewTab === 'shareLink', disabled: !responseUrls.shareLink && !previewContent }"
+            @click="responseUrls.shareLink || previewContent ? switchPreviewTab('shareLink') : null"
+          >
+            <span class="tab-icon">🔗</span>
+            <span class="tab-label">分享链接</span>
+          </button>
+          <button
+            class="mobile-preview-tab"
+            :class="{ active: activePreviewTab === 'originalUrl', disabled: !responseUrls.originalUrl && !previewContent }"
+            @click="responseUrls.originalUrl || previewContent ? switchPreviewTab('originalUrl') : null"
+          >
+            <span class="tab-icon">📄</span>
+            <span class="tab-label">原始HTML</span>
+          </button>
+        </div>
+        
+        <div class="preview-body" v-if="!isGenerating">
+          <SmartUrlPreview 
+            v-if="(previewType === 'html' || previewType === 'iframe') && (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
+            :url="activePreviewTab === 'originalUrl' ? (responseUrls.originalUrl || previewContent) : (responseUrls.shareLink || previewContent)"
+            :key="activePreviewTab + (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
+          />
+          <ValidatedJsonViewer v-else-if="previewContent && previewType === 'json'" :data="previewContent" class="json-viewer-preview fill" />
+          <div v-else class="empty-state">暂无可预览内容</div>
+        </div>
       </div>
     </template>
     
@@ -1860,24 +1894,55 @@ const canPreviewSelected = computed(() => {
   return name.endsWith('-response.json') || name.endsWith('.html') || name.endsWith('.htm') || previewType.value || responseUrls.value.shareLink
 })
 
+// 区分文件类型（移动/PC 共用）
+const isPlainJsonSelected = computed(() => {
+  const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
+  const card = folder?.cards?.find(c => c.id === selectedCard.value)
+  if (!card) return false
+  const name = (card.name || '').toLowerCase()
+  return name.endsWith('.json') && !name.includes('-response.json')
+})
+const isResponseJsonSelected = computed(() => {
+  const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
+  const card = folder?.cards?.find(c => c.id === selectedCard.value)
+  if (!card) return false
+  return (card.name || '').toLowerCase().includes('-response.json')
+})
+const isHtmlSelected = computed(() => {
+  const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
+  const card = folder?.cards?.find(c => c.id === selectedCard.value)
+  if (!card) return false
+  const name = (card.name || '').toLowerCase()
+  return name.endsWith('.html') || name.endsWith('.htm')
+})
+
 const handlePreviewSelected = async () => {
+  console.log('[Preview] handlePreviewSelected:start', { selectedCard: selectedCard.value, selectedFolder: selectedFolder.value })
   try {
     const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
     const card = folder?.cards?.find(c => c.id === selectedCard.value)
-    if (!card) return
+    if (!card) { console.warn('[Preview] no card selected'); return }
     const name = (card.name || '').toLowerCase()
+    console.log('[Preview] detect file', { name })
 
     if (name.includes('-response.json')) {
+      console.log('[Preview] branch: response.json → loadCardContent')
       await loadCardContent(card.id, folder.id)
-      // 打开全屏预览
+      logPreviewState('after load response.json')
+      console.log('[Preview] toggleFullScreen("preview")')
       layoutStore.toggleFullScreen('preview')
     } else if (name.endsWith('.html') || name.endsWith('.htm')) {
+      console.log('[Preview] branch: html → loadCardContent')
       await loadCardContent(card.id, folder.id)
+      logPreviewState('after load html')
+      console.log('[Preview] toggleFullScreen("preview")')
       layoutStore.toggleFullScreen('preview')
     } else if (name.endsWith('.json')) {
-      await generateHtmlFromJson(card, folder)
-      layoutStore.toggleFullScreen('preview')
+      console.log('[Preview] branch: json(default) → view JSON (or choose generate)')
+      // 默认行为：直接看JSON
+      await viewJsonSelected()
     } else {
+      console.log('[Preview] unsupported file type')
       ElMessage.info('该文件不支持预览')
     }
   } catch (e) {
@@ -1886,20 +1951,59 @@ const handlePreviewSelected = async () => {
   }
 }
 
-const copyShareLink = async () => {
+// 仅预览原始JSON
+const viewJsonSelected = async () => {
   try {
-    const url = responseUrls.value.shareLink || responseUrls.value.originalUrl
-    if (!url) return
+    const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
+    const card = folder?.cards?.find(c => c.id === selectedCard.value)
+    if (!card) return
+    const name = (card.name || '').toLowerCase()
+    if (!name.endsWith('.json') || name.includes('-response.json')) return
+    console.log('[Preview] viewJsonSelected')
+    // 确保内容已加载
+    if (!previewContent.value) {
+      await loadCardContent(card.id, folder.id)
+    }
+    previewType.value = 'json'
+    layoutStore.toggleFullScreen('preview')
+    logPreviewState('after viewJsonSelected')
+  } catch (e) {
+    console.error('[Preview] viewJsonSelected error', e)
+  }
+}
+
+// 从选中的普通JSON生成预览
+const generateFromSelectedJson = async () => {
+  try {
+    const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
+    const card = folder?.cards?.find(c => c.id === selectedCard.value)
+    if (!card) return
+    console.log('[Preview] generateFromSelectedJson')
+    await generateHtmlFromJson(card, folder)
+    layoutStore.toggleFullScreen('preview')
+    logPreviewState('after generateFromSelectedJson')
+  } catch (e) {
+    console.error('[Preview] generateFromSelectedJson error', e)
+  }
+}
+
+const copyLink = async (which) => {
+  try {
+    const url = which === 'share' ? responseUrls.value.shareLink : responseUrls.value.originalUrl
+    console.log('[Preview] copyLink', which, url)
+    if (!url) { ElMessage.info('暂无该链接'); return }
     await navigator.clipboard.writeText(url)
     ElMessage.success('链接已复制')
   } catch (e) {
+    console.log('[Preview] copyLink error', which, e)
     ElMessage.info('复制失败，请手动复制')
   }
 }
 
-const openExternal = () => {
-  const url = responseUrls.value.shareLink || responseUrls.value.originalUrl
-  if (!url) return
+const openLink = (which) => {
+  const url = which === 'share' ? responseUrls.value.shareLink : responseUrls.value.originalUrl
+  console.log('[Preview] openLink', which, url)
+  if (!url) { ElMessage.info('暂无该链接'); return }
   window.open(url, '_blank')
 }
 </script>
@@ -3113,6 +3217,7 @@ const openExternal = () => {
   border-radius: 8px;
   font-size: 13px;
 }
+.action-btn:disabled { opacity: .5; cursor: not-allowed; }
 .action-btn.primary { background: #238636; border-color: #2ea043; color: #fff; }
 
 /* 主题建议 */
@@ -3124,4 +3229,43 @@ const openExternal = () => {
 /* 输入置底 */
 .sticky-bottom { position: sticky; bottom: 0; padding-bottom: calc(var(--spacing-mobile-safe-area, env(safe-area-inset-bottom)) + 6px); background: linear-gradient(180deg, rgba(22,27,34,0), rgba(22,27,34,.9) 30%); backdrop-filter: blur(6px); }
 .mobile-create-btn.bordered { border:1px solid #58a6ff; background: transparent; color:#58a6ff; }
+
+/* 让全屏预览内容铺满可视区域 */
+.fill { position: absolute; inset: 0; }
+.mobile-preview-content.fill { background: #0d1117; overflow: hidden; display: flex; flex-direction: column; }
+.mobile-preview-content.fill :deep(iframe),
+.mobile-preview-content.fill :deep(webview) { width: 100%; height: 100%; border: 0; }
+.json-viewer-preview.fill { position: absolute; inset: 0; overflow: auto; }
+
+/* 移动端预览Tabs */
+.mobile-preview-tabs {
+  display: flex;
+  align-items: center;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  height: 42px;
+  padding: 0 8px;
+  gap: 6px;
+}
+.mobile-preview-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8b949e;
+  border-radius: 6px 6px 0 0;
+  font-size: 13px;
+}
+.mobile-preview-tab.active {
+  background: #0d1117;
+  color: #58a6ff;
+  border-color: #30363d;
+  border-bottom-color: #0d1117;
+}
+.mobile-preview-tab.disabled {
+  opacity: .5;
+}
+.preview-body { flex: 1; position: relative; }
 </style>

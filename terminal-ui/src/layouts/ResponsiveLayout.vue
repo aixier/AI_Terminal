@@ -160,6 +160,7 @@ import { computed } from 'vue'
 import { useDevice } from '../composables/useDevice.js'
 import { useLayoutStore } from '../store/layout.js'
 import { responsiveMixin } from '../mixins/responsive.js'
+import { storeToRefs } from 'pinia'
 
 // 响应式功能混入
 const {
@@ -188,10 +189,9 @@ const {
   leftDrawerOpen,
   rightDrawerOpen,
   isFullScreen,
-  fullScreenComponent,
-  toggleSidebar,
-  toggleFullScreen
-} = layoutStore
+  fullScreenComponent
+} = storeToRefs(layoutStore)
+const { toggleSidebar, toggleFullScreen } = layoutStore
 
 console.log('[ResponsiveLayout] 布局store状态:', {
   activeMobileTab: activeMobileTab.value,
@@ -211,17 +211,6 @@ const exitFullScreen = () => {
 // 布局动画事件处理
 const onLayoutTransition = (el, done) => {
   el.addEventListener('transitionend', done, { once: true })
-}
-</script>
-
-<script>
-export default {
-  mounted() {
-    console.log('[ResponsiveLayout] mounted. deviceType:', this.deviceType, 'isMobile:', this.isMobile, 'activeMobileTab:', this.activeMobileTab)
-  },
-  updated() {
-    console.log('[ResponsiveLayout] updated. activeMobileTab:', this.activeMobileTab)
-  }
 }
 </script>
 
@@ -289,6 +278,16 @@ export default {
 
 .debug-mobile-info { display: none; }
 .mobile-navigation-wrapper { background: transparent; border: none; padding: 0; color: inherit; font-size: inherit; }
+/* 固定底部导航容器，避免内容挤压 */
+.mobile-navigation-wrapper {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-fixed, 1200);
+}
+.mobile-navigation-wrapper :deep(.mobile-tab-navigation) { position: fixed; left:0; right:0; bottom:0; }
+.mobile-tab-navigation-placeholder { display: none; }
 
 .mobile-placeholder {
   display: flex;
@@ -452,7 +451,7 @@ export default {
   right: 0;
   bottom: 0;
   background-color: var(--color-bg-canvas, #0d1117);
-  z-index: var(--z-modal, 500);
+  z-index: 2000; /* 高于底部导航 */
   display: flex;
   flex-direction: column;
 }
@@ -495,7 +494,8 @@ export default {
 
 .fullscreen-body {
   flex: 1;
-  overflow-y: auto;
+  position: relative;
+  overflow: hidden; /* 让子内容绝对定位填充 */
 }
 
 .fullscreen-placeholder {

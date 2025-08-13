@@ -204,8 +204,33 @@ console.log('     ✓ /api/sse route registered')
 app.use('/api/preview', previewRoutes)
 console.log('     ✓ /api/preview route registered')
 
-// 5. 健康检查路由
-console.log('  5️⃣ Registering health check route...')
+// 5. API信息路由 (移到/api-info避免与静态文件冲突)
+console.log('  5️⃣ Registering API info route...')
+app.get('/api-info', (req, res) => {
+  res.json({
+    service: 'AI Terminal Backend',
+    version: 'V3.5',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      api: {
+        auth: '/api/auth',
+        terminal: '/api/terminal',
+        commands: '/api/commands',
+        claude: '/api/claude',
+        generate: '/api/generate',
+        sse: '/api/sse',
+        preview: '/api/preview'
+      }
+    },
+    message: 'Welcome to AI Terminal Backend Service'
+  })
+})
+console.log('     ✓ API info route registered')
+
+// 6. 健康检查路由
+console.log('  6️⃣ Registering health check route...')
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
@@ -263,7 +288,7 @@ const shouldServeStatic = process.env.NODE_ENV === 'production' || process.env.S
 console.log(`  Decision: ${shouldServeStatic ? '✅ WILL SERVE' : '❌ WILL NOT SERVE'} static files`)
 
 if (shouldServeStatic) {
-  console.log('  6️⃣ Registering static file middleware...')
+  console.log('  7️⃣ Registering static file middleware...')
   console.log(`     Path to check: ${staticPath}`)
   
   // 检查静态文件路径是否存在

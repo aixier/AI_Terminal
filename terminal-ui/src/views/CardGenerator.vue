@@ -1,6 +1,12 @@
 <template>
-  <!-- ResponsiveLayout Wrapper -->
-  <ResponsiveLayout>
+  <!-- Startup Initializer -->
+  <StartupInitializer 
+    v-if="showInitializer"
+    @initialization-complete="onInitializationComplete"
+  />
+  
+  <!-- Main Content (hidden during initialization) -->
+  <ResponsiveLayout v-else>
     <!-- Desktop Layout -->
     <template #desktop-layout>
       <div class="card-generator-layout">
@@ -133,6 +139,15 @@
             </div>
           </div>
           
+          <!-- HTML内容直接渲染 -->
+          <HtmlContentViewer
+            v-else-if="previewType === 'html-content' && previewContent"
+            :html-content="previewContent"
+            :scale-mode="iframeScaleMode"
+            @refresh="handleHtmlRefresh"
+            class="html-content-viewer-container"
+          />
+          
           <!-- 使用智能URL预览组件（Web Components + 智能降级） -->
           <!-- 当有两个URL时，根据activePreviewTab切换显示 -->
           <SmartUrlPreview 
@@ -213,6 +228,16 @@
           >
             <div class="template-name">{{ template.name }}</div>
             <div class="template-desc">{{ template.description }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stream Messages Display -->
+      <div v-if="streamMessages.length > 0" class="stream-messages">
+        <div class="stream-header">生成日志</div>
+        <div class="stream-content">
+          <div v-for="(msg, index) in streamMessages" :key="index" class="stream-message">
+            {{ msg }}
           </div>
         </div>
       </div>
@@ -454,8 +479,15 @@
         </div>
         
         <div class="preview-body" v-if="!isGenerating">
+          <HtmlContentViewer
+            v-if="previewType === 'html-content' && previewContent"
+            :html-content="previewContent"
+            :scale-mode="iframeScaleMode"
+            @refresh="handleHtmlRefresh"
+            class="html-content-viewer-container"
+          />
           <SmartUrlPreview 
-            v-if="(previewType === 'html' || previewType === 'iframe') && (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
+            v-else-if="(previewType === 'html' || previewType === 'iframe') && (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
             :url="activePreviewTab === 'originalUrl' ? (responseUrls.originalUrl || previewContent) : (responseUrls.shareLink || previewContent)"
             :key="activePreviewTab + (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
           />
@@ -482,13 +514,16 @@ import cardGeneratorAPI from '../api/cardGenerator'
 import sseService from '../services/sseService'
 import ValidatedJsonViewer from '../components/ValidatedJsonViewer.vue'
 import SmartUrlPreview from '../components/SmartUrlPreview.vue'
+import HtmlContentViewer from '../components/HtmlContentViewer.vue'
 import ResponsiveLayout from '../layouts/ResponsiveLayout.vue'
 import TabNavigation from '../components/mobile/TabNavigation.vue'
+import StartupInitializer from '../components/StartupInitializer.vue'
 import { useDevice } from '../composables/useDevice.js'
 import axios from 'axios'
 import { useLayoutStore, MOBILE_TABS } from '../store/layout.js'
 
 // State
+const showInitializer = ref(true)  // 显示初始化界面
 const currentTopic = ref('')
 const isGenerating = ref(false)
 const selectedTemplate = ref(0)
@@ -518,6 +553,24 @@ const responseUrls = ref({
   originalUrl: ''
 })
 const activePreviewTab = ref('shareLink') // 当前激活的tab
+
+// Stream messages state
+const streamMessages = ref([]) // 存储最近的流消息
+const MAX_STREAM_MESSAGES = 5 // 最多显示5条消息
+
+// 过滤ANSI转义序列的函数
+const stripAnsiCodes = (str) => {
+  if (!str) return ''
+  // 移除ANSI转义序列（颜色、光标移动等）
+  return str
+    .replace(/\x1b\[[0-9;]*m/g, '') // 颜色码
+    .replace(/\x1b\[[0-9]*[A-Za-z]/g, '') // 光标控制
+    .replace(/\x1b\]0;[^\x07]*\x07/g, '') // 窗口标题
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // 控制字符
+    .replace(/\[2K\[1A/g, '') // 清除行和上移
+    .replace(/✻|✽|✶|\*|✢|·/g, '') // 动画字符
+    .trim()
+}
 
 // SSE相关
 let sseUnsubscribe = null
@@ -570,8 +623,13 @@ const initializeClaude = async () => {
   try {
     // Check if terminal service is connected
     if (!terminalService.isReady()) {
-      console.warn('[Claude Init] Terminal service not connected')
-      ElMessage.warning('终端服务未连接，请确保后端正在运行')
+      console.warn('[Claude Init] Terminal service not ready. Details:', {
+        isConnected: terminalService.isConnected,
+        sessionId: terminalService.sessionId,
+        terminal: !!terminalService.terminal,
+        ws: terminalService.ws ? terminalService.ws.readyState : 'no ws'
+      })
+      ElMessage.warning('终端服务未就绪，请确保后端正在运行')
       isInitializingClaude.value = false
       return
     }
@@ -663,125 +721,209 @@ const generateCard = async () => {
     // 否则继续走下方终端流程（保持 isGenerating 为 true）
   }
   
-  // 首先检查连接状态
-  if (!terminalService.isConnected) {
-    ElMessage.warning('终端未连接，正在尝试重新连接...')
-    
-    // 尝试重新连接
-    try {
-      const isHealthy = await terminalService.checkConnection()
-      if (!isHealthy) {
-        ElMessage.error('后端服务不可用，请检查服务状态')
-        return
-      }
-      
-      // 尝试重新初始化终端
-      await initializeXTerm()
-      
-      // 重新初始化Claude
-      if (!isClaudeInitialized.value) {
-        await initializeClaude()
-      }
-    } catch (error) {
-      console.error('[GenerateCard] Reconnection failed:', error)
-      ElMessage.error('无法连接到后端服务：' + error.message)
-      return
-    }
-  }
-  
-  // Check if Claude is initialized
-  if (!isClaudeInitialized.value) {
-    ElMessage.warning('Claude 尚未就绪，请稍后再试')
-    return
-  }
-  
+  // 桌面端：使用流式API，不再使用终端
   // Check if template is selected
   if (selectedTemplate.value === null || !templates.value[selectedTemplate.value]) {
     ElMessage.warning('请先选择一个模板')
     return
   }
   
-  // Clear previous preview content when starting new generation
+  // Clear previous content
   previewContent.value = ''
   previewType.value = ''
   generatingHint.value = '正在准备生成...'
+  streamMessages.value = [] // 清空之前的流消息
   
   isGenerating.value = true
   
   try {
     // Get selected template info
-    generatingHint.value = '正在连接到Claude...'
     const template = templates.value[selectedTemplate.value]
-    const templateFileName = template.fileName || 'daily-knowledge-card-template.md'
-    
-    // 根据环境使用不同的路径
-    // Docker环境和远程环境使用相对路径，本地开发使用绝对路径
-    let templatePath, userCardPath
-    
-    // 检测是否在本地开发环境（WSL路径）
-    const isLocalDev = window.location.hostname === 'localhost' && window.location.port === '5173'
-    
-    if (isLocalDev) {
-      // 本地开发环境 - 使用完整的WSL路径
-      templatePath = `/mnt/d/work/AI_Terminal/terminal-backend/data/public_template/${templateFileName}`
-      const sanitizedTopic = currentTopic.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
-      userCardPath = `/mnt/d/work/AI_Terminal/terminal-backend/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
-    } else {
-      // Docker或远程环境 - 使用容器内的相对路径
-      templatePath = `/app/data/public_template/${templateFileName}`
-      const sanitizedTopic = currentTopic.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
-      userCardPath = `/app/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
-    }
-    
-    console.log('[GenerateCard] Environment:', isLocalDev ? 'Local Dev' : 'Docker/Remote')
-    console.log('[GenerateCard] Template path:', templatePath)
-    console.log('[GenerateCard] User card path:', userCardPath)
-    
-    // 构建完整的命令
-    const prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${userCardPath}]：${currentTopic.value}`
+    const templateName = template.fileName || 'daily-knowledge-card-template.md'
     
     ElMessage.info('正在生成卡片...')
-    generatingHint.value = '正在发送生成命令...'
-    console.log('[Generate Card] Sending prompt:', prompt)
+    generatingHint.value = '正在连接服务...'
     
-    // 展开终端显示生成过程
-    showTerminal.value = true
+    // 使用 fetch API 处理 SSE 流
+    const response = await fetch('/api/generate/card/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topic: currentTopic.value.trim(),
+        templateName
+      })
+    })
     
-    // 在终端中显示命令
-    terminalService.terminal.write('\r\n\x1b[36m========== Generating Card ==========\x1b[0m\r\n')
-    terminalService.terminal.write(`\x1b[32m$ ${prompt}\x1b[0m\r\n`)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
     
-    // 使用分离发送方式：先发送文本内容，等待终端准备好，再发送控制符
-    await terminalService.sendTextAndControl(prompt, '\r', 1000)
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
     
-    generatingHint.value = '内容生成中，请耐心等待...'
+    generatingHint.value = '正在生成内容...'
     
-    // 不再显示临时的HTML内容，保持生成状态
-    // 等待生成完成后显示实际的URL
+    // 设置超时定时器（420秒/7分钟）- 适应cardplanet-Sandra模板
+    const timeoutMs = 420000
+    const startTime = Date.now()
+    let lastEventType = ''
+    let timeoutTimer = null
     
-    ElMessage.info('生成命令已发送，请等待结果...')
-    
-    // SSE会自动监听文件创建事件，当JSON文件创建时会触发生成完成
-    // 不再需要轮询，由SSE的file:added事件处理
-    generatingHint.value = '正在等待Claude生成内容...'
-    
-    // 设置超时处理（3分钟）
-    const timeout = setTimeout(() => {
-      if (isGenerating.value) {
-        isGenerating.value = false
-        ElMessage.warning('生成超时，请查看终端输出确认状态')
-        console.log('[GenerateCard] Generation timeout after 3 minutes')
-        refreshCardFolders()
+    // 设置超时定时器
+    timeoutTimer = setTimeout(() => {
+      reader.cancel()
+      streamMessages.value.push(`生成超时，已等待${timeoutMs/1000}秒`)
+      if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
+        streamMessages.value.shift()
       }
-    }, 180000) // 3分钟超时
+      isGenerating.value = false
+      ElMessage.error(`生成超时，已等待${timeoutMs/1000}秒`)
+    }, timeoutMs)
     
-    // 保存超时ID，以便在生成完成时清除
-    window.generationTimeout = timeout
+    // 处理流式响应
+    let buffer = ''
+    try {
+      while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      const chunk = decoder.decode(value, { stream: true })
+      buffer += chunk
+      
+      // 处理缓冲区中的完整消息
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || '' // 保留最后一个可能不完整的行
+      
+      for (const line of lines) {
+        // 处理事件行
+        if (line.startsWith('event: ')) {
+          lastEventType = line.slice(7).trim()
+          continue // SSE事件类型，继续处理下一行
+        }
+        
+        // 处理数据行
+        if (line.startsWith('data: ')) {
+          try {
+            const jsonStr = line.slice(6).trim()
+            if (!jsonStr) continue // 跳过空数据
+            
+            const data = JSON.parse(jsonStr)
+            
+            // 根据不同的事件类型处理数据
+            if (data.message) {
+              // 添加消息到流消息列表
+              streamMessages.value.push(data.message)
+              // 保持最多5条消息
+              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
+                streamMessages.value.shift()
+              }
+              generatingHint.value = data.message
+            }
+            
+            // 处理特定事件
+            if (data.topic) {
+              streamMessages.value.push(`主题: ${data.topic}`)
+              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
+                streamMessages.value.shift()
+              }
+            }
+            
+            // 处理status事件 - 包含step字段
+            if (data.step) {
+              const stepMessages = {
+                'initializing_claude': '正在初始化Claude...',
+                'claude_initialized': 'Claude初始化完成',
+                'sending_command': '正在发送命令...',
+                'command_sent': '命令已发送',
+                'waiting_completion': '正在等待生成完成...'
+              }
+              const statusMsg = stepMessages[data.step] || `状态: ${data.step}`
+              streamMessages.value.push(statusMsg)
+              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
+                streamMessages.value.shift()
+              }
+              generatingHint.value = statusMsg
+            }
+            
+            // 修复：处理output事件 - backend发送的是 { data, timestamp }
+            if (lastEventType === 'output' && data.data) {
+              // 过滤ANSI转义序列
+              const cleanOutput = stripAnsiCodes(data.data)
+              if (cleanOutput && cleanOutput.length > 0 && 
+                  !cleanOutput.includes('Genera') && // 过滤掉重复的生成动画
+                  !cleanOutput.match(/^[✻✽✶*✢·]+$/)) { // 过滤纯动画字符
+                // 只显示有意义的输出
+                const outputMsg = cleanOutput.length > 100 
+                  ? `Claude: ${cleanOutput.substring(0, 100)}...`
+                  : `Claude: ${cleanOutput}`
+                streamMessages.value.push(outputMsg)
+                if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
+                  streamMessages.value.shift()
+                }
+              }
+            }
+            
+            // 处理success或error事件
+            if (lastEventType === 'success' && data) {
+              clearTimeout(timeoutTimer) // 清除超时定时器
+              ElMessage.success('卡片生成成功！')
+              streamMessages.value.push('✅ 卡片生成成功')
+              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
+                streamMessages.value.shift()
+              }
+              
+              // 根据文件类型处理内容
+              if (data.fileName && data.fileName.endsWith('.html')) {
+                // HTML文件
+                previewContent.value = data.content // HTML内容是字符串
+                previewType.value = 'html-content'
+                console.log('[GenerateCard] HTML file generated:', data.fileName)
+              } else if (data.content) {
+                // JSON文件
+                previewContent.value = typeof data.content === 'string' 
+                  ? data.content 
+                  : JSON.stringify(data.content, null, 2)
+                previewType.value = 'json'
+                console.log('[GenerateCard] JSON file generated:', data.fileName)
+              }
+              
+              generatingHint.value = '生成完成'
+              
+              // 刷新卡片列表
+              await refreshCardFolders()
+              isGenerating.value = false
+              break
+            } else if (lastEventType === 'error' && data.message) {
+              clearTimeout(timeoutTimer) // 清除超时定时器
+              ElMessage.error(data.message || '生成失败')
+              streamMessages.value.push(`❌ ${data.message}`)
+              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
+                streamMessages.value.shift()
+              }
+              generatingHint.value = '生成失败'
+              isGenerating.value = false
+              break
+            }
+          } catch (e) {
+            console.error('[GenerateCard] Error parsing SSE data:', e, 'Line:', line)
+          }
+        }
+      }
+    }
+    } finally {
+      // 清理定时器
+      if (timeoutTimer) {
+        clearTimeout(timeoutTimer)
+      }
+    }
     
   } catch (error) {
-    console.error('Generate card error:', error)
+    console.error('[GenerateCard] Stream error:', error)
     ElMessage.error('生成失败: ' + error.message)
     isGenerating.value = false
+    generatingHint.value = ''
     // 清除预览内容
     previewContent.value = ''
     previewType.value = ''
@@ -1036,11 +1178,31 @@ const loadCardContent = async (cardId, folderId) => {
         }
       }
     } else if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
-      previewType.value = 'html'
-      // HTML文件：使用后端静态服务URL
-      const baseUrl = window.location.origin
-      previewContent.value = `${baseUrl}/api/terminal/card/html/${folder.id}/${encodeURIComponent(card.name)}`
-      console.log('[CardContent] HTML file URL:', previewContent.value)
+      console.log('[CardContent] Loading HTML file:', card.name)
+      
+      try {
+        // 尝试读取HTML文件内容
+        const response = await terminalAPI.getCardContent(card.path)
+        
+        if (response && response.success) {
+          // 成功读取HTML内容，使用内容渲染模式
+          previewType.value = 'html-content'
+          previewContent.value = response.content
+          console.log('[CardContent] HTML content loaded successfully, length:', response.content.length)
+        } else {
+          // 读取失败，回退到URL模式
+          console.warn('[CardContent] Failed to load HTML content, falling back to URL mode')
+          previewType.value = 'html'
+          const baseUrl = window.location.origin
+          previewContent.value = `${baseUrl}/api/terminal/card/html/${folder.id}/${encodeURIComponent(card.name)}`
+        }
+      } catch (error) {
+        console.error('[CardContent] Error loading HTML:', error)
+        // 出错时回退到URL模式
+        previewType.value = 'html'
+        const baseUrl = window.location.origin
+        previewContent.value = `${baseUrl}/api/terminal/card/html/${folder.id}/${encodeURIComponent(card.name)}`
+      }
     } else if (fileName.endsWith('.json')) {
       previewType.value = 'json'
       // JSON文件：使用API读取文件内容
@@ -1127,6 +1289,15 @@ const handleJsonPreview = (jsonData) => {
   console.log('[CardGenerator] Preview JSON as card:', jsonData)
   // 可以在这里实现预览功能
   ElMessage.info('预览功能开发中...')
+}
+
+// Handle HTML refresh event
+const handleHtmlRefresh = async () => {
+  console.log('[CardGenerator] Refreshing HTML content')
+  if (selectedCard.value && selectedFolder.value) {
+    // 重新加载卡片内容
+    await loadCardContent(selectedCard.value, selectedFolder.value)
+  }
 }
 
 // Handle iframe load event
@@ -1526,16 +1697,27 @@ const refreshCardFolders = async () => {
 // Load templates
 const loadTemplates = async () => {
   try {
+    console.log('[debug0.0.1] Loading templates from API...')
     const response = await terminalAPI.getTemplates()
+    console.log('[debug0.0.1] templates API raw response:', response)
+    
     if (response.success && response.templates) {
-      templates.value = response.templates
+      console.log('[debug0.0.1] templates data:', response.templates)
+      // 转换模板数据格式以适配UI显示
+      templates.value = response.templates.map(template => ({
+        fileName: template.fileName,
+        name: template.displayName,
+        description: template.type === 'folder' ? '文件夹模板' : '文件模板',
+        type: template.type
+      }))
+      console.log('[debug0.0.1] Processed templates for display:', templates.value)
     } else {
       // Use empty templates if API fails
       templates.value = []
-      console.warn('No templates loaded from backend')
+      console.warn('[debug0.0.1] No templates loaded from backend')
     }
   } catch (error) {
-    console.error('Failed to load templates:', error)
+    console.error('[debug0.0.1] Failed to load templates:', error)
     // Use empty templates on error
     templates.value = []
   }
@@ -1860,46 +2042,95 @@ watch(() => layoutStore.activeMobileTab, async (newTab) => {
   }
 }, { immediate: false })
 
+// 处理初始化完成事件
+const onInitializationComplete = async (result) => {
+  console.log('[CardGenerator] Initialization complete:', result)
+  
+  if (result.success || result.skipped) {
+    // 标记Claude已初始化（如果成功）
+    if (result.success) {
+      isClaudeInitialized.value = true
+    }
+    
+    // 隐藏初始化界面
+    showInitializer.value = false
+    
+    // 确保终端服务可用
+    if (!terminalService) {
+      terminalService = TerminalServiceFactory.getService()
+    }
+    
+    // 连接现有的终端到DOM（如果需要）
+    await nextTick()
+    if (terminalContainer.value && !terminalInitialized.value) {
+      // 检查终端服务是否已经有终端实例
+      if (terminalService.terminal) {
+        console.log('[CardGenerator] Attaching existing terminal to DOM')
+        console.log('[CardGenerator] Terminal element:', terminalService.terminal.element)
+        console.log('[CardGenerator] Container element:', terminalContainer.value)
+        
+        // 将现有的终端实例附加到DOM元素
+        terminalService.terminal.open(terminalContainer.value)
+        
+        // 确保终端适应容器大小
+        if (terminalService.fitAddon) {
+          setTimeout(() => {
+            terminalService.fitAddon.fit()
+            console.log('[CardGenerator] Terminal fitted to container')
+          }, 100)
+        }
+        
+        terminalInitialized.value = true
+        
+        // 设置连接状态
+        isConnected.value = terminalService.isConnected
+        
+        // 设置连接状态回调
+        terminalService.onConnectionChange = (connected, reason) => {
+          isConnected.value = connected
+          isReconnecting.value = terminalService.isReconnecting
+          
+          if (connected) {
+            connectionStatusText.value = '已连接到后端服务'
+            ElMessage.success('终端连接已恢复')
+          } else {
+            if (reason === 'max_attempts_reached') {
+              connectionStatusText.value = '连接失败，请检查后端服务'
+            } else if (terminalService.isReconnecting) {
+              connectionStatusText.value = `正在重新连接... (${terminalService.reconnectAttempts}/${terminalService.maxReconnectAttempts})`
+            } else {
+              connectionStatusText.value = '未连接到后端服务'
+            }
+          }
+        }
+      } else {
+        // 如果没有终端实例，才初始化新的
+        console.log('[CardGenerator] No existing terminal, initializing new one')
+        await initializeXTerm()
+      }
+    }
+    
+    // 加载数据
+    await loadCardFolders()
+    loadTemplates()
+    
+    // 初始化SSE实时同步
+    initSSE()
+    
+    // 延迟检查并自动生成缺失的HTML
+    setTimeout(() => {
+      checkAndGenerateMissingHtml()
+    }, 3000)
+  }
+}
+
 // Initialize
 onMounted(async () => {
   console.log('[CardGenerator] mounted. device:', device.deviceType.value, 'mobile?', device.isMobile.value, 'tab:', currentMobileTab.value)
-  console.log('[CardGenerator] Component mounted, starting initialization...')
+  console.log('[CardGenerator] Component mounted, showing initializer...')
   
-  // Load initial data (non-blocking)
-  await loadCardFolders()
-  loadTemplates()
-  
-  // 初始化SSE实时同步
-  initSSE()
-  
-  // 延迟检查并自动生成缺失的HTML
-  setTimeout(() => {
-    checkAndGenerateMissingHtml()
-  }, 3000)  // 延迟3秒，让页面完全加载
-  
-  // Initialize terminal smartly based on device type
-  nextTick(() => {
-    setTimeout(async () => {
-      try {
-        const initialized = await initializeTerminalWhenNeeded()
-        if (initialized && terminalInitialized.value) {
-          console.log('[CardGenerator] Terminal initialized')
-          
-          // Try to initialize Claude after terminal is ready (non-blocking)
-          setTimeout(() => {
-            console.log('[CardGenerator] Attempting to initialize Claude...')
-            initializeClaude().catch(err => {
-              console.warn('[CardGenerator] Claude initialization failed:', err)
-              ElMessage.warning('Claude 初始化失败，部分功能可能不可用')
-            })
-          }, 2000)
-        }
-      } catch (err) {
-        console.warn('[CardGenerator] Terminal initialization failed:', err)
-        ElMessage.warning('终端初始化失败，部分功能可能不可用')
-      }
-    }, 100)
-  })
+  // 初始化界面会处理所有的初始化流程
+  // 不再在这里直接初始化
 })
 
 
@@ -2608,6 +2839,14 @@ const openLink = (which) => {
   overflow: hidden;
 }
 
+.html-content-viewer-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .iframe-wrapper {
   position: absolute;
   top: 0;
@@ -2798,6 +3037,44 @@ const openLink = (which) => {
 }
 
 /* Input & Create Section */
+.stream-messages {
+  background: #1e1e1e;
+  border-top: 1px solid #333;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.stream-header {
+  padding: 10px 15px;
+  background: #2a2a2a;
+  color: #888;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #333;
+}
+
+.stream-content {
+  padding: 10px;
+}
+
+.stream-message {
+  padding: 5px 10px;
+  margin-bottom: 5px;
+  background: #252525;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 13px;
+  font-family: 'Monaco', 'Consolas', monospace;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.stream-message:last-child {
+  margin-bottom: 0;
+}
+
 .input-create-section {
   padding: 20px;
   background: #2a2a2a;

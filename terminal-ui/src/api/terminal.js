@@ -109,10 +109,13 @@ export const getTemplateContent = async (templateId) => {
  */
 export const getCardContent = async (cardPath) => {
   try {
-    // 仅对JSON文件允许读取
-    if (!cardPath.endsWith('.json')) {
-      console.warn('getCardContent only supports JSON files')
-      return { success: false, message: 'Only JSON files are supported' }
+    // 支持JSON和HTML文件
+    const supportedExtensions = ['.json', '.html', '.htm']
+    const fileExt = cardPath.substring(cardPath.lastIndexOf('.')).toLowerCase()
+    
+    if (!supportedExtensions.includes(fileExt)) {
+      console.warn('getCardContent: Unsupported file type:', fileExt)
+      return { success: false, message: `Unsupported file type: ${fileExt}` }
     }
     
     const response = await axios.get(`${getApiUrl()}/card`, {

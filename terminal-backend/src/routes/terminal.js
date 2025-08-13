@@ -467,61 +467,38 @@ router.get('/templates', async (req, res) => {
       })
     }
     
-    // 读取所有.md文件
-    const files = await fs.readdir(templatesPath)
+    // 读取所有文件和文件夹
+    const items = await fs.readdir(templatesPath)
     const templates = []
     
-    for (const file of files) {
-      if (file.endsWith('.md')) {
-        const filePath = path.join(templatesPath, file)
-        const stats = await fs.stat(filePath)
-        
-        // 读取文件内容的前几行作为描述
-        const content = await fs.readFile(filePath, 'utf-8')
-        const lines = content.split('\n')
-        let title = file.replace('.md', '').replace(/-/g, ' ')
-        let description = ''
-        
-        // 尝试从文件内容中提取标题和描述
-        for (const line of lines.slice(0, 10)) {
-          if (line.startsWith('# ')) {
-            title = line.substring(2).trim()
-          } else if (line.trim() && !line.startsWith('#') && !description) {
-            description = line.trim()
-          }
-        }
-        
-        // 根据文件名分配图标和颜色
-        let icon = 'Document'
-        let color = '#0078d4'
-        
-        if (file.includes('business')) {
-          icon = 'OfficeBuilding'
-          color = '#0078d4'
-        } else if (file.includes('creative')) {
-          icon = 'PictureFilled'
-          color = '#ff4081'
-        } else if (file.includes('education') || file.includes('knowledge')) {
-          icon = 'Reading'
-          color = '#107c10'
-        } else if (file.includes('tech')) {
-          icon = 'Monitor'
-          color = '#00d4ff'
-        } else if (file.includes('daily')) {
-          icon = 'Calendar'
-          color = '#ff9800'
+    for (const item of items) {
+      const itemPath = path.join(templatesPath, item)
+      const stats = await fs.stat(itemPath)
+      
+      if (stats.isDirectory()) {
+        // 处理文件夹模板
+        // 检查是否有CLAUDE.md文件
+        const claudePath = path.join(itemPath, 'CLAUDE.md')
+        let hasClaudeFile = false
+        try {
+          await fs.access(claudePath)
+          hasClaudeFile = true
+        } catch {
+          // 没有CLAUDE.md文件，跳过此文件夹
+          continue
         }
         
         templates.push({
-          id: file.replace('.md', ''),
-          name: title,
-          filename: file,
-          description: description || `Template from ${file}`,
-          icon: icon,
-          color: color,
-          size: stats.size,
-          createdAt: stats.birthtime,
-          updatedAt: stats.mtime
+          fileName: item,
+          displayName: item.replace(/-/g, ' '),
+          type: 'folder'
+        })
+      } else if (item.endsWith('.md')) {
+        // 处理单文件模板
+        templates.push({
+          fileName: item,
+          displayName: item.replace('.md', '').replace(/-/g, ' '),
+          type: 'file'
         })
       }
     }
@@ -550,6 +527,9 @@ router.get('/card/html/:folderId/:fileName', async (req, res) => {
     
     const { folderId, fileName } = req.params
     const userId = 'default'
+    
+    // 定义dataPath
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
     
     // 构建文件路径
     const filePath = path.join(dataPath, 'users', userId, 'folders', 'default-folder', 'cards', folderId, fileName)

@@ -1,6 +1,12 @@
 <template>
   <div class="template-library">
-    <div class="library-grid">
+    <div v-if="loading" class="loading-state">
+      <span>加载模板中...</span>
+    </div>
+    <div v-else-if="templates.length === 0" class="empty-state">
+      <span>暂无可用模板</span>
+    </div>
+    <div v-else class="library-grid">
       <div 
         v-for="template in templates" 
         :key="template.id"
@@ -20,39 +26,74 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, defineEmits } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getTemplates } from '@/api/terminal'
 
-const templates = ref([
-  { 
-    id: 1, 
-    name: '商务风格', 
-    category: '商务',
-    thumbnail: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGY5ZmYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMDA3OGQ0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5ZWG5Yqh6aOO5qC8PC90ZXh0Pjwvc3ZnPg==' 
-  },
-  { 
-    id: 2, 
-    name: '创意设计', 
-    category: '设计',
-    thumbnail: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iYSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmNDA4MCIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmODA0MCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjYSkiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuWImeavjeivv+orqTwvdGV4dD48L3N2Zz4=' 
-  },
-  { 
-    id: 3, 
-    name: '教育学习', 
-    category: '教育',
-    thumbnail: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGZkZjQiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMTA3YzEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5pWZ6IKy5a2m5LmgPC90ZXh0Pjwvc3ZnPg==' 
-  },
-  { 
-    id: 4, 
-    name: '科技风格', 
-    category: '科技',
-    thumbnail: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMxNTFlMjYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMDBmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+56eR5oqA6aOO5qC8PC90ZXh0Pjwvc3ZnPg==' 
+const emit = defineEmits(['select-template'])
+
+const templates = ref([])
+const loading = ref(false)
+
+const fetchTemplates = async () => {
+  loading.value = true
+  try {
+    console.log('[debug0.0.1] Fetching templates from API...')
+    const response = await getTemplates()
+    console.log('[debug0.0.1] templates API response:', response)
+    
+    if (response.success && response.templates) {
+      console.log('[debug0.0.1] templates data:', response.templates)
+      templates.value = response.templates.map((template, index) => ({
+        id: template.fileName,
+        name: template.displayName,
+        category: template.type === 'folder' ? '文件夹模板' : '文件模板',
+        type: template.type,
+        fileName: template.fileName,
+        thumbnail: generateThumbnail(template.displayName, template.type)
+      }))
+      console.log('[debug0.0.1] Processed templates:', templates.value)
+    } else {
+      console.log('[debug0.0.1] No templates found in response')
+    }
+  } catch (error) {
+    console.error('[debug0.0.1] Failed to fetch templates:', error)
+    ElMessage.error('获取模板列表失败')
+  } finally {
+    loading.value = false
   }
-])
+}
+
+const generateThumbnail = (name, type) => {
+  const colors = {
+    folder: '#ffa500',
+    file: '#4a90e2'
+  }
+  const color = colors[type] || '#999'
+  
+  // 截取较短的显示名称以适应缩略图
+  const displayName = name.length > 20 ? name.substring(0, 17) + '...' : name
+  
+  const svg = `<svg width="100" height="60" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100%" height="100%" fill="${color}20"/>
+    <text x="50%" y="50%" font-family="Arial" font-size="8" fill="${color}" text-anchor="middle" dy=".3em">${displayName}</text>
+  </svg>`
+  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
+}
 
 const selectTemplate = (template) => {
   ElMessage.success(`已选择模板: ${template.name}`)
+  // 向父组件发送选中的模板信息
+  emit('select-template', {
+    fileName: template.fileName,
+    displayName: template.name,
+    type: template.type
+  })
 }
+
+onMounted(() => {
+  fetchTemplates()
+})
 </script>
 
 <style scoped>
@@ -104,5 +145,15 @@ const selectTemplate = (template) => {
 .template-category {
   font-size: 10px;
   color: var(--fluent-neutral-tertiary);
+}
+
+.loading-state,
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: var(--fluent-neutral-secondary);
+  font-size: var(--fluent-font-size-sm);
 }
 </style>

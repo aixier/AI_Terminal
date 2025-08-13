@@ -1456,36 +1456,140 @@ export const createOutputMatcher = (apiId, pattern, timeout = 30000) => {
 }
 ```
 
-### Claude初始化注意事项
+### Claude初始化 - 统一服务（推荐）
 
-#### 重要：处理两种初始化场景
+从V3.11版本开始，AI Terminal提供了统一的Claude初始化服务，确保所有使用Claude的功能都有一致的初始化流程。
 
-Claude在Docker容器中有两种初始化场景，必须正确处理：
+#### 统一初始化服务位置
 
-1. **首次运行（未配置）**
-   - 显示主题选择界面
-   - 显示安全提示
-   - 显示危险模式确认
+```
+/terminal-backend/src/services/claudeInitializationService.js
+```
 
-2. **已配置运行**
-   - 直接进入交互模式
-   - 显示 "bypass permissions on" 状态
-   - 无需任何确认步骤
-
-#### 完整的初始化时序
+#### 服务架构
 
 ```javascript
-// 关键检测逻辑
-if (output.includes('Choose the text style')) {
-  // 场景1: 首次运行
-  // 步骤1: 选择主题（发送 '1' + 回车）
-  // 步骤2: 处理安全提示（发送回车）
-  // 步骤3: 确认危险模式（发送 '2' + 回车）
-} else if (output.includes('bypass permissions on')) {
-  // 场景2: 已配置，直接就绪
-  // 无需额外操作
+// claudeInitializationService.js - 统一的Claude初始化服务
+class ClaudeInitializationService extends EventEmitter {
+  /**
+   * 初始化Claude的完整流程
+   * @param {Object} terminal - 终端实例（包含pty）
+   * @param {Array} outputBuffer - 输出缓冲区
+   * @param {Object} options - 初始化选项
+   * @returns {Promise<boolean>} 是否初始化成功
+   */
+  async initializeClaude(terminal, outputBuffer, options = {}) {
+    // 统一的初始化流程
+  }
 }
 ```
+
+#### 初始化时序详解
+
+```
+1. 清空输出缓冲区
+   ↓ 
+2. 发送启动命令: "claude --dangerously-skip-permissions\r"
+   ↓ 等待3秒
+3. 检查输出，判断Claude响应类型：
+   
+   情况A: 主题选择界面（首次运行）
+   ├─→ 发送 "1" 选择深色主题
+   ├─→ 等待500ms → 发送 "\r" 确认
+   ├─→ 等待2秒
+   ├─→ 检查是否有安全提示
+   │   └─→ 如有，发送 "\r" 继续
+   ├─→ 等待1秒
+   └─→ 检查权限模式确认
+       └─→ 发送 "2" (Yes, I accept)
+       └─→ 等待500ms → 发送 "\r"
+       └─→ 等待2秒
+   
+   情况B: 直接进入权限确认
+   ├─→ 发送 "2" (Yes, I accept)  
+   ├─→ 等待500ms → 发送 "\r"
+   └─→ 等待2秒
+   
+   情况C: Claude已配置好
+   └─→ 直接继续
+
+4. 等待Claude完全就绪
+   ├─→ 每500ms检查一次输出
+   ├─→ 检查就绪标志：
+   │   • "bypass permissions on"
+   │   • "Tips for getting started"
+   │   • "What would you like to know"
+   │   • "How can I help you today"
+   │   • "Human:"
+   │   • "claude>" 等提示符
+   └─→ 超时时间：30秒
+
+5. 检测到就绪后额外等待2秒确保稳定
+   ↓
+6. 初始化完成，可以发送命令
+```
+
+#### 使用示例
+
+```javascript
+// 在apiTerminalService.js中使用统一服务
+import claudeInitService from '../services/claudeInitializationService.js'
+
+async initializeClaude(apiId) {
+  const terminal = await this.createTerminalSession(apiId)
+  const outputBuffer = this.outputBuffers.get(apiId) || []
+  
+  // 调用统一服务
+  const success = await claudeInitService.initializeClaude(
+    terminal,      // 终端实例
+    outputBuffer,  // 输出缓冲区
+    { 
+      verbose: true,    // 详细日志
+      timeout: 30000    // 30秒超时
+    }
+  )
+  
+  if (success) {
+    console.log(`Claude initialized successfully for ${apiId}`)
+    return true
+  } else {
+    throw new Error('Claude initialization failed')
+  }
+}
+```
+
+#### 关键方法说明
+
+| 方法名 | 作用 | 参数 | 返回值 |
+|--------|------|------|--------|
+| `initializeClaude()` | 主初始化方法 | terminal, outputBuffer, options | Promise<boolean> |
+| `needsBypassConfirmation()` | 检查是否需要确认bypass模式 | output string | boolean |
+| `isClaudeReady()` | 检查Claude是否就绪 | output string | boolean |
+| `hasClaudePrompt()` | 检查是否有命令提示符 | output string | boolean |
+| `waitForClaudeReady()` | 异步等待Claude就绪 | outputBuffer, timeout | Promise<boolean> |
+| `sendTextAndControl()` | 发送文本和控制字符 | terminal, text, control, delay | Promise<boolean> |
+
+#### 处理两种初始化场景
+
+Claude在Docker容器中有两种初始化场景，统一服务能够自动识别并处理：
+
+1. **首次运行（未配置）**
+   - 自动处理主题选择界面
+   - 自动处理安全提示
+   - 自动确认危险模式
+
+2. **已配置运行**
+   - 识别已就绪状态
+   - 跳过不必要的步骤
+   - 快速进入交互模式
+
+#### 优势
+
+- ✅ **代码复用**: 所有使用Claude的功能共享同一初始化逻辑
+- ✅ **维护简单**: 只需在一处更新初始化流程
+- ✅ **错误处理**: 统一的错误处理和日志记录
+- ✅ **灵活配置**: 支持自定义超时、日志级别等选项
+- ✅ **事件驱动**: 支持监听初始化进度和状态变化
 
 #### 文件生成检测优化
 

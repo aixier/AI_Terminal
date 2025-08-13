@@ -147,7 +147,16 @@ router.post('/card', async (req, res) => {
                   fileType: 'json'
                 })
               } catch (parseError) {
-                reject(new Error('生成的JSON文件格式错误: ' + parseError.message))
+                console.error(`[GenerateCard API] JSON parse error, returning raw content:`, parseError.message)
+                // JSON解析失败时返回原始内容
+                resolve({
+                  success: true,
+                  fileName: fileName,
+                  path: filePath,
+                  content: content,  // 返回原始字符串
+                  fileType: 'json',
+                  parseError: true
+                })
               }
             } else if (fileName.endsWith('.html')) {
               // HTML文件直接返回内容
@@ -183,14 +192,14 @@ router.post('/card', async (req, res) => {
     console.log(`[GenerateCard API] >>> Starting unified terminal processing: ${apiId}`)
     
     try {
-      // 步骤1: 初始化Claude（与前端initializeClaude完全一致）
+      // 步骤1: 初始化Claude（内部已包含5秒稳定等待）
       console.log(`[GenerateCard API] Step 1: Initializing Claude for ${apiId}`)
       await apiTerminalService.initializeClaude(apiId)
       console.log(`[GenerateCard API] ✅ Claude initialized for ${apiId}`)
       
-      // 步骤2: 发送命令（与前端sendTextAndControl完全一致）
+      // 步骤2: 发送命令
       console.log(`[GenerateCard API] Step 2: Sending command to ${apiId}`)
-      await apiTerminalService.sendTextAndControl(apiId, prompt, '\r', 1000)  // 增加延迟到1000ms，与流式API保持一致
+      await apiTerminalService.sendTextAndControl(apiId, prompt, '\r', 1000)
       console.log(`[GenerateCard API] ✅ Command sent to ${apiId}`)
       
     } catch (executeError) {
@@ -498,31 +507,50 @@ router.post('/card/stream', async (req, res) => {
               
               const fileName = generatedFiles[0]
               const filePath = path.join(userCardPath, fileName)
-              const content = await fs.readFile(filePath, 'utf-8')
+              console.log(`[Stream API] Reading file: ${filePath}`)
               
-              // 根据文件类型处理
-              if (fileName.endsWith('.json')) {
-                try {
-                  const jsonContent = JSON.parse(content)
+              try {
+                const content = await fs.readFile(filePath, 'utf-8')
+                console.log(`[Stream API] File read successfully, length: ${content.length}`)
+                
+                // 根据文件类型处理
+                if (fileName.endsWith('.json')) {
+                  try {
+                    const jsonContent = JSON.parse(content)
+                    console.log(`[Stream API] JSON parsed successfully`)
+                    resolve({
+                      success: true,
+                      fileName: fileName,
+                      path: filePath,
+                      content: jsonContent,
+                      fileType: 'json'
+                    })
+                  } catch (parseError) {
+                    console.error(`[Stream API] JSON parse error, returning raw content:`, parseError.message)
+                    // JSON解析失败时返回原始内容，让前端处理
+                    resolve({
+                      success: true,
+                      fileName: fileName,
+                      path: filePath,
+                      content: content,  // 返回原始字符串
+                      fileType: 'json',
+                      parseError: true
+                    })
+                  }
+                } else if (fileName.endsWith('.html')) {
+                  // HTML文件直接返回内容
+                  console.log(`[Stream API] HTML file detected`)
                   resolve({
                     success: true,
                     fileName: fileName,
                     path: filePath,
-                    content: jsonContent,
-                    fileType: 'json'
+                    content: content,
+                    fileType: 'html'
                   })
-                } catch (parseError) {
-                  reject(new Error('生成的JSON文件格式错误: ' + parseError.message))
                 }
-              } else if (fileName.endsWith('.html')) {
-                // HTML文件直接返回内容
-                resolve({
-                  success: true,
-                  fileName: fileName,
-                  path: filePath,
-                  content: content,
-                  fileType: 'html'
-                })
+              } catch (readError) {
+                console.error(`[Stream API] File read error:`, readError)
+                // 文件可能还在写入中，继续等待
               }
             }
           } catch (error) {
@@ -540,7 +568,7 @@ router.post('/card/stream', async (req, res) => {
       })
       
       try {
-        // 初始化Claude
+        // 初始化Claude（内部已包含5秒稳定等待）
         sendSSE('status', { step: 'initializing_claude' })
         await apiTerminalService.initializeClaude(apiId)
         sendSSE('status', { step: 'claude_initialized' })
@@ -550,34 +578,29 @@ router.post('/card/stream', async (req, res) => {
         await apiTerminalService.sendTextAndControl(apiId, prompt, '\r', 1000)
         sendSSE('status', { step: 'command_sent' })
         
-        // 等待执行完成
-        sendSSE('status', { step: 'waiting_completion' })
-        const [output, fileResult] = await Promise.allSettled([
-          apiTerminalService.waitForCompletion(apiId, timeout),
-          waitForFile
-        ])
+        // 等待文件生成
+        sendSSE('status', { step: 'waiting_file_generation' })
+        
+        // 只依赖文件检测，文件生成即视为成功
+        const fileResult = await waitForFile
+        console.log(`[Stream API] File detection completed, fileResult:`, fileResult.fileName)
         
         const elapsedTime = Date.now() - startTime
+        console.log(`[Stream API] Elapsed time: ${elapsedTime}ms`)
         
-        // 发送最终结果
-        if (fileResult.status === 'fulfilled') {
-          sendSSE('success', {
-            topic,
-            sanitizedTopic,
-            templateName,
-            fileName: fileResult.value.fileName,
-            filePath: fileResult.value.path,
-            generationTime: elapsedTime,
-            content: fileResult.value.content,
-            apiId
-          })
-        } else {
-          sendSSE('error', {
-            message: fileResult.reason?.message || '生成失败',
-            apiId,
-            elapsedTime
-          })
-        }
+        // 发送成功结果
+        console.log(`[Stream API] Sending success event...`)
+        sendSSE('success', {
+          topic,
+          sanitizedTopic,
+          templateName,
+          fileName: fileResult.fileName,
+          filePath: fileResult.path,
+          generationTime: elapsedTime,
+          content: fileResult.content,
+          apiId
+        })
+        console.log(`[Stream API] Success event sent`)
         
       } catch (executeError) {
         sendSSE('error', { 

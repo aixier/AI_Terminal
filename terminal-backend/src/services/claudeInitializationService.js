@@ -39,9 +39,22 @@ class ClaudeInitializationService extends EventEmitter {
       log('Step 1: Clearing output buffer...')
       outputBuffer.length = 0
 
-      // 步骤2: 发送claude启动命令
+      // 步骤1.5: 确保Claude不在运行，先发送Ctrl+C退出可能存在的Claude会话
+      log('Step 1.5: Ensuring clean state...')
+      terminal.pty.write('\x03')  // Ctrl+C
+      await this.delay(1000)
+      terminal.pty.write('\x03')  // 再次Ctrl+C确保退出
+      await this.delay(1000)
+      
+      // 清空缓冲区（清除上面操作的输出）
+      outputBuffer.length = 0
+
+      // 步骤2: 发送claude启动命令 - 确保命令完整发送
       log('Step 2: Sending claude command...')
-      terminal.pty.write('claude --dangerously-skip-permissions\r')
+      const claudeCommand = 'claude --dangerously-skip-permissions'
+      terminal.pty.write(claudeCommand)
+      await this.delay(100)  // 短暂延迟确保命令完整
+      terminal.pty.write('\r')  // 发送回车执行命令
       
       // 等待Claude启动
       await this.delay(3000)
@@ -99,9 +112,9 @@ class ClaudeInitializationService extends EventEmitter {
       if (isReady) {
         log('✅ Claude initialization completed successfully!')
         
-        // 额外等待确保稳定 - 增加等待时间以确保Claude完全准备好
-        log('Waiting additional 3 seconds to ensure Claude is fully stable...')
-        await this.delay(3000)
+        // 额外等待确保稳定 - 与流式接口成功经验保持一致
+        log('Waiting additional 5 seconds to ensure Claude is fully stable...')
+        await this.delay(5000)
         
         // 再次验证Claude已准备好
         fullOutput = this.getBufferContent(outputBuffer)

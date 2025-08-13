@@ -793,27 +793,155 @@ AI Terminal 提供了一套完整的 REST API 接口，用于终端会话管理�
 ##### 7.4 流式生成卡片 (Server-Sent Events)
 - **URL**: `/api/generate/card/stream`
 - **方法**: `POST`
-- **描述**: 使用SSE实时传输生成过程，支持进度监控
-- **请求体**: 与非流式接口相同
-- **响应**: `text/event-stream`
-- **事件类型**:
-  - `start`: 开始生成
-  - `command`: 发送的命令
-  - `session`: 会话ID
-  - `output`: 实时输出
-  - `status`: 状态更新
-  - `success`: 生成成功
-  - `error`: 错误信息
-  - `cleanup`: 清理完成
+- **描述**: 使用SSE实时传输生成过程，支持进度监控，适合需要实时反馈的场景
+- **生成时间**: 
+  - daily-knowledge-card-template: 约100-120秒
+  - cardplanet-Sandra: 约230-250秒
+- **超时设置**: 7分钟
 
-### 8. 外部卡片生成API
+- **请求体**:
+```json
+{
+  "topic": "2016年大事",
+  "templateName": "cardplanet-Sandra"  // 可选，默认使用 daily-knowledge-card-template.md
+}
+```
 
-#### 8.1 生成并处理卡片
-- **URL**: `https://engagia-s-cdmxfcdbwa.cn-hangzhou.fcapp.run/generate-and-process`
-- **方法**: `POST`
-- **描述**: 通过外部服务生成HTML卡片
-- **请求体**: 见原文档中的详细格式
-- **响应**: 见原文档中的详细格式
+- **响应格式**: `text/event-stream` (SSE)
+
+- **事件流程**:
+
+1. **开始事件** (`event: start`):
+```javascript
+event: start
+data: {
+  "topic": "2016年大事",
+  "sanitizedTopic": "2016年大事",
+  "templatePath": "/app/data/public_template/cardplanet-Sandra",
+  "userCardPath": "/app/data/users/default/folders/default-folder/cards/2016年大事"
+}
+```
+
+2. **命令事件** (`event: command`):
+```javascript
+event: command
+data: {
+  "prompt": "你是一位海报设计师，要为\"2016年大事\"创作一套收藏级卡片海报作品..."
+}
+```
+
+3. **会话ID** (`event: session`):
+```javascript
+event: session
+data: {"apiId": "stream_1755077200808_ggl7o2rn2"}
+```
+
+4. **状态更新** (`event: status`):
+```javascript
+event: status
+data: {"step": "initializing_claude"}
+
+event: status
+data: {"step": "claude_initialized"}
+
+event: status
+data: {"step": "sending_command"}
+
+event: status
+data: {"step": "command_sent"}
+
+event: status
+data: {"step": "waiting_file_generation"}
+```
+
+5. **实时输出** (`event: output`):
+```javascript
+event: output
+data: {
+  "data": "终端输出内容(包含ANSI转义序列)...",
+  "timestamp": 1755077213424
+}
+```
+
+6. **生成成功** (`event: success`):
+```javascript
+event: success
+data: {
+  "topic": "2016年大事",
+  "sanitizedTopic": "2016年大事",
+  "templateName": "cardplanet-Sandra",
+  "fileName": "2016_events_premium_style.html",
+  "filePath": "/app/data/users/default/folders/default-folder/cards/2016年大事/2016_events_premium_style.html",
+  "generationTime": 237723,  // 毫秒，约4分钟
+  "content": "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n...",  // 完整HTML内容
+  "apiId": "stream_1755077200808_ggl7o2rn2"
+}
+```
+
+7. **错误事件** (`event: error`):
+```javascript
+event: error
+data: {
+  "message": "Claude初始化失败或生成超时",
+  "apiId": "stream_1755077200808_ggl7o2rn2"
+}
+```
+
+8. **清理事件** (`event: cleanup`):
+```javascript
+event: cleanup
+data: {"apiId": "stream_1755077200808_ggl7o2rn2"}
+```
+
+- **实际测试结果** (cardplanet-Sandra模板):
+  - 生成时间: 237秒
+  - 文件类型: HTML
+  - 文件名: `2016_events_premium_style.html` (由Claude自动命名)
+  - 内容: 完整的HTML页面，包含8张精美设计的卡片和小红书文案
+
+- **客户端使用示例**:
+```javascript
+const eventSource = new EventSource('/api/generate/card/stream', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    topic: '2016年大事',
+    templateName: 'cardplanet-Sandra'
+  })
+});
+
+eventSource.addEventListener('status', (event) => {
+  const data = JSON.parse(event.data);
+  console.log('状态更新:', data.step);
+});
+
+eventSource.addEventListener('success', (event) => {
+  const data = JSON.parse(event.data);
+  console.log('生成成功:', data.fileName);
+  console.log('耗时:', data.generationTime / 1000, '秒');
+  eventSource.close();
+});
+
+eventSource.addEventListener('error', (event) => {
+  const data = JSON.parse(event.data);
+  console.error('生成失败:', data.message);
+  eventSource.close();
+});
+```
+
+- **优势**:
+  - 实时反馈生成进度
+  - 可以看到Claude的实际输出
+  - 支持中断和错误处理
+  - 适合前端实时展示状态
+
+
+### 8. 生成API总结
+
+| 接口类型 | URL | 生成时间 | 输出格式 | 特点 |
+|---------|-----|----------|----------|------|
+| 非流式 | `/api/generate/card` | 100-260秒 | JSON/HTML | 一次性返回完整结果 |
+| 流式 | `/api/generate/card/stream` | 100-240秒 | SSE事件流 | 实时进度反馈 |
 
 ## WebSocket/Socket.IO 接口
 

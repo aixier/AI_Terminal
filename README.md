@@ -108,7 +108,16 @@ npm run dev  # Starts on port 5173
 
 ### Generate Knowledge Cards
 ```bash
-# Create structured knowledge content
+# Create structured knowledge content with user authentication
+curl -X POST http://localhost:8083/api/generate/card \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer alice-secure-token-abc123" \
+  -d '{
+    "topic": "Machine Learning Fundamentals",
+    "templateName": "daily-knowledge-card-template.md"
+  }'
+
+# Or use without token (automatically uses default user)
 curl -X POST http://localhost:8083/api/generate/card \
   -H "Content-Type: application/json" \
   -d '{
@@ -177,6 +186,39 @@ socket.on('terminal:output', (data) => {
 | [🐳 Docker Deployment](./docs/deployment/docker.md) | Production deployment guide |
 | [🏗️ Architecture Guide](./docs/architecture/system-architecture.md) | System design overview |
 | [🤝 Contributing](./docs/contributing/CONTRIBUTING.md) | How to contribute |
+
+## 🔐 User Authentication System (v3.381+)
+
+### Multi-User Support
+AI Terminal now supports complete user isolation with token-based authentication:
+
+**Pre-configured Users:**
+- **default** - Automatic fallback user (no token required)
+- **alice** - `alice123` / `alice-secure-token-abc123`
+- **bob** - `bob456` / `bob-secure-token-def456` 
+- **charlie** - `charlie789` / `charlie-secure-token-ghi789`
+
+### Authentication Flow
+```bash
+# 1. Login to get your token
+curl -X POST http://localhost:8083/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "password": "alice123"}'
+
+# Response: {"data": {"token": "alice-secure-token-abc123"}}
+
+# 2. Use token for authenticated requests
+curl -X POST http://localhost:8083/api/generate/card \
+  -H "Authorization: Bearer alice-secure-token-abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "Your Topic"}'
+```
+
+### Data Isolation
+Each user gets their own isolated directory:
+- **alice**: `/app/data/users/alice/folders/default-folder/cards/`
+- **bob**: `/app/data/users/bob/folders/default-folder/cards/`
+- **default**: `/app/data/users/default/folders/default-folder/cards/`
 
 ## 🌍 Environment Configuration
 

@@ -104,6 +104,21 @@ class UserService {
   }
 
   /**
+   * 根据token查找用户
+   */
+  async findUserByToken(token) {
+    const usersData = await this.loadUsers()
+    const user = usersData.users.find(u => u.token === token)
+    
+    if (user) {
+      const { password: _, ...userInfo } = user
+      return userInfo
+    }
+    
+    return null
+  }
+
+  /**
    * 创建用户文件夹结构
    */
   async createUserFolder(username) {

@@ -2,6 +2,47 @@
 
 本文档记录AI Terminal项目的重要变更。
 
+## [v3.381] - 2025-08-14
+
+### 🔐 用户认证系统重构
+- **BREAKING**: 实现完整的token基认证系统，替换简化的用户名认证
+- **新增**: 4个预设用户账户 (default, alice, bob, charlie)
+- **新增**: 用户数据完全隔离，每个用户拥有独立的数据目录
+- **新增**: 支持默认用户回退的API认证机制
+
+### 📁 多用户数据管理
+- **用户目录**: `/app/data/users/{username}/folders/default-folder/cards/`
+- **Token映射**: 每个用户拥有独立的安全token
+- **API隔离**: 生成、SSE、文件管理完全按用户隔离
+
+### 🛡️ 认证策略优化  
+- **严格认证**: SSE相关API要求有效token
+- **可选认证**: 生成API支持无token时自动使用default用户
+- **开放接口**: 登录、验证、模板查询等管理接口无需认证
+
+### 🔧 API更新
+- **登录接口**: 返回真实token而不是用户名
+- **认证中间件**: 全面升级为token查找模式
+- **用户服务**: 新增 `findUserByToken()` 方法
+- **文档更新**: API文档完整更新认证说明
+
+### 🧪 测试验证
+- **v3.381镜像**: 构建并测试了完整的Docker镜像
+- **认证测试**: 验证了token登录、验证、API访问全流程
+- **数据隔离**: 确认了用户间数据完全隔离
+
+### 📦 预设用户账户
+```json
+{
+  "default": {"password": "default123", "token": "default-user-token-2025"},
+  "alice": {"password": "alice123", "token": "alice-secure-token-abc123"},
+  "bob": {"password": "bob456", "token": "bob-secure-token-def456"},
+  "charlie": {"password": "charlie789", "token": "charlie-secure-token-ghi789"}
+}
+```
+
+---
+
 ## [未发布] - 2025-08-12
 
 ### 📖 文档重构

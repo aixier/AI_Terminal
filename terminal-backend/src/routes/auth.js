@@ -35,8 +35,8 @@ router.post('/login', async (req, res) => {
       await userService.createUserFolder(username)
     }
 
-    // 简化版token（实际项目中应该使用JWT）
-    const token = username // 简化版：token就是username
+    // 使用用户的真实token
+    const token = user.token
 
     res.json({
       code: 200,
@@ -74,8 +74,8 @@ router.get('/verify', async (req, res) => {
       })
     }
 
-    // 简化版：token就是username，验证用户是否存在
-    const user = await userService.findUserByUsername(token)
+    // 使用token查找用户
+    const user = await userService.findUserByToken(token)
     
     if (!user) {
       return res.status(401).json({

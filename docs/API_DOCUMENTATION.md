@@ -16,9 +16,9 @@ AI Terminal Backend 是一个功能强大的Web终端后端服务，支持AI卡�
 ## 基础信息
 
 - **Base URL**: `http://localhost:6000`
-- **API 版本**: v3.37+
+- **API 版本**: v3.381+
 - **数据格式**: JSON
-- **认证方式**: JWT (目前禁用，使用默认用户)
+- **认证方式**: Token认证系统 (支持默认用户回退)
 
 ### 通用响应格式
 
@@ -35,6 +35,21 @@ AI Terminal Backend 是一个功能强大的Web终端后端服务，支持AI卡�
 
 ## 1. 认证 API (`/api/auth`)
 
+### 🔐 Token认证系统说明
+
+**v3.381+** 版本实现了完整的基于token的用户认证系统：
+
+**用户类型：**
+- **default**: 默认用户 (无需认证，自动回退)
+- **alice**: 普通用户 
+- **bob**: 普通用户
+- **charlie**: 普通用户
+
+**认证模式：**
+- **严格认证**: 某些API要求必须提供有效token
+- **可选认证**: 生成类API支持无token时自动使用default用户
+- **开放接口**: 部分管理接口无需认证
+
 ### 1.1 用户登录
 ```
 POST /api/auth/login
@@ -43,8 +58,8 @@ POST /api/auth/login
 **请求体：**
 ```json
 {
-  "username": "admin",
-  "password": "admin123"
+  "username": "alice",
+  "password": "alice123"
 }
 ```
 
@@ -52,15 +67,27 @@ POST /api/auth/login
 ```json
 {
   "code": 200,
+  "success": true,
   "data": {
-    "token": "jwt_token_here",
+    "token": "alice-secure-token-abc123",
     "user": {
       "id": 1,
-      "username": "admin",
-      "role": "admin"
+      "username": "alice",
+      "displayName": "Alice Wang",
+      "email": "alice@example.com"
     }
   },
   "message": "登录成功"
+}
+```
+
+**预设用户账号：**
+```json
+{
+  "default": { "password": "default123", "token": "default-user-token-2025" },
+  "alice": { "password": "alice123", "token": "alice-secure-token-abc123" },
+  "bob": { "password": "bob456", "token": "bob-secure-token-def456" },
+  "charlie": { "password": "charlie789", "token": "charlie-secure-token-ghi789" }
 }
 ```
 
@@ -71,7 +98,57 @@ GET /api/auth/verify
 
 **请求头：**
 ```
-Authorization: Bearer <token>
+Authorization: Bearer alice-secure-token-abc123
+```
+
+**响应：**
+```json
+{
+  "code": 200,
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "username": "alice",
+      "displayName": "Alice Wang",
+      "email": "alice@example.com"
+    }
+  },
+  "message": "Token有效"
+}
+```
+
+### 1.3 获取用户列表
+```
+GET /api/auth/users
+```
+
+**说明**: 管理接口，无需认证
+
+**响应：**
+```json
+{
+  "code": 200,
+  "success": true,
+  "data": {
+    "users": [
+      {
+        "id": 0,
+        "username": "default",
+        "displayName": "Default User",
+        "email": "default@system.local",
+        "isDefault": true
+      },
+      {
+        "id": 1,
+        "username": "alice",
+        "displayName": "Alice Wang",
+        "email": "alice@example.com"
+      }
+    ]
+  },
+  "message": "获取用户列表成功"
+}
 ```
 
 ---
@@ -280,9 +357,26 @@ POST /api/claude/cleanup
 
 ## 5. 卡片生成 API (`/api/generate`)
 
+### 🎯 认证方式说明
+
+**支持默认用户的API (authenticateUserOrDefault)：**
+- `POST /api/generate/card` - 生成卡片
+- `POST /api/generate/card/stream` - 流式生成卡片  
+- `GET /api/generate/status/:topic` - 查询生成状态
+
+**认证行为：**
+- ✅ **有有效token**: 使用对应用户，数据保存到用户专属目录
+- 🔄 **无token或token无效**: 自动使用default用户
+- 📁 **数据隔离**: 每个用户的生成内容完全独立
+
 ### 5.1 生成卡片 (标准版)
 ```
 POST /api/generate/card
+```
+
+**请求头（可选）：**
+```
+Authorization: Bearer alice-secure-token-abc123
 ```
 
 **请求体：**
@@ -292,6 +386,10 @@ POST /api/generate/card
   "templateName": "daily-knowledge-card-template.md"
 }
 ```
+
+**用户数据路径：**
+- alice用户: `/app/data/users/alice/folders/default-folder/cards/人工智能发展史/`
+- default用户: `/app/data/users/default/folders/default-folder/cards/人工智能发展史/`
 
 **响应：**
 ```json
@@ -327,6 +425,19 @@ POST /api/generate/card
 POST /api/generate/card/stream
 ```
 
+**请求头（可选）：**
+```
+Authorization: Bearer bob-secure-token-def456
+```
+
+**请求体：**
+```json
+{
+  "topic": "机器学习算法",
+  "templateName": "cardplanet-Sandra"
+}
+```
+
 **响应类型：** `text/event-stream`
 
 **SSE 事件类型：**
@@ -360,6 +471,21 @@ GET /api/generate/templates
 GET /api/generate/status/:topic
 ```
 
+**请求头（可选）：**
+```
+Authorization: Bearer charlie-secure-token-ghi789
+```
+
+**示例请求：**
+```bash
+# 使用charlie用户token查询
+curl -X GET "http://localhost:8084/api/generate/status/机器学习算法" \
+  -H "Authorization: Bearer charlie-secure-token-ghi789"
+
+# 无token时使用default用户查询  
+curl -X GET "http://localhost:8084/api/generate/status/机器学习算法"
+```
+
 **响应：**
 ```json
 {
@@ -368,6 +494,34 @@ GET /api/generate/status/:topic
   "status": "completed",
   "files": ["content.json"],
   "message": "生成完成"
+}
+```
+
+### 5.5 获取模板列表 (无需认证)
+```
+GET /api/generate/templates
+```
+
+**说明**: 开放接口，返回所有可用的模板列表
+
+**响应：**
+```json
+{
+  "code": 200,
+  "success": true,
+  "templates": [
+    {
+      "fileName": "daily-knowledge-card-template.md",
+      "displayName": "daily knowledge card template",
+      "type": "file"
+    },
+    {
+      "fileName": "cardplanet-Sandra",
+      "displayName": "cardplanet-Sandra",
+      "type": "folder"
+    }
+  ],
+  "message": "success"
 }
 ```
 
@@ -515,9 +669,23 @@ POST /api/preview/proxy
 
 ## 8. Server-Sent Events API (`/api/sse`)
 
+### 🔒 严格认证说明
+
+**需要有效token的API (authenticateUser)：**
+- `GET /api/sse/stream` - 建立SSE连接
+- `POST /api/sse/refresh` - 手动触发刷新
+- `GET /api/sse/status` - 获取连接状态
+
+**认证要求：** 必须提供有效的用户token，无token或token无效将返回401错误
+
 ### 8.1 建立SSE连接
 ```
 GET /api/sse/stream
+```
+
+**请求头（必需）：**
+```
+Authorization: Bearer alice-secure-token-abc123
 ```
 
 **响应类型：** `text/event-stream`
@@ -542,19 +710,35 @@ data: {"type":"file:added","data":{"path":"/path/to/file","action":"add"},"times
 POST /api/sse/refresh
 ```
 
+**请求头（必需）：**
+```
+Authorization: Bearer bob-secure-token-def456
+```
+
 ### 8.3 获取连接状态
 ```
 GET /api/sse/status
 ```
 
+**请求头（必需）：**
+```
+Authorization: Bearer charlie-secure-token-ghi789
+```
+
 **响应：**
 ```json
 {
-  "connected_clients": 3,
+  "connected_clients": 2,
   "watcher_active": true,
-  "watch_dir": "/app/data/users/default/folders/default-folder/cards"
+  "watch_dir": "/app/data/users/charlie/folders/default-folder/cards"
 }
 ```
+
+**用户数据隔离：**
+- alice用户监控: `/app/data/users/alice/folders/default-folder/cards`
+- bob用户监控: `/app/data/users/bob/folders/default-folder/cards`  
+- charlie用户监控: `/app/data/users/charlie/folders/default-folder/cards`
+- default用户监控: `/app/data/users/default/folders/default-folder/cards`
 
 ---
 

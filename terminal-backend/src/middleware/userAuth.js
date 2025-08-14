@@ -20,11 +20,11 @@ export const authenticateUser = async (req, res, next) => {
       })
     }
 
-    // 简化版：token就是username（实际项目中应该解析JWT）
-    const username = authHeader.replace('Bearer ', '')
+    // 使用token查找用户
+    const token = authHeader.replace('Bearer ', '')
     
-    // 验证用户是否存在
-    const user = await userService.findUserByUsername(username)
+    // 验证token是否存在
+    const user = await userService.findUserByToken(token)
     if (!user) {
       return res.status(401).json({
         code: 401,
@@ -55,8 +55,8 @@ export const optionalAuth = async (req, res, next) => {
     const authHeader = req.headers.authorization
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      const username = authHeader.replace('Bearer ', '')
-      const user = await userService.findUserByUsername(username)
+      const token = authHeader.replace('Bearer ', '')
+      const user = await userService.findUserByToken(token)
       
       if (user) {
         req.user = user
@@ -83,8 +83,8 @@ export const authenticateUserOrDefault = async (req, res, next) => {
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       // 有token，使用标准认证流程
-      const username = authHeader.replace('Bearer ', '')
-      const user = await userService.findUserByUsername(username)
+      const token = authHeader.replace('Bearer ', '')
+      const user = await userService.findUserByToken(token)
       
       if (user) {
         req.user = user

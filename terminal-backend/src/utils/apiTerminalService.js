@@ -84,9 +84,33 @@ class ApiTerminalService extends EventEmitter {
   }
 
   /**
-   * 初始化Claude - 使用统一的初始化服务
+   * 执行Claude命令 - 直接使用 claude -p 参数
+   */
+  async executeClaude(apiId, prompt) {
+    const terminal = await this.createTerminalSession(apiId)
+    
+    console.log(`[ApiTerminalService] Executing Claude command for API: ${apiId}`)
+    console.log(`[ApiTerminalService] Prompt: ${prompt.substring(0, 100)}...`)
+    
+    // 直接执行claude命令，使用-p参数传递prompt
+    const command = `claude --dangerously-skip-permissions -p "${prompt.replace(/"/g, '\\"')}"`
+    console.log(`[ApiTerminalService] Command: ${command}`)
+    
+    terminal.pty.write(command + '\r')
+    
+    // 更新活动时间
+    terminal.lastActivity = Date.now()
+    
+    console.log(`[ApiTerminalService] ✅ Claude command sent for API: ${apiId}`)
+    return true
+  }
+
+  /**
+   * @deprecated 使用 executeClaude 替代
    */
   async initializeClaude(apiId) {
+    // 为了向后兼容，保留这个方法但标记为废弃
+    console.log(`[ApiTerminalService] DEPRECATED: initializeClaude called for ${apiId}`)
     const terminal = await this.createTerminalSession(apiId)
     const outputBuffer = this.outputBuffers.get(apiId) || []
     

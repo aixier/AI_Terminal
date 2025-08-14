@@ -6,8 +6,11 @@ import apiTerminalService from '../utils/apiTerminalService.js'
 const router = express.Router()
 
 /**
- * 生成卡片并返回JSON内容
+ * 生成卡片并返回JSON内容 (简化版 v3.33+)
  * POST /api/generate/card
+ * 
+ * 新架构: 直接使用 claude --dangerously-skip-permissions -p "[prompt]"
+ * 无需复杂的Claude初始化流程
  * 
  * 请求体:
  * {
@@ -192,15 +195,10 @@ router.post('/card', async (req, res) => {
     console.log(`[GenerateCard API] >>> Starting unified terminal processing: ${apiId}`)
     
     try {
-      // 步骤1: 初始化Claude（内部已包含5秒稳定等待）
-      console.log(`[GenerateCard API] Step 1: Initializing Claude for ${apiId}`)
-      await apiTerminalService.initializeClaude(apiId)
-      console.log(`[GenerateCard API] ✅ Claude initialized for ${apiId}`)
-      
-      // 步骤2: 发送命令
-      console.log(`[GenerateCard API] Step 2: Sending command to ${apiId}`)
-      await apiTerminalService.sendTextAndControl(apiId, prompt, '\r', 1000)
-      console.log(`[GenerateCard API] ✅ Command sent to ${apiId}`)
+      // v3.33+ 简化架构: 直接执行 claude -p 命令，无需初始化
+      console.log(`[GenerateCard API] Executing simplified Claude command for ${apiId}`)
+      await apiTerminalService.executeClaude(apiId, prompt)
+      console.log(`[GenerateCard API] ✅ Claude command executed (no initialization needed) for ${apiId}`)
       
     } catch (executeError) {
       console.error('[GenerateCard API] Command execution error:', executeError)
@@ -568,15 +566,10 @@ router.post('/card/stream', async (req, res) => {
       })
       
       try {
-        // 初始化Claude（内部已包含5秒稳定等待）
-        sendSSE('status', { step: 'initializing_claude' })
-        await apiTerminalService.initializeClaude(apiId)
-        sendSSE('status', { step: 'claude_initialized' })
-        
-        // 发送命令
-        sendSSE('status', { step: 'sending_command' })
-        await apiTerminalService.sendTextAndControl(apiId, prompt, '\r', 1000)
-        sendSSE('status', { step: 'command_sent' })
+        // 直接执行Claude命令
+        sendSSE('status', { step: 'executing_claude' })
+        await apiTerminalService.executeClaude(apiId, prompt)
+        sendSSE('status', { step: 'claude_executed' })
         
         // 等待文件生成
         sendSSE('status', { step: 'waiting_file_generation' })

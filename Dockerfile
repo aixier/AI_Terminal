@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.6
+# syntax=docker/dockerfile:1
 
 # ============================
 # Stage 1: Build Frontend (terminal-ui)

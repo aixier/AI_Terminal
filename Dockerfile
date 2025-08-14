@@ -65,7 +65,7 @@ ENV NODE_ENV=production \
     ANTHROPIC_BASE_URL=http://44.212.20.73:3000/api/
 
 # Global tools (requested)
-RUN npm install -g @anthropic-ai/claude-code && npm cache clean --force
+RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli && npm cache clean --force
 
 # Copy backend runtime files
 COPY --from=backend-builder --chown=node:node /build/backend/node_modules ./terminal-backend/node_modules
@@ -98,15 +98,16 @@ RUN if [ ! -f /app/data/users/default/folders/default-folder/metadata.json ]; th
 EXPOSE 6000
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:6000/api/terminal/health', (r) => {r.statusCode === 200 ? process.exit(0) : process.exit(1)})" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:6000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
 # Drop privileges
 USER node
 
-# Set Anthropic environment variables for claude-code
+# Set Anthropic environment variables for claude-code and Gemini API key
 ENV ANTHROPIC_AUTH_TOKEN="cr_54e6cbbcdc5711993b81e314ea6e470facb2b11b88d3c79b1be63619387199e3" \
-    ANTHROPIC_BASE_URL="http://44.212.20.73:3000/api/"
+    ANTHROPIC_BASE_URL="http://44.212.20.73:3000/api/" \
+    GEMINI_API_KEY=""
 
 WORKDIR /app/terminal-backend
 

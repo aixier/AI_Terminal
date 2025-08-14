@@ -232,6 +232,49 @@
         </div>
       </div>
 
+      <!-- Upload Section -->
+      <div class="upload-section">
+        <div class="upload-header">模板管理</div>
+        <div class="upload-actions">
+          <!-- 上传文件夹按钮 -->
+          <button 
+            class="upload-btn folder-btn"
+            @click="uploadFolder"
+            :disabled="isUploading"
+            title="上传本地文件夹"
+          >
+            {{ isUploading ? '📤 上传中...' : '📁 上传文件夹' }}
+          </button>
+          
+          <!-- 上传文件按钮 -->
+          <button 
+            class="upload-btn file-btn"
+            @click="uploadFiles"
+            :disabled="isUploading"
+            title="上传本地文件"
+          >
+            {{ isUploading ? '📤 上传中...' : '📄 上传文件' }}
+          </button>
+          
+          <!-- 隐藏的文件选择器 -->
+          <input 
+            ref="fileInput" 
+            type="file" 
+            multiple 
+            style="display: none" 
+            @change="handleFileUpload"
+          />
+          <input 
+            ref="folderInput" 
+            type="file" 
+            webkitdirectory 
+            style="display: none" 
+            @change="handleFolderUpload"
+          />
+        </div>
+
+      </div>
+
       <!-- Stream Messages Display -->
       <div v-if="streamMessages.length > 0" class="stream-messages">
         <div class="stream-header">生成日志</div>
@@ -502,6 +545,7 @@
       <TabNavigation />
     </template>
   </ResponsiveLayout>
+
 </template>
 
 <script setup>
@@ -553,6 +597,11 @@ const responseUrls = ref({
   originalUrl: ''
 })
 const activePreviewTab = ref('shareLink') // 当前激活的tab
+
+// 上传相关状态  
+const fileInput = ref(null)
+const folderInput = ref(null)
+const isUploading = ref(false)
 
 // Stream messages state
 const streamMessages = ref([]) // 存储最近的流消息
@@ -607,6 +656,110 @@ const switchPreviewTab = (tab) => {
   // 记录当前选择的URL
   const currentUrl = tab === 'originalUrl' ? responseUrls.value.originalUrl : responseUrls.value.shareLink
   console.log('[Preview] Current URL:', currentUrl)
+}
+
+// 上传相关方法
+
+const uploadFiles = () => {
+  fileInput.value?.click()
+}
+
+const uploadFolder = () => {
+  folderInput.value?.click()
+}
+
+const handleFileUpload = async (event) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+  
+  isUploading.value = true
+  
+  try {
+    await uploadFilesToFolder(Array.from(files))
+    ElMessage.success(`成功上传 ${files.length} 个文件`)
+    await loadTemplates()
+  } catch (error) {
+    console.error('文件上传失败:', error)
+    ElMessage.error('文件上传失败')
+  } finally {
+    isUploading.value = false
+    // 清空input，允许重复选择同一文件
+    event.target.value = ''
+  }
+}
+
+const handleFolderUpload = async (event) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+  
+  isUploading.value = true
+  
+  try {
+    await uploadFilesWithStructure(files)
+    ElMessage.success(`成功上传文件夹，共 ${files.length} 个文件`)
+    await loadTemplates()
+  } catch (error) {
+    console.error('文件夹上传失败:', error)
+    ElMessage.error('文件夹上传失败')
+  } finally {
+    isUploading.value = false
+    // 清空input，允许重复选择同一文件夹
+    event.target.value = ''
+  }
+}
+
+const uploadFilesWithStructure = async (files) => {
+  // 按文件夹路径分组上传
+  const folderGroups = {}
+  
+  for (const file of files) {
+    const relativePath = file.webkitRelativePath || file.name
+    const folderPath = relativePath.includes('/') 
+      ? relativePath.substring(0, relativePath.lastIndexOf('/'))
+      : ''
+    
+    if (!folderGroups[folderPath]) {
+      folderGroups[folderPath] = []
+    }
+    folderGroups[folderPath].push(file)
+  }
+  
+  // 为每个文件夹路径分别上传
+  for (const [folderPath, groupFiles] of Object.entries(folderGroups)) {
+    await uploadFilesToFolder(groupFiles, folderPath)
+  }
+}
+
+const uploadFilesToFolder = async (files, folderPath = '') => {
+  const formData = new FormData()
+  
+  for (const file of files) {
+    formData.append('files', file)
+  }
+  
+  if (folderPath) {
+    formData.append('folderPath', folderPath)
+  }
+  
+  const response = await axios.post('/api/upload/files', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+  
+  if (!response.data.success) {
+    throw new Error(response.data.message || '文件上传失败')
+  }
+  
+  return response.data
+}
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 // Initialize Claude in terminal
@@ -1694,31 +1847,56 @@ const refreshCardFolders = async () => {
   }
 }
 
-// Load templates
+// Load templates from public_template directory
 const loadTemplates = async () => {
   try {
-    console.log('[debug0.0.1] Loading templates from API...')
-    const response = await terminalAPI.getTemplates()
-    console.log('[debug0.0.1] templates API raw response:', response)
+    console.log('[debug0.0.1] Loading templates from public_template directory...')
+    const response = await axios.get('/api/upload/structure')
+    console.log('[debug0.0.1] templates structure response:', response)
     
-    if (response.success && response.templates) {
-      console.log('[debug0.0.1] templates data:', response.templates)
-      // 转换模板数据格式以适配UI显示
-      templates.value = response.templates.map(template => ({
-        fileName: template.fileName,
-        name: template.displayName,
-        description: template.type === 'folder' ? '文件夹模板' : '文件模板',
-        type: template.type
-      }))
+    if (response.data.success && response.data.data) {
+      console.log('[debug0.0.1] templates data:', response.data.data)
+      
+      // 将文件和文件夹转换为模板格式
+      const convertToTemplates = (items, baseName = '') => {
+        const templates = []
+        for (const item of items) {
+          const fullName = baseName ? `${baseName}/${item.name}` : item.name
+          
+          if (item.type === 'folder') {
+            // 文件夹作为模板
+            templates.push({
+              fileName: fullName,
+              name: fullName,
+              description: `文件夹模板 (${item.children?.length || 0}个文件)`,
+              type: 'folder'
+            })
+            
+            // 递归处理子文件夹和文件
+            if (item.children && item.children.length > 0) {
+              templates.push(...convertToTemplates(item.children, fullName))
+            }
+          } else if (item.type === 'file') {
+            // 文件作为模板
+            templates.push({
+              fileName: fullName,
+              name: item.name,
+              description: `文件模板 (${formatFileSize(item.size)})`,
+              type: 'file'
+            })
+          }
+        }
+        return templates
+      }
+      
+      templates.value = convertToTemplates(response.data.data)
       console.log('[debug0.0.1] Processed templates for display:', templates.value)
     } else {
-      // Use empty templates if API fails
       templates.value = []
-      console.warn('[debug0.0.1] No templates loaded from backend')
+      console.warn('[debug0.0.1] No templates found in public_template directory')
     }
   } catch (error) {
     console.error('[debug0.0.1] Failed to load templates:', error)
-    // Use empty templates on error
     templates.value = []
   }
 }
@@ -2131,6 +2309,9 @@ onMounted(async () => {
   
   // 初始化界面会处理所有的初始化流程
   // 不再在这里直接初始化
+  
+  // 加载风格模板
+  await loadTemplates()
 })
 
 
@@ -3034,6 +3215,209 @@ const openLink = (which) => {
   font-size: 12px;
   color: #999;
   line-height: 1.4;
+}
+
+/* Upload Section */
+.upload-section {
+  border-bottom: 1px solid #333;
+  background: #252525;
+}
+
+.upload-header {
+  padding: 15px 20px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.upload-actions {
+  padding: 15px 20px;
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.upload-btn {
+  padding: 10px 15px;
+  background: #3a3a3a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.upload-btn:hover {
+  background: #444;
+  border-color: #555;
+}
+
+.folder-btn:hover {
+  background: #3a4a2a;
+  border-color: #5a7a3a;
+}
+
+.file-btn:hover {
+  background: #2a3a4a;
+  border-color: #3a5a7a;
+}
+
+
+/* Dialog Styles */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background: #2a2a2a;
+  border-radius: 8px;
+  border: 1px solid #444;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-header {
+  padding: 20px;
+  border-bottom: 1px solid #444;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #444;
+  color: #fff;
+}
+
+.dialog-body {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #ccc;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.dialog-footer {
+  padding: 20px;
+  border-top: 1px solid #444;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.btn.secondary {
+  background: #3a3a3a;
+  color: #ccc;
+  border: 1px solid #555;
+}
+
+.btn.secondary:hover {
+  background: #444;
+  color: #fff;
+}
+
+.btn.primary {
+  background: #4a9eff;
+  color: white;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #3a8eef;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Input & Create Section */

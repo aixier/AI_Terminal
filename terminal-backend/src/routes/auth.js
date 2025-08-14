@@ -1,93 +1,129 @@
 import express from 'express'
-import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
-import config from '../config/config.js'
+import userService from '../services/userService.js'
 
 const router = express.Router()
 
-// 临时用户数据（实际应该使用数据库）
-const users = [
-  {
-    id: 1,
-    username: 'admin',
-    password: '$2a$10$YourHashedPasswordHere', // 密码: admin123
-    role: 'admin'
-  }
-]
-
-// 登录
+// 用户登录
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body
 
-    // 查找用户
-    const user = users.find(u => u.username === username)
+    // 参数验证
+    if (!username || !password) {
+      return res.status(400).json({
+        code: 400,
+        success: false,
+        message: '用户名和密码不能为空'
+      })
+    }
+
+    // 验证用户凭据
+    const user = await userService.authenticate(username, password)
+    
     if (!user) {
       return res.status(401).json({
         code: 401,
+        success: false,
         message: '用户名或密码错误'
       })
     }
 
-    // 验证密码（暂时使用明文比较，实际应该使用bcrypt）
-    // const isValidPassword = await bcrypt.compare(password, user.password)
-    const isValidPassword = password === 'admin123' // 临时处理
-
-    if (!isValidPassword) {
-      return res.status(401).json({
-        code: 401,
-        message: '用户名或密码错误'
-      })
+    // 检查并创建用户文件夹
+    const folderExists = await userService.userFolderExists(username)
+    if (!folderExists) {
+      console.log(`[Auth] Creating folder for new login user: ${username}`)
+      await userService.createUserFolder(username)
     }
 
-    // 生成JWT
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      config.jwt.secret,
-      { expiresIn: config.jwt.expireTime }
-    )
+    // 简化版token（实际项目中应该使用JWT）
+    const token = username // 简化版：token就是username
 
     res.json({
       code: 200,
+      success: true,
       data: {
         token,
         user: {
           id: user.id,
           username: user.username,
-          role: user.role
+          displayName: user.displayName,
+          email: user.email
         }
       },
       message: '登录成功'
     })
   } catch (error) {
+    console.error('[Auth] Login error:', error)
     res.status(500).json({
       code: 500,
-      message: error.message
+      success: false,
+      message: error.message || '登录服务错误'
     })
   }
 })
 
 // 验证token
-router.get('/verify', (req, res) => {
+router.get('/verify', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '')
     if (!token) {
       return res.status(401).json({
         code: 401,
+        success: false,
         message: '未提供token'
       })
     }
 
-    const decoded = jwt.verify(token, config.jwt.secret)
+    // 简化版：token就是username，验证用户是否存在
+    const user = await userService.findUserByUsername(token)
+    
+    if (!user) {
+      return res.status(401).json({
+        code: 401,
+        success: false,
+        message: 'Token无效或已过期'
+      })
+    }
+
     res.json({
       code: 200,
-      data: decoded,
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          email: user.email
+        }
+      },
       message: 'Token有效'
     })
   } catch (error) {
+    console.error('[Auth] Verify error:', error)
     res.status(401).json({
       code: 401,
-      message: 'Token无效或已过期'
+      success: false,
+      message: 'Token验证失败'
+    })
+  }
+})
+
+// 获取用户列表（用于管理）
+router.get('/users', async (req, res) => {
+  try {
+    const users = await userService.getAllUsers()
+    res.json({
+      code: 200,
+      success: true,
+      data: { users },
+      message: '获取用户列表成功'
+    })
+  } catch (error) {
+    console.error('[Auth] Get users error:', error)
+    res.status(500).json({
+      code: 500,
+      success: false,
+      message: '获取用户列表失败'
     })
   }
 })

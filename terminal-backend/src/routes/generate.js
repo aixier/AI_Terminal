@@ -2,6 +2,8 @@ import express from 'express'
 import path from 'path'
 import fs from 'fs/promises'
 import apiTerminalService from '../utils/apiTerminalService.js'
+import { authenticateUser, authenticateUserOrDefault, ensureUserFolder } from '../middleware/userAuth.js'
+import userService from '../services/userService.js'
 
 const router = express.Router()
 
@@ -18,7 +20,7 @@ const router = express.Router()
  *   "templateName": "模板文件名" (可选，默认使用 daily-knowledge-card-template.md)
  * }
  */
-router.post('/card', async (req, res) => {
+router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, res) => {
   try {
     const { topic, templateName = 'daily-knowledge-card-template.md' } = req.body
     
@@ -41,10 +43,8 @@ router.post('/card', async (req, res) => {
     // 判断模板类型
     const isFolder = !templateName.includes('.md')
     
-    // 构建输出路径（两种模式都需要）
-    const userCardPath = isDocker
-      ? `/app/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
-      : path.join(dataPath, 'users/default/folders/default-folder/cards', sanitizedTopic)
+    // 使用用户特定的路径
+    const userCardPath = userService.getUserCardPath(req.user.username, topic)
     
     // 构建模板路径和提示词
     let templatePath, prompt
@@ -326,13 +326,12 @@ router.get('/templates', async (req, res) => {
  * 检查生成状态（用于轮询）
  * GET /api/generate/status/:topic
  */
-router.get('/status/:topic', async (req, res) => {
+router.get('/status/:topic', authenticateUserOrDefault, async (req, res) => {
   try {
     const { topic } = req.params
     const sanitizedTopic = topic.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
     
-    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
-    const userCardPath = path.join(dataPath, 'users/default/folders/default-folder/cards', sanitizedTopic)
+    const userCardPath = userService.getUserCardPath(req.user.username, topic)
     
     try {
       const files = await fs.readdir(userCardPath)
@@ -381,7 +380,7 @@ router.get('/status/:topic', async (req, res) => {
  *   "templateName": "模板文件名" (可选，默认使用 daily-knowledge-card-template.md)
  * }
  */
-router.post('/card/stream', async (req, res) => {
+router.post('/card/stream', authenticateUserOrDefault, ensureUserFolder, async (req, res) => {
   try {
     const { topic, templateName = 'daily-knowledge-card-template.md' } = req.body
     
@@ -415,10 +414,8 @@ router.post('/card/stream', async (req, res) => {
     // 判断模板类型
     const isFolder = !templateName.includes('.md')
     
-    // 构建输出路径
-    const userCardPath = isDocker
-      ? `/app/data/users/default/folders/default-folder/cards/${sanitizedTopic}`
-      : path.join(dataPath, 'users/default/folders/default-folder/cards', sanitizedTopic)
+    // 使用用户特定的路径
+    const userCardPath = userService.getUserCardPath(req.user.username, topic)
     
     // 构建模板路径和提示词
     let templatePath, prompt

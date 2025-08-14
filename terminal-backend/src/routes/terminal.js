@@ -316,7 +316,8 @@ router.post('/execute', async (req, res) => {
       // 模拟生成JSON文件
       const timestamp = Date.now()
       const safeTopic = topic.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
-      result.filePath = `/users/default/cards/${safeTopic}_${timestamp}/content.json`
+      // 注意：这个路径应该根据实际用户动态生成，这里只是模拟
+      result.filePath = `/users/simulation/cards/${safeTopic}_${timestamp}/content.json`
       result.message = 'JSON file generated successfully'
     } else if (type === 'generate-card') {
       // 模拟生成卡片URL - 返回一个data URL以避免404和跨域问题

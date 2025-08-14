@@ -9,27 +9,47 @@ import { promises as fsPromises } from 'fs'
 import path from 'path'
 import chokidar from 'chokidar'
 import logger from '../utils/logger.js'
+import { authenticateUser } from '../middleware/userAuth.js'
 
 const router = express.Router()
 
-// 存储所有SSE连接
-const clients = new Set()
+// 存储用户特定的SSE连接和监控器
+const userClients = new Map() // username -> Set of clients
+const userWatchers = new Map() // username -> watcher instance
+const userFileSystemCache = new Map() // username -> Map of files
 
-// 监控的目录 - 精确到cards目录
 // 支持Docker环境：优先使用DATA_PATH环境变量
 const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
-const WATCH_DIR = path.join(dataPath, 'users/default/folders/default-folder/cards')
 
-// 文件系统监控器
-let watcher = null
+// 用户健康检查定时器
+const userHealthCheckIntervals = new Map() // username -> interval
 
-// 文件系统状态缓存
-let fileSystemCache = new Map()
+/**
+ * 获取用户的监控目录
+ */
+const getUserWatchDir = (username) => {
+  return path.join(dataPath, 'users', username, 'folders', 'default-folder', 'cards')
+}
 
-// 定期检查定时器
-let healthCheckInterval = null
-// 节流健康检查日志，避免控制台刷屏
-let lastHealthLogTime = 0
+/**
+ * 获取或创建用户客户端集合
+ */
+const getUserClients = (username) => {
+  if (!userClients.has(username)) {
+    userClients.set(username, new Set())
+  }
+  return userClients.get(username)
+}
+
+/**
+ * 获取或创建用户文件缓存
+ */
+const getUserFileCache = (username) => {
+  if (!userFileSystemCache.has(username)) {
+    userFileSystemCache.set(username, new Map())
+  }
+  return userFileSystemCache.get(username)
+}
 
 /**
  * 扫描目录并更新缓存
@@ -66,37 +86,41 @@ const scanDirectory = async (dir) => {
 }
 
 /**
- * 定期健康检查
+ * 为特定用户启动健康检查
  */
-const startHealthCheck = () => {
-  if (healthCheckInterval) return
+const startUserHealthCheck = (username) => {
+  if (userHealthCheckIntervals.has(username)) return
   
-  healthCheckInterval = setInterval(async () => {
+  const watchDir = getUserWatchDir(username)
+  let lastHealthLogTime = 0
+  
+  const interval = setInterval(async () => {
     // 每60秒打印一次健康检查tick，避免日志刷屏
     const now = Date.now()
     if (now - lastHealthLogTime > 60000) {
-      logger.debug('[SSE] Health check tick')
+      logger.debug(`[SSE] Health check tick for user ${username}`)
       lastHealthLogTime = now
     }
     
     try {
-      const currentFiles = await scanDirectory(WATCH_DIR)
+      const currentFiles = await scanDirectory(watchDir)
+      const fileCache = getUserFileCache(username)
       
       // 检查新增的文件/文件夹
       for (const [path, type] of currentFiles) {
-        if (!fileSystemCache.has(path)) {
-          console.log(`[SSE] Health check found new ${type}:`, path)
+        if (!fileCache.has(path)) {
+          console.log(`[SSE] Health check found new ${type} for ${username}:`, path)
           
           // 手动触发事件
           if (type === 'file') {
-            broadcastEvent('file:added', {
+            broadcastEventToUser(username, 'file:added', {
               path: path,
               type: 'file',
               action: 'add',
               source: 'health-check'
             })
           } else {
-            broadcastEvent('folder:added', {
+            broadcastEventToUser(username, 'folder:added', {
               path: path,
               type: 'folder',
               action: 'add',
@@ -107,20 +131,20 @@ const startHealthCheck = () => {
       }
       
       // 检查删除的文件/文件夹
-      for (const [path, type] of fileSystemCache) {
+      for (const [path, type] of fileCache) {
         if (!currentFiles.has(path)) {
-          console.log(`[SSE] Health check found deleted ${type}:`, path)
+          console.log(`[SSE] Health check found deleted ${type} for ${username}:`, path)
           
           // 手动触发事件
           if (type === 'file') {
-            broadcastEvent('file:deleted', {
+            broadcastEventToUser(username, 'file:deleted', {
               path: path,
               type: 'file',
               action: 'delete',
               source: 'health-check'
             })
           } else {
-            broadcastEvent('folder:deleted', {
+            broadcastEventToUser(username, 'folder:deleted', {
               path: path,
               type: 'folder',
               action: 'delete',
@@ -131,26 +155,30 @@ const startHealthCheck = () => {
       }
       
       // 更新缓存
-      fileSystemCache = currentFiles
+      userFileSystemCache.set(username, currentFiles)
     } catch (error) {
-      console.error('[SSE] Health check error:', error)
+      console.error(`[SSE] Health check error for ${username}:`, error)
     }
   }, 2000) // 每2秒检查一次（更及时）
   
-  console.log('[SSE] Health check started (2s interval)')
+  userHealthCheckIntervals.set(username, interval)
+  console.log(`[SSE] Health check started for user ${username} (2s interval)`)
 }
 
 /**
- * 初始化文件系统监控
+ * 为特定用户初始化文件系统监控
  */
-const initWatcher = () => {
-  if (watcher) return
+const initUserWatcher = (username) => {
+  if (userWatchers.has(username)) return
+
+  const watchDir = getUserWatchDir(username)
+  const fileCache = getUserFileCache(username)
 
   // 检测是否在WSL或/mnt 挂载盘（Windows 文件系统）
   const isWSL = process.platform === 'linux' && process.env.WSL_DISTRO_NAME
-  const isMnt = WATCH_DIR.startsWith('/mnt/')
+  const isMnt = watchDir.startsWith('/mnt/')
   
-  watcher = chokidar.watch(WATCH_DIR, {
+  const watcher = chokidar.watch(watchDir, {
     persistent: true,
     ignoreInitial: true,  // 忽略初始扫描，只监控新的变化
     depth: 3,  // cards目录下3层深度足够
@@ -169,13 +197,13 @@ const initWatcher = () => {
 
   // 文件添加
   watcher.on('add', (filePath) => {
-    console.log(`[SSE] File added detected: ${filePath}`)
-    logger.info(`[SSE] File added: ${filePath}`)
+    console.log(`[SSE] File added detected for ${username}: ${filePath}`)
+    logger.info(`[SSE] File added for ${username}: ${filePath}`)
     
     // 更新缓存
-    fileSystemCache.set(filePath, 'file')
+    fileCache.set(filePath, 'file')
     
-    broadcastEvent('file:added', {
+    broadcastEventToUser(username, 'file:added', {
       path: filePath,
       type: 'file',
       action: 'add'
@@ -184,8 +212,8 @@ const initWatcher = () => {
 
   // 文件修改
   watcher.on('change', (filePath) => {
-    logger.info(`[SSE] File changed: ${filePath}`)
-    broadcastEvent('file:changed', {
+    logger.info(`[SSE] File changed for ${username}: ${filePath}`)
+    broadcastEventToUser(username, 'file:changed', {
       path: filePath,
       type: 'file',
       action: 'change'
@@ -194,12 +222,12 @@ const initWatcher = () => {
 
   // 文件删除
   watcher.on('unlink', (filePath) => {
-    logger.info(`[SSE] File deleted: ${filePath}`)
+    logger.info(`[SSE] File deleted for ${username}: ${filePath}`)
     
     // 更新缓存
-    fileSystemCache.delete(filePath)
+    fileCache.delete(filePath)
     
-    broadcastEvent('file:deleted', {
+    broadcastEventToUser(username, 'file:deleted', {
       path: filePath,
       type: 'file',
       action: 'delete'
@@ -208,13 +236,13 @@ const initWatcher = () => {
 
   // 目录添加
   watcher.on('addDir', (dirPath) => {
-    console.log(`[SSE] Directory added detected: ${dirPath}`)
-    logger.info(`[SSE] Directory added: ${dirPath}`)
+    console.log(`[SSE] Directory added detected for ${username}: ${dirPath}`)
+    logger.info(`[SSE] Directory added for ${username}: ${dirPath}`)
     
     // 更新缓存
-    fileSystemCache.set(dirPath, 'directory')
+    fileCache.set(dirPath, 'directory')
     
-    broadcastEvent('folder:added', {
+    broadcastEventToUser(username, 'folder:added', {
       path: dirPath,
       type: 'folder',
       action: 'add'
@@ -223,12 +251,12 @@ const initWatcher = () => {
 
   // 目录删除
   watcher.on('unlinkDir', (dirPath) => {
-    logger.info(`[SSE] Directory deleted: ${dirPath}`)
+    logger.info(`[SSE] Directory deleted for ${username}: ${dirPath}`)
     
     // 更新缓存
-    fileSystemCache.delete(dirPath)
+    fileCache.delete(dirPath)
     
-    broadcastEvent('folder:deleted', {
+    broadcastEventToUser(username, 'folder:deleted', {
       path: dirPath,
       type: 'folder',
       action: 'delete'
@@ -238,36 +266,43 @@ const initWatcher = () => {
   // 监控器准备就绪
   watcher.on('ready', async () => {
     const isWSL = process.platform === 'linux' && process.env.WSL_DISTRO_NAME
-    const isMnt = WATCH_DIR.startsWith('/mnt/')
-    console.log('[SSE] File watcher is ready and monitoring:', WATCH_DIR)
-    console.log('[SSE] Watcher mode:', (isWSL || isMnt) ? 'POLLING (WSL/mnt)' : 'EVENTS')
-    console.log('[SSE] Watched paths:', watcher.getWatched())
-    logger.info('[SSE] File watcher ready')
+    const isMnt = watchDir.startsWith('/mnt/')
+    console.log(`[SSE] File watcher is ready for ${username}, monitoring:`, watchDir)
+    console.log(`[SSE] Watcher mode for ${username}:`, (isWSL || isMnt) ? 'POLLING (WSL/mnt)' : 'EVENTS')
+    logger.info(`[SSE] File watcher ready for ${username}`)
     
     // 初始化文件系统缓存
-    fileSystemCache = await scanDirectory(WATCH_DIR)
-    console.log(`[SSE] Initial scan found ${fileSystemCache.size} items`)
+    const initialFiles = await scanDirectory(watchDir)
+    userFileSystemCache.set(username, initialFiles)
+    console.log(`[SSE] Initial scan for ${username} found ${initialFiles.size} items`)
     
     // 启动健康检查
-    startHealthCheck()
+    startUserHealthCheck(username)
 
     // 通知前端进行一次目录刷新（确保初始状态立即同步）
-    broadcastEvent('refresh', { source: 'watcher-ready', timestamp: Date.now() })
+    broadcastEventToUser(username, 'refresh', { 
+      source: 'watcher-ready', 
+      timestamp: Date.now(),
+      username: username
+    })
   })
 
   // 错误处理
   watcher.on('error', (error) => {
-    console.error('[SSE] Watcher error:', error)
-    logger.error('[SSE] Watcher error:', error)
+    console.error(`[SSE] Watcher error for ${username}:`, error)
+    logger.error(`[SSE] Watcher error for ${username}:`, error)
   })
 
-  logger.info('[SSE] File system watcher initialized')
+  userWatchers.set(username, watcher)
+  logger.info(`[SSE] File system watcher initialized for ${username}`)
 }
 
 /**
- * 广播事件到所有连接的客户端
+ * 广播事件到特定用户的所有连接客户端
  */
-const broadcastEvent = (eventType, data) => {
+const broadcastEventToUser = (username, eventType, data) => {
+  const clients = getUserClients(username)
+  
   const message = JSON.stringify({
     type: eventType,
     data: data,
@@ -276,25 +311,26 @@ const broadcastEvent = (eventType, data) => {
 
   const sseMessage = `event: ${eventType}\ndata: ${message}\n\n`
 
-  // 发送给所有客户端
+  // 发送给该用户的所有客户端
   clients.forEach(client => {
     try {
       client.write(sseMessage)
     } catch (error) {
-      logger.error('[SSE] Failed to send message to client:', error)
+      logger.error(`[SSE] Failed to send message to user ${username}:`, error)
       // 移除失败的客户端
       clients.delete(client)
     }
   })
 
-  logger.debug(`[SSE] Broadcasted ${eventType} to ${clients.size} clients`)
+  logger.debug(`[SSE] Broadcasted ${eventType} to ${clients.size} clients of user ${username}`)
 }
 
 /**
- * SSE连接端点
+ * SSE连接端点 - 需要用户认证
  */
-router.get('/stream', (req, res) => {
-  logger.info('[SSE] New client connected')
+router.get('/stream', authenticateUser, (req, res) => {
+  const username = req.user.username
+  logger.info(`[SSE] New client connected for user: ${username}`)
 
   // 设置SSE响应头
   res.writeHead(200, {
@@ -306,10 +342,11 @@ router.get('/stream', (req, res) => {
   })
 
   // 发送初始连接成功消息
-  res.write(`event: connected\ndata: {"message": "SSE connected successfully"}\n\n`)
+  res.write(`event: connected\ndata: {"message": "SSE connected successfully", "username": "${username}"}\n\n`)
 
-  // 添加到客户端列表
-  clients.add(res)
+  // 添加到用户特定的客户端列表
+  const userClientSet = getUserClients(username)
+  userClientSet.add(res)
 
   // 发送心跳保持连接
   const heartbeat = setInterval(() => {
@@ -317,25 +354,51 @@ router.get('/stream', (req, res) => {
       res.write(':heartbeat\n\n')
     } catch (error) {
       clearInterval(heartbeat)
-      clients.delete(res)
+      userClientSet.delete(res)
     }
   }, 30000) // 每30秒发送一次心跳
 
   // 客户端断开连接时清理
   req.on('close', () => {
-    logger.info('[SSE] Client disconnected')
+    logger.info(`[SSE] Client disconnected for user: ${username}`)
     clearInterval(heartbeat)
-    clients.delete(res)
+    userClientSet.delete(res)
+    
+    // 如果该用户没有客户端连接了，清理监控器
+    if (userClientSet.size === 0) {
+      const watcher = userWatchers.get(username)
+      if (watcher) {
+        watcher.close()
+        userWatchers.delete(username)
+        logger.info(`[SSE] Watcher closed for user: ${username}`)
+      }
+      
+      // 清理健康检查
+      const interval = userHealthCheckIntervals.get(username)
+      if (interval) {
+        clearInterval(interval)
+        userHealthCheckIntervals.delete(username)
+        logger.info(`[SSE] Health check stopped for user: ${username}`)
+      }
+      
+      // 清理缓存
+      userFileSystemCache.delete(username)
+      userClients.delete(username)
+    }
   })
 
-  // 初始化文件监控器（如果还没有初始化）
-  if (!watcher) {
-    initWatcher()
+  // 初始化用户特定的文件监控器
+  if (!userWatchers.has(username)) {
+    initUserWatcher(username)
   }
 
   // 新连接后，立即触发一次仅对该客户端的刷新事件，确保首屏同步
   try {
-    const initialMessage = JSON.stringify({ type: 'refresh', data: { source: 'on-connect' }, timestamp: new Date().toISOString() })
+    const initialMessage = JSON.stringify({ 
+      type: 'refresh', 
+      data: { source: 'on-connect', username: username }, 
+      timestamp: new Date().toISOString() 
+    })
     res.write(`event: refresh\ndata: ${initialMessage}\n\n`)
   } catch {}
 })
@@ -343,60 +406,72 @@ router.get('/stream', (req, res) => {
 /**
  * 手动触发刷新事件（用于测试或手动刷新）
  */
-router.post('/refresh', (req, res) => {
-  logger.info('[SSE] Manual refresh triggered')
+router.post('/refresh', authenticateUser, (req, res) => {
+  const username = req.user.username
+  logger.info(`[SSE] Manual refresh triggered for user: ${username}`)
   
-  broadcastEvent('refresh', {
+  broadcastEventToUser(username, 'refresh', {
     message: 'Manual refresh requested',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    username: username
   })
 
+  const userClientSet = getUserClients(username)
   res.json({
     success: true,
     message: 'Refresh event sent',
-    clients: clients.size
+    clients: userClientSet.size,
+    username: username
   })
 })
 
 /**
  * 获取当前连接状态
  */
-router.get('/status', (req, res) => {
+router.get('/status', authenticateUser, (req, res) => {
+  const username = req.user.username
+  const userClientSet = getUserClients(username)
+  const watchDir = getUserWatchDir(username)
+  
   res.json({
-    connected_clients: clients.size,
-    watcher_active: watcher !== null,
-    watch_dir: WATCH_DIR
+    connected_clients: userClientSet.size,
+    watcher_active: userWatchers.has(username),
+    watch_dir: watchDir,
+    username: username
   })
 })
 
 // 清理函数
 export const cleanup = () => {
-  // 停止健康检查
-  if (healthCheckInterval) {
-    clearInterval(healthCheckInterval)
-    healthCheckInterval = null
-    logger.info('[SSE] Health check stopped')
+  // 停止所有用户的健康检查
+  for (const [username, interval] of userHealthCheckIntervals) {
+    clearInterval(interval)
+    logger.info(`[SSE] Health check stopped for user: ${username}`)
   }
+  userHealthCheckIntervals.clear()
   
-  // 关闭文件监控器
-  if (watcher) {
+  // 关闭所有用户的文件监控器
+  for (const [username, watcher] of userWatchers) {
     watcher.close()
-    watcher = null
-    logger.info('[SSE] File watcher closed')
+    logger.info(`[SSE] File watcher closed for user: ${username}`)
   }
+  userWatchers.clear()
   
-  // 清空缓存
-  fileSystemCache.clear()
+  // 清空所有缓存
+  userFileSystemCache.clear()
   
   // 关闭所有客户端连接
-  clients.forEach(client => {
-    try {
-      client.end()
-    } catch (error) {
-      // 忽略错误
-    }
-  })
-  clients.clear()
+  for (const [username, clientSet] of userClients) {
+    clientSet.forEach(client => {
+      try {
+        client.end()
+      } catch (error) {
+        // 忽略错误
+      }
+    })
+    logger.info(`[SSE] All clients closed for user: ${username}`)
+  }
+  userClients.clear()
 }
 
 // 进程退出时清理

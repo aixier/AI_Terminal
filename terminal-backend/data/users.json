@@ -1,0 +1,45 @@
+{
+  "users": [
+    {
+      "id": 0,
+      "username": "default",
+      "password": "default123",
+      "displayName": "Default User",
+      "email": "default@system.local",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "lastLogin": null,
+      "status": "active",
+      "isDefault": true
+    },
+    {
+      "id": 1,
+      "username": "alice",
+      "password": "alice123",
+      "displayName": "Alice Wang",
+      "email": "alice@example.com",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "lastLogin": null,
+      "status": "active"
+    },
+    {
+      "id": 2,
+      "username": "bob",
+      "password": "bob456",
+      "displayName": "Bob Chen",
+      "email": "bob@example.com",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "lastLogin": null,
+      "status": "active"
+    },
+    {
+      "id": 3,
+      "username": "charlie",
+      "password": "charlie789",
+      "displayName": "Charlie Li",
+      "email": "charlie@example.com",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "lastLogin": null,
+      "status": "active"
+    }
+  ]
+}

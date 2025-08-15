@@ -195,18 +195,29 @@
               <span class="streaming-dot"></span>
               <span>接收中... ({{ Math.round(streamingStatus.bufferLength / 1024) }}KB)</span>
             </div>
-            <span class="claude-status">
-              <span v-if="isInitializingClaude">🔄 初始化中...</span>
-              <span v-else-if="isClaudeInitialized">✅ Claude已就绪</span>
-              <span v-else>⚪ Claude未初始化</span>
-            </span>
-            <button
-              v-if="!isInitializingClaude && !isClaudeInitialized"
-              class="init-claude-btn"
-              @click="initializeClaude"
-            >
-              初始化 Claude
-            </button>
+            
+            <!-- AI CLI 初始化按钮 -->
+            <div class="ai-init-buttons">
+              <button
+                class="init-ai-btn claude-btn"
+                :class="{ 'initializing': isInitializingClaude }"
+                @click="initializeClaude"
+                :disabled="isInitializingClaude"
+              >
+                <span v-if="isInitializingClaude">🔄 初始化中...</span>
+                <span v-else>🤖 初始化 Claude</span>
+              </button>
+              
+              <button
+                class="init-ai-btn gemini-btn"
+                :class="{ 'initializing': isInitializingGemini }"
+                @click="initializeGemini"
+                :disabled="isInitializingGemini"
+              >
+                <span v-if="isInitializingGemini">🔄 初始化中...</span>
+                <span v-else>💎 初始化 Gemini</span>
+              </button>
+            </div>
           </div>
         </div>
         <div class="terminal-content" ref="terminalContainer" v-show="showTerminal">
@@ -471,16 +482,32 @@
         <div v-else-if="currentMobileTab === 'terminal'" class="mobile-tab-content terminal-tab">
           <div class="mobile-terminal-header">
             <span class="terminal-title">Terminal</span>
-            <div class="terminal-status">
-              <span v-if="isInitializingClaude">🔄 初始化中...</span>
-              <span v-else-if="isClaudeInitialized">✅ Claude已就绪</span>
-              <span v-else>⚪ Claude未初始化</span>
+            <div class="mobile-ai-buttons">
+              <button
+                class="mobile-init-btn claude-btn"
+                :class="{ 'initializing': isInitializingClaude }"
+                @click="initializeClaude"
+                :disabled="isInitializingClaude"
+              >
+                <span v-if="isInitializingClaude">🔄</span>
+                <span v-else>🤖</span>
+              </button>
               
-              <!-- 流式状态指示器 -->
-              <div v-if="streamingStatus.isStreaming" class="streaming-indicator">
-                <span class="streaming-dot"></span>
-                <span>接收中... ({{ Math.round(streamingStatus.bufferLength / 1024) }}KB)</span>
-              </div>
+              <button
+                class="mobile-init-btn gemini-btn"
+                :class="{ 'initializing': isInitializingGemini }"
+                @click="initializeGemini"
+                :disabled="isInitializingGemini"
+              >
+                <span v-if="isInitializingGemini">🔄</span>
+                <span v-else>💎</span>
+              </button>
+            </div>
+            
+            <!-- 流式状态指示器 -->
+            <div v-if="streamingStatus.isStreaming" class="streaming-indicator">
+              <span class="streaming-dot"></span>
+              <span>接收中... ({{ Math.round(streamingStatus.bufferLength / 1024) }}KB)</span>
             </div>
           </div>
           
@@ -593,6 +620,8 @@ const templates = ref([])
 const expandedFolders = ref([])
 const isClaudeInitialized = ref(false)
 const isInitializingClaude = ref(false)
+const isGeminiInitialized = ref(false)
+const isInitializingGemini = ref(false)
 const streamingStatus = ref({
   isStreaming: false,
   bufferLength: 0
@@ -1090,6 +1119,78 @@ const initializeClaude = async () => {
   }
 }
 
+// Initialize Gemini in terminal
+const initializeGemini = async () => {
+  if (isInitializingGemini.value || isGeminiInitialized.value) return
+  
+  console.log('[Gemini Init] Starting Gemini initialization')
+  isInitializingGemini.value = true
+  
+  // 自动展开终端以显示初始化过程
+  showTerminal.value = true
+  console.log('[Gemini Init] Terminal expanded to show initialization')
+  
+  try {
+    // Check if terminal service is connected
+    if (!terminalService.isReady()) {
+      console.warn('[Gemini Init] Terminal service not ready')
+      ElMessage.warning('终端服务未就绪，请确保后端正在运行')
+      isInitializingGemini.value = false
+      return
+    }
+    
+    console.log('[Gemini Init] Terminal service is ready')
+    ElMessage.info('正在初始化 Gemini，请查看终端...')
+    
+    // 在终端中显示初始化信息
+    terminalService.terminal.write('\r\n\x1b[35m========== Initializing Gemini ==========\x1b[0m\r\n')
+    terminalService.terminal.write('\x1b[33mChecking gcloud auth and AI platform...\x1b[0m\r\n')
+    
+    // Step 1: Check gcloud auth status
+    terminalService.terminal.write('\x1b[32m$ gcloud auth list\x1b[0m\r\n')
+    terminalService.sendCommand('gcloud auth list')
+    await new Promise(resolve => setTimeout(resolve, 100))
+    terminalService.sendInput('\r')
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Step 2: Check if AI Platform is enabled
+    terminalService.terminal.write('\x1b[32m$ gcloud services list --enabled | grep aiplatform\x1b[0m\r\n')
+    terminalService.sendCommand('gcloud services list --enabled | grep aiplatform')
+    await new Promise(resolve => setTimeout(resolve, 100))
+    terminalService.sendInput('\r')
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Step 3: Try to initialize Gemini with AI CLI
+    terminalService.terminal.write('\x1b[32m$ ai models list\x1b[0m\r\n')
+    terminalService.sendCommand('ai models list')
+    await new Promise(resolve => setTimeout(resolve, 100))
+    terminalService.sendInput('\r')
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    
+    // Check for successful response patterns
+    const isReady = await terminalService.checkOutput(/gemini|models|vertexai/, 5000)
+    
+    if (isReady) {
+      console.log('[Gemini Init] Gemini AI is ready')
+      terminalService.terminal.write('\x1b[32m✓ Gemini AI initialized successfully!\x1b[0m\r\n')
+    } else {
+      console.log('[Gemini Init] Gemini initialization may need additional setup')
+      terminalService.terminal.write('\x1b[33m⚠ Gemini may need authentication or setup...\x1b[0m\r\n')
+      terminalService.terminal.write('\x1b[36mPlease run: gcloud auth application-default login\x1b[0m\r\n')
+    }
+    
+    isGeminiInitialized.value = true
+    ElMessage.success('Gemini 初始化完成！')
+    
+  } catch (error) {
+    console.error('[Gemini Init] Error:', error)
+    terminalService.terminal.write(`\x1b[31m✗ Error: ${error.message}\x1b[0m\r\n`)
+    ElMessage.error('Gemini 初始化失败: ' + error.message)
+  } finally {
+    isInitializingGemini.value = false
+    terminalService.terminal.write('\x1b[35m========================================\x1b[0m\r\n')
+  }
+}
 
 const generateCard = async () => {
   if (!currentTopic.value.trim() || isGenerating.value) return
@@ -3203,28 +3304,108 @@ const openLink = (which) => {
 .terminal-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
-.init-claude-btn {
+.ai-init-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.init-ai-btn {
   padding: 6px 12px;
-  background: #3a3a3a;
-  color: #e0e0e0;
   border: 1px solid #444;
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  background: #3a3a3a;
+  color: #e0e0e0;
 }
 
-.init-claude-btn:hover:not(:disabled) {
-  background: #4a4a4a;
+.init-ai-btn.claude-btn {
   border-color: #4a9eff;
 }
 
-.init-claude-btn:disabled {
+.init-ai-btn.claude-btn:hover:not(:disabled) {
+  background: #4a9eff;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.init-ai-btn.gemini-btn {
+  border-color: #9c27b0;
+}
+
+.init-ai-btn.gemini-btn:hover:not(:disabled) {
+  background: #9c27b0;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.init-ai-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+}
+
+.init-ai-btn.initializing {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* 移动端按钮样式 */
+.mobile-ai-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.mobile-init-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #3a3a3a;
+  color: #e0e0e0;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-init-btn.claude-btn {
+  border-color: #4a9eff;
+}
+
+.mobile-init-btn.claude-btn:hover:not(:disabled) {
+  background: #4a9eff;
+  color: white;
+}
+
+.mobile-init-btn.gemini-btn {
+  border-color: #9c27b0;
+}
+
+.mobile-init-btn.gemini-btn:hover:not(:disabled) {
+  background: #9c27b0;
+  color: white;
+}
+
+.mobile-init-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mobile-init-btn.initializing {
+  animation: pulse 1.5s infinite;
 }
 
 .preview-content {

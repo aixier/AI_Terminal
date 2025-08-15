@@ -1087,8 +1087,19 @@ router.put('/folder/rename', async (req, res) => {
       // 新路径不存在，可以重命名
     }
     
-    // 执行重命名
-    await fs.rename(resolvedOldPath, newPath)
+    // 执行重命名 - 使用复制+删除方式避免EXDEV错误
+    try {
+      await fs.rename(resolvedOldPath, newPath)
+    } catch (error) {
+      if (error.code === 'EXDEV') {
+        // 跨设备链接错误，使用复制+删除方式
+        console.log(`[RenameFolder] Cross-device link detected, using copy+delete method`)
+        await fs.cp(resolvedOldPath, newPath, { recursive: true })
+        await fs.rm(resolvedOldPath, { recursive: true, force: true })
+      } else {
+        throw error
+      }
+    }
     
     // 更新metadata.json文件
     const metadataPath = path.join(newPath, 'metadata.json')
@@ -1183,8 +1194,19 @@ router.put('/card/rename', async (req, res) => {
       // 新路径不存在，可以重命名
     }
     
-    // 执行重命名
-    await fs.rename(resolvedOldPath, newPath)
+    // 执行重命名 - 使用复制+删除方式避免EXDEV错误
+    try {
+      await fs.rename(resolvedOldPath, newPath)
+    } catch (error) {
+      if (error.code === 'EXDEV') {
+        // 跨设备链接错误，使用复制+删除方式
+        console.log(`[RenameFile] Cross-device link detected, using copy+delete method`)
+        await fs.copyFile(resolvedOldPath, newPath)
+        await fs.unlink(resolvedOldPath)
+      } else {
+        throw error
+      }
+    }
     
     console.log(`[RenameFile] Renamed: ${resolvedOldPath} -> ${newPath}`)
     

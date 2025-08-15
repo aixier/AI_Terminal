@@ -46,19 +46,19 @@ jobs:
       uses: docker/build-push-action@v4
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=registry,ref=${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache
-        cache-to: type=registry,ref=${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
     
-    - name: Update Docker Hub Description
-      uses: peter-evans/dockerhub-description@v3
-      with:
-        username: ${{ env.DOCKER_HUB_USERNAME }}
-        password: ${{ secrets.DOCKER_HUB_TOKEN }}
-        repository: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
-        readme-filepath: ./DOCKER_HUB_README.md
-        short-description: |
-          🚀 Claude Code API Platform - Transform CLI tools into REST APIs in 30 seconds!
+    # - name: Update Docker Hub Description
+    #   uses: peter-evans/dockerhub-description@v3
+    #   with:
+    #     username: ${{ env.DOCKER_HUB_USERNAME }}
+    #     password: ${{ secrets.DOCKER_HUB_TOKEN }}
+    #     repository: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+    #     readme-filepath: ./DOCKER_HUB_README.md
+    #     short-description: |
+    #       🚀 Claude Code API Platform - Transform CLI tools into REST APIs in 30 seconds!

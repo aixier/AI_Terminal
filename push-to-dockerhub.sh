@@ -34,7 +34,7 @@ echo "✅ Successfully logged into Docker Hub"
 
 # 构建镜像（如果还没构建）
 echo "🏗️ Building Docker images..."
-docker build -t aixier/ai-terminal:latest -t aixier/ai-terminal:v3.9 .
+docker build -t aixier/ai-terminal:latest -t aixier/ai-terminal:v3.9.2 .
 
 if [ $? -ne 0 ]; then
     echo "❌ Docker build failed!"

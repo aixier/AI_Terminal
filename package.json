@@ -1,6 +1,6 @@
 {
   "name": "ai-terminal",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "AI-Powered Terminal with Claude AI Integration - Knowledge Card Generator, Web Terminal Emulator, Command to API Converter",
   "main": "connection-test.js",
   "keywords": [

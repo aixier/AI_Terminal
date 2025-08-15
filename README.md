@@ -3,10 +3,26 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker Ready](https://img.shields.io/badge/Docker-Ready-blue)](https://hub.docker.com/r/coopotfan/ai-terminal)
 [![GitHub stars](https://img.shields.io/github/stars/aixier/AI_Terminal?style=social)](https://github.com/aixier/AI_Terminal/stargazers)
-[![Node.js](https://img.shields.io/badge/Node.js-v18+-green)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-v22+-green)](https://nodejs.org/)
 [![Vue.js](https://img.shields.io/badge/Vue.js-v3.0+-4FC08D)](https://vuejs.org/)
 
 > 🚀 **Revolutionary Web Terminal Platform** - Seamlessly integrate AI capabilities (Claude + Gemini) with web-based terminal experience, featuring real-time streaming, knowledge card generation, and enterprise-grade architecture.
+
+## 🎉 Latest Updates (v2.3.1)
+
+### ✨ New Features
+- **🤖 Manual AI CLI Initialization**: Added dedicated buttons for Claude and Gemini initialization
+- **💎 Enhanced User Control**: Users can now independently manage AI tool initialization  
+- **🎨 Improved UI**: Beautiful responsive buttons with loading states and animations
+- **🔧 Better Error Handling**: Enhanced initialization feedback and troubleshooting
+
+### 🚀 Quick Start with Docker
+```bash
+# Pull and run the latest version
+docker run -d -p 6000:6000 coopotfan/ai-terminal:latest
+
+# Access at http://localhost:6000
+```
 
 ## 🌟 Why AI Terminal?
 
@@ -14,7 +30,7 @@ AI Terminal transforms traditional command-line interfaces into intelligent, web
 
 **🎯 Perfect for:**
 - AI-powered content generation and analysis
-- Real-time collaborative terminal sessions
+- Real-time collaborative terminal sessions  
 - Knowledge management and documentation
 - Educational and training environments
 - API-first development workflows
@@ -22,345 +38,191 @@ AI Terminal transforms traditional command-line interfaces into intelligent, web
 ## ✨ Core Features
 
 ### 🤖 **Multi-AI Integration**
-- **Claude AI** - Advanced reasoning and code generation
-- **Gemini AI** - Versatile content creation and analysis
-- **Unified API** - Single interface for multiple AI models
-- **Streaming Responses** - Real-time output with Server-Sent Events
+- **Claude AI** - Advanced reasoning and code generation via `@anthropic-ai/claude-code`
+- **Gemini AI** - Versatile content creation and analysis via Google AI CLI
+- **Manual Initialization** - On-demand AI tool setup with visual feedback
 
-### 🎨 **Intelligent Knowledge Cards**
-- **Template System** - Customizable card templates and folder structures
-- **Dynamic Generation** - AI-powered structured content creation
-- **Rich Media Support** - HTML, JSON, and multimedia content
-- **Version Control** - Track and manage card revisions
+### 🌐 **Web Terminal Experience**
+- **Real-time Terminal** - Full-featured web-based terminal with xterm.js
+- **WebSocket Communication** - Low-latency bi-directional communication
+- **Session Management** - Persistent terminal sessions with auto-reconnect
+- **Cross-Platform** - Works on desktop, tablet, and mobile devices
 
-### 🌐 **Web Terminal Excellence**
-- **XTerm.js Integration** - Full-featured terminal emulation
-- **Real-time Sync** - WebSocket-powered instant updates
-- **Multi-session Support** - Concurrent terminal instances
-- **Cross-platform** - Works on any device with a browser
+### 📊 **Knowledge Card Generation**
+- **Smart Templates** - Multiple predefined card styles and layouts
+- **Real-time Preview** - Instant preview with responsive design
+- **Export Options** - HTML, JSON, and shareable link formats
+- **Template Management** - Upload and manage custom templates
 
-### 📁 **Advanced File Management**
-- **Upload System** - Drag-and-drop file and folder uploads
-- **Template Library** - Organized template collection
-- **Real-time Monitoring** - File system change detection
-- **Security First** - Path traversal protection and type validation
+### 🔧 **Developer Experience**
+- **REST API** - Convert terminal commands to HTTP APIs
+- **Streaming Support** - Real-time output streaming for long-running commands
+- **Docker Ready** - One-command deployment with Docker
+- **Environment Variables** - Flexible configuration management
 
-### 🚀 **Production Ready**
-- **Docker Optimized** - Single-command deployment
-- **Cloud Native** - Kubernetes and container-friendly
-- **API-First** - Complete REST API with comprehensive documentation
-- **Monitoring** - Health checks and performance metrics
+### 🎨 **Modern UI/UX**
+- **Responsive Design** - Optimized for all screen sizes
+- **Dark Theme** - Eye-friendly interface for extended use
+- **Fluent Design** - Microsoft Fluent UI components
+- **Real-time Indicators** - Visual feedback for all operations
 
 ## 🚀 Quick Start
 
-### One-Command Docker Deploy
+### Option 1: Docker (Recommended)
 ```bash
-# Production deployment with persistent data
-docker run -d -p 8083:6000 \
-  -v $(pwd)/data:/app/data \
-  -e ANTHROPIC_AUTH_TOKEN=your_claude_token \
-  -e GEMINI_API_KEY=your_gemini_key \
-  --name ai-terminal \
+# Run with Docker
+docker run -d -p 6000:6000 \
+  -e ANTHROPIC_AUTH_TOKEN="your_claude_token" \
+  -e GEMINI_API_KEY="your_gemini_key" \
   coopotfan/ai-terminal:latest
 
-# Access your AI Terminal
-open http://localhost:8083
+# Access at http://localhost:6000
 ```
 
-### Development Setup
-```bash
-# Clone repository
-git clone https://github.com/aixier/AI_Terminal.git
-cd AI_Terminal
-
-# Backend setup (Node.js 18+)
-cd terminal-backend
-npm install
-npm run dev  # Starts on port 6000
-
-# Frontend setup (Vue 3 + Vite)
-cd ../terminal-ui
-npm install
-npm run dev  # Starts on port 5173
-```
-
-## 🎯 Key Use Cases
-
-### 🏢 **Enterprise Teams**
-- **AI-powered Documentation** - Generate technical docs with Claude
-- **Knowledge Base Management** - Structured information cards
-- **Developer Productivity** - Web-based CLI tools
-- **Training Materials** - Interactive learning content
-
-### 🎓 **Education & Research**
-- **Interactive Tutorials** - AI-generated learning materials
-- **Research Documentation** - Structured knowledge capture
-- **Student Projects** - Collaborative coding environments
-- **Academic Publishing** - Automated content formatting
-
-### 🛠️ **Developers & DevOps**
-- **API Testing** - Real-time terminal debugging
-- **CI/CD Integration** - Web-based build monitoring
-- **Infrastructure Management** - Remote server access
-- **Documentation Generation** - AI-assisted tech writing
-
-## 📚 API Examples
-
-### Generate Knowledge Cards
-```bash
-# Create structured knowledge content with user authentication
-curl -X POST http://localhost:8083/api/generate/card \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer alice-secure-token-abc123" \
-  -d '{
-    "topic": "Machine Learning Fundamentals",
-    "templateName": "daily-knowledge-card-template.md"
-  }'
-
-# Or use without token (automatically uses default user)
-curl -X POST http://localhost:8083/api/generate/card \
-  -H "Content-Type: application/json" \
-  -d '{
-    "topic": "Machine Learning Fundamentals",
-    "templateName": "daily-knowledge-card-template.md"
-  }'
-```
-
-### Real-time Streaming
-```javascript
-// Server-Sent Events for live updates
-const eventSource = new EventSource('/api/generate/card/stream');
-eventSource.addEventListener('output', (event) => {
-  const data = JSON.parse(event.data);
-  console.log('AI Output:', data.content);
-});
-```
-
-### File Management
-```bash
-# Upload templates via API
-curl -X POST http://localhost:8083/api/upload/files \
-  -F "files=@my-template.md" \
-  -F "folderPath=custom-templates"
-```
-
-### Terminal WebSocket
-```javascript
-import { io } from 'socket.io-client';
-
-const socket = io('http://localhost:8083');
-socket.emit('terminal:create', { cols: 120, rows: 30 });
-socket.on('terminal:output', (data) => {
-  console.log('Terminal:', data);
-});
-```
-
-## 🏗️ Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend       │    │   AI Services   │
-│   (Vue 3)       │◄──►│   (Node.js)     │◄──►│   Claude API    │
-│                 │    │                 │    │   Gemini API    │
-│ • XTerm.js      │    │ • Socket.IO     │    │                 │
-│ • Element Plus  │    │ • Express       │    │                 │
-│ • WebSocket     │    │ • node-pty      │    │                 │
-│ • SSE Client    │    │ • File Watcher  │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-### Technology Stack
-- **Frontend**: Vue 3, Element Plus, XTerm.js, Socket.IO
-- **Backend**: Node.js, Express, Socket.IO, node-pty
-- **AI Integration**: Claude API, Gemini API
-- **Database**: File-based storage with JSON
-- **Deployment**: Docker, Docker Compose
-- **Real-time**: WebSocket, Server-Sent Events
-
-## 📖 Documentation
-
-| Resource | Description |
-|----------|-------------|
-| [📘 API Documentation](./docs/API_DOCUMENTATION.md) | Complete REST API reference |
-| [🚀 Quick Start Guide](./docs/user-guides/quickstart.md) | Get started in 5 minutes |
-| [🐳 Docker Deployment](./docs/deployment/docker.md) | Production deployment guide |
-| [🏗️ Architecture Guide](./docs/architecture/system-architecture.md) | System design overview |
-| [🤝 Contributing](./docs/contributing/CONTRIBUTING.md) | How to contribute |
-
-## 🔐 User Authentication System (v3.381+)
-
-### Multi-User Support
-AI Terminal now supports complete user isolation with token-based authentication:
-
-**Pre-configured Users:**
-- **default** - Automatic fallback user (no token required)
-- **alice** - `alice123` / `alice-secure-token-abc123`
-- **bob** - `bob456` / `bob-secure-token-def456` 
-- **charlie** - `charlie789` / `charlie-secure-token-ghi789`
-
-### Authentication Flow
-```bash
-# 1. Login to get your token
-curl -X POST http://localhost:8083/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "alice", "password": "alice123"}'
-
-# Response: {"data": {"token": "alice-secure-token-abc123"}}
-
-# 2. Use token for authenticated requests
-curl -X POST http://localhost:8083/api/generate/card \
-  -H "Authorization: Bearer alice-secure-token-abc123" \
-  -H "Content-Type: application/json" \
-  -d '{"topic": "Your Topic"}'
-```
-
-### Data Isolation
-Each user gets their own isolated directory:
-- **alice**: `/app/data/users/alice/folders/default-folder/cards/`
-- **bob**: `/app/data/users/bob/folders/default-folder/cards/`
-- **default**: `/app/data/users/default/folders/default-folder/cards/`
-
-## 🌍 Environment Configuration
-
-### Essential Variables
-```bash
-# AI API Keys
-ANTHROPIC_AUTH_TOKEN=your_claude_token
-GEMINI_API_KEY=your_gemini_key
-
-# Server Configuration
-NODE_ENV=production
-PORT=6000
-HOST=0.0.0.0
-
-# Data Paths
-DATA_PATH=/app/data
-STATIC_PATH=/app/static
-SERVE_STATIC=true
-
-# Security
-JWT_SECRET=your_secure_secret
-ALLOWED_ORIGINS=https://yourdomain.com
-```
-
-### Docker Compose Example
+### Option 2: Docker Compose
 ```yaml
 version: '3.8'
 services:
   ai-terminal:
     image: coopotfan/ai-terminal:latest
     ports:
-      - "8083:6000"
+      - "6000:6000"
     environment:
-      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - NODE_ENV=production
-    volumes:
-      - ./data:/app/data
+      - ANTHROPIC_AUTH_TOKEN=your_claude_token
+      - GEMINI_API_KEY=your_gemini_key
     restart: unless-stopped
 ```
 
-## 🔮 Roadmap 2025
+### Option 3: Development Setup
+```bash
+# Clone repository
+git clone https://github.com/aixier/AI_Terminal.git
+cd AI_Terminal
 
-### Q1 2025
-- [ ] **Plugin System** - Extensible CLI adapter framework
-- [ ] **Multi-language Support** - i18n for global users
-- [ ] **Advanced Templates** - Rich media card templates
-- [ ] **Performance Optimization** - Enhanced streaming performance
+# Install dependencies
+npm install
 
-### Q2 2025
-- [ ] **Cloud Integrations** - AWS, Azure, GCP native support
-- [ ] **Team Collaboration** - Multi-user shared workspaces
-- [ ] **AI Model Expansion** - Support for more AI providers
-- [ ] **Mobile App** - Native iOS/Android applications
+# Start backend
+cd terminal-backend && npm install && npm start &
 
-### Q3 2025
-- [ ] **Enterprise Features** - SSO, RBAC, audit logging
-- [ ] **Workflow Automation** - CI/CD pipeline integration
-- [ ] **Analytics Dashboard** - Usage metrics and insights
-- [ ] **API Marketplace** - Community-driven API extensions
+# Start frontend  
+cd terminal-ui && npm install && npm run dev
 
-## 📊 Performance Metrics
+# Access at http://localhost:5173
+```
 
-| Metric | Value | Notes |
-|--------|--------|-------|
-| **Cold Start** | < 3s | Docker container startup |
-| **API Response** | < 100ms | Standard endpoints |
-| **AI Generation** | 30-420s | Varies by complexity |
-| **File Upload** | < 5s | Up to 10MB |
-| **Concurrent Users** | 100+ | WebSocket connections |
-| **Memory Usage** | < 512MB | Typical workload |
+## 🔧 Configuration
 
-## 🛡️ Security Features
+### Environment Variables
+```bash
+# AI Service Configuration
+ANTHROPIC_AUTH_TOKEN=your_claude_token
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+GEMINI_API_KEY=your_gemini_key
 
-- **Input Validation** - Comprehensive request sanitization
-- **Path Protection** - Directory traversal prevention
-- **CORS Configuration** - Secure cross-origin policies
-- **File Type Filtering** - Upload security controls
-- **JWT Authentication** - Token-based auth (optional)
-- **Error Handling** - Secure error message disclosure
+# Server Configuration  
+PORT=6000
+NODE_ENV=production
+JWT_SECRET=your_jwt_secret
+
+# Terminal Configuration
+MAX_TERMINAL_SESSIONS=10
+TERMINAL_TIMEOUT=600000
+```
+
+### AI CLI Setup
+1. **Claude**: Initialize with the blue 🤖 button
+2. **Gemini**: Initialize with the purple 💎 button  
+3. **Manual Setup**: Use terminal commands if needed
+
+## 📖 Usage Examples
+
+### Generate Knowledge Cards
+```bash
+# Start AI Terminal
+# Click "Generate Card" tab
+# Enter topic: "Machine Learning Basics"
+# Select template and generate
+```
+
+### Use Terminal with AI
+```bash
+# Initialize Claude or Gemini
+# Run commands with AI assistance
+claude "explain this error message"
+ai "generate documentation for this code"
+```
+
+### API Integration
+```bash
+# Convert terminal command to API
+POST /api/terminal/execute
+{
+  "command": "ls -la",
+  "stream": true
+}
+```
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┬─────────────────┬─────────────────┐
+│   Frontend      │    Backend      │   AI Services   │
+│   (Vue.js)      │   (Node.js)     │  (Claude/Gemini)│
+├─────────────────┼─────────────────┼─────────────────┤
+│ • xterm.js      │ • Express.js    │ • Claude Code   │
+│ • WebSocket     │ • Socket.IO     │ • Gemini CLI    │
+│ • Responsive UI │ • node-pty      │ • REST APIs     │
+│ • Card System   │ • JWT Auth      │ • Streaming     │
+└─────────────────┴─────────────────┴─────────────────┘
+```
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Here's how to get involved:
+We welcome contributions! Please see our [Contributing Guide](./DEVELOPER.md) for details.
 
-### Quick Contribution Guide
-1. **Fork** the repository on GitHub
-2. **Clone** your fork locally
-3. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-4. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-5. **Push** to your branch (`git push origin feature/amazing-feature`)
-6. **Open** a Pull Request
+### Development Workflow
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
-### Development Guidelines
-- Follow existing code style and conventions
-- Add tests for new features
-- Update documentation as needed
-- Ensure Docker builds pass
-- Test on multiple browsers/devices
+## 📋 Requirements
 
-## 📄 License & Legal
+- **Node.js**: v22+ 
+- **Docker**: v20+ (for containerized deployment)
+- **Browser**: Modern browser with WebSocket support
+- **AI Tokens**: Claude and/or Gemini API access
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+## 🐛 Troubleshooting
 
-### Third-party Licenses
-- Vue.js - MIT License
-- Element Plus - MIT License
-- XTerm.js - MIT License
-- Node.js - MIT License
-- Socket.IO - MIT License
-
-## 🙏 Acknowledgments
-
-Special thanks to the amazing open-source community and these key projects:
-
-- **[Vue.js](https://vuejs.org/)** - Progressive JavaScript framework
-- **[Element Plus](https://element-plus.org/)** - Vue 3 component library
-- **[XTerm.js](https://xtermjs.org/)** - Terminal emulator for the web
-- **[node-pty](https://github.com/microsoft/node-pty)** - Pseudo terminal bindings
-- **[Socket.IO](https://socket.io/)** - Real-time communication
-- **[Anthropic Claude](https://www.anthropic.com/)** - AI language model
-
-## 📞 Support & Community
+### Common Issues
+- **Terminal not connecting**: Check backend service status
+- **AI initialization fails**: Verify API tokens in environment variables
+- **Performance issues**: Ensure adequate system resources
 
 ### Get Help
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/aixier/AI_Terminal/issues)
-- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/aixier/AI_Terminal/discussions)
-- 📧 **Email Support**: ai-terminal@example.com
-- 💬 **Community Chat**: [Join our Discord](https://discord.gg/ai-terminal)
+- 📖 [Documentation](./docs/)
+- 🐛 [Issue Tracker](https://github.com/aixier/AI_Terminal/issues)
+- 💬 [Discussions](https://github.com/aixier/AI_Terminal/discussions)
 
-### Stay Updated
-- ⭐ **Star this repo** to show support
-- 👀 **Watch releases** for updates
-- 🐦 **Follow us** on social media
-- 📱 **Subscribe** to our newsletter
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🌟 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=aixier/AI_Terminal&type=Date)](https://star-history.com/#aixier/AI_Terminal&Date)
+
+## 💖 Support
+
+If you find this project helpful, please consider:
+- ⭐ Starring the repository
+- 🐛 Reporting bugs and issues
+- 💡 Contributing new features
+- 📢 Sharing with others
 
 ---
 
-<div align="center">
-
-**[🌐 Website](https://ai-terminal.com) • [📖 Docs](./docs/) • [🐳 Docker Hub](https://hub.docker.com/r/coopotfan/ai-terminal) • [💬 Community](https://discord.gg/ai-terminal)**
-
-*Built with ❤️ for the developer community*
-
-</div>
+**Built with ❤️ for the developer community**

@@ -565,9 +565,132 @@ class TerminalService {
   }
 
   /**
+   * 启用自动调整大小
+   */
+  enableAutoResize() {
+    if (!this.fitAddon) {
+      console.warn('[TerminalService] FitAddon not available')
+      return
+    }
+
+    // 防抖函数
+    let resizeTimeout
+    const debouncedResize = () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(() => {
+        this.handleResize()
+      }, 150) // 150ms防抖
+    }
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', debouncedResize)
+    
+    // 监听设备方向变化（移动端）
+    window.addEventListener('orientationchange', () => {
+      // orientationchange后需要延迟处理，等待布局完成
+      setTimeout(() => {
+        this.handleResize()
+      }, 300)
+    })
+
+    // 监听视觉视口变化（虚拟键盘弹出/收起）
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', debouncedResize)
+    }
+
+    // 存储清理函数
+    this.cleanupResize = () => {
+      window.removeEventListener('resize', debouncedResize)
+      window.removeEventListener('orientationchange', debouncedResize)
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', debouncedResize)
+      }
+      if (resizeTimeout) clearTimeout(resizeTimeout)
+    }
+
+    console.log('[TerminalService] Auto-resize enabled')
+  }
+
+  /**
+   * 处理尺寸变化
+   */
+  handleResize() {
+    if (!this.terminal || !this.fitAddon || !this.container) {
+      return
+    }
+
+    try {
+      // 检查容器是否可见
+      const containerRect = this.container.getBoundingClientRect()
+      if (containerRect.width === 0 || containerRect.height === 0) {
+        console.log('[TerminalService] Container not visible, skipping resize')
+        return
+      }
+
+      // 调整终端大小
+      this.fitAddon.fit()
+      
+      // 强制刷新光标和聚焦（移动端特别需要）
+      this.refreshCursor()
+      
+      // 发送resize事件到后端
+      if (this.isConnected && this.sessionId && this.socket) {
+        this.socket.emit('terminal:resize', {
+          cols: this.terminal.cols,
+          rows: this.terminal.rows
+        })
+      }
+
+      console.log(`[TerminalService] Terminal resized to ${this.terminal.cols}x${this.terminal.rows}`)
+    } catch (error) {
+      console.error('[TerminalService] Resize error:', error)
+    }
+  }
+
+  /**
+   * 重新初始化终端（移动端专用）
+   */
+  reinitializeTerminal() {
+    if (!this.terminal || !this.container) {
+      console.error('[TerminalService] Terminal or container not available')
+      return false
+    }
+
+    try {
+      console.log('[TerminalService] Reinitializing terminal for mobile...')
+      
+      // 1. 重新调整大小
+      this.handleResize()
+      
+      // 2. 强制重新聚焦
+      setTimeout(() => {
+        this.focus()
+        this.refreshCursor()
+      }, 100)
+      
+      // 3. 检查连接状态
+      if (!this.isConnected) {
+        console.log('[TerminalService] Connection lost, attempting reconnect...')
+        this.reconnect()
+      }
+      
+      return true
+    } catch (error) {
+      console.error('[TerminalService] Reinitialize failed:', error)
+      return false
+    }
+  }
+
+  /**
    * 清理资源
    */
   cleanup() {
+    // 清理resize事件监听器
+    if (this.cleanupResize) {
+      this.cleanupResize()
+      this.cleanupResize = null
+    }
+    
     if (this.terminal) {
       this.terminal.dispose()
       this.terminal = null
@@ -582,6 +705,8 @@ class TerminalService {
     this.sessionId = null
     this.outputHandlers = []
     this.outputBuffer = []
+    this.fitAddon = null
+    this.container = null
     
     console.log('[TerminalService] Cleaned up')
   }

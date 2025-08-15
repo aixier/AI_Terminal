@@ -17,6 +17,8 @@
 
 ## 🚀 Revolutionary AI-Powered Web Terminal
 
+> One line: let AI run the commands for you. No terminal skills needed; power users go faster.
+
 **AI Terminal** is the world's first open-source web-based terminal platform that seamlessly integrates multiple AI assistants (Claude AI + Gemini AI) with a production-ready terminal interface. Transform your development workflow with intelligent code assistance, real-time collaboration, and enterprise-grade AI tools - all accessible through your browser.
 
 > **🎯 Perfect for**: Developers, Researchers, DevOps Teams, AI Enthusiasts, Educational Institutions, and Enterprise Development Teams
@@ -32,22 +34,35 @@
 
 ---
 
-## 🎉 Latest Release: v2.3.1 "AI Revolution"
+## 🎉 Latest Release: v3.9.8 "Enhanced Connection Management"
 
 ### 🆕 Breakthrough Features
-- **🤖 Manual AI CLI Initialization** - Revolutionary one-click AI setup
-- **💎 Independent AI Management** - Separate Claude and Gemini controls
-- **🎨 Enhanced User Experience** - Beautiful responsive interface with real-time feedback
-- **⚡ Optimized Performance** - Faster startup and improved resource management
-- **🔧 Better Error Handling** - Intelligent troubleshooting and user guidance
+- **🔌 Real-time Connection Management** - Visual connection status with auto-recovery
+- **🎯 Smart Terminal Recovery** - One-click cursor refresh and reconnection
+- **🔒 Secure Docker Deployments** - Dual-mode images for development and production
+- **⚡ Enhanced xterm Integration** - Improved terminal reliability and user experience
+- **🛡️ Production-Ready Security** - Separated sensitive configurations for safe distribution
 
 ### 🚀 Quick Start (30 Seconds)
+
+#### Option 1: Public Image (Development/Testing)
 ```bash
-# Deploy instantly with Docker
-docker run -d -p 6000:6000 coopotfan/ai-terminal:latest
+# Deploy with environment variables
+docker run -d -p 6000:6000 \
+  -e ANTHROPIC_AUTH_TOKEN="your_claude_token" \
+  -e ANTHROPIC_BASE_URL="your_claude_api_url" \
+  coopotfan/ai-terminal:latest
 
 # Open browser and visit: http://localhost:6000
-# Click 🤖 to initialize Claude AI or 💎 to initialize Gemini AI
+```
+
+#### Option 2: Production Image (Ready to Use)
+```bash
+# Deploy instantly - no configuration needed
+docker run -d -p 6000:6000 coopotfan/ai-terminal:production
+
+# Open browser and visit: http://localhost:6000
+# ✅ Pre-configured and ready to use!
 ```
 
 ---
@@ -94,24 +109,42 @@ docker run -d -p 6000:6000 coopotfan/ai-terminal:latest
 ## 🚀 Installation & Deployment
 
 ### Option 1: Docker Deployment (Recommended)
-```bash
-# Basic deployment
-docker run -d \
-  --name ai-terminal \
-  -p 6000:6000 \
-  coopotfan/ai-terminal:latest
 
-# Advanced deployment with AI tokens
+#### Public Image (Development/Open Source)
+```bash
+# Basic deployment with environment variables
 docker run -d \
   --name ai-terminal \
   -p 6000:6000 \
   -e ANTHROPIC_AUTH_TOKEN="your_claude_token" \
+  -e ANTHROPIC_BASE_URL="your_claude_api_url" \
+  -e GEMINI_API_KEY="your_gemini_key" \
+  coopotfan/ai-terminal:latest
+
+# Advanced deployment with persistence
+docker run -d \
+  --name ai-terminal \
+  -p 6000:6000 \
+  -e ANTHROPIC_AUTH_TOKEN="your_claude_token" \
+  -e ANTHROPIC_BASE_URL="your_claude_api_url" \
   -e GEMINI_API_KEY="your_gemini_key" \
   -e NODE_ENV=production \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/logs:/app/logs \
   --restart unless-stopped \
   coopotfan/ai-terminal:latest
+```
+
+#### Production Image (Internal Deployment)
+```bash
+# Ready-to-use deployment (no environment variables needed)
+docker run -d \
+  --name ai-terminal \
+  -p 6000:6000 \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/logs:/app/logs \
+  --restart unless-stopped \
+  coopotfan/ai-terminal:production
 ```
 
 ### Option 2: Docker Compose
@@ -137,28 +170,28 @@ services:
 
 ### Option 3: Development Setup
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/aixier/AI_Terminal.git
 cd AI_Terminal
 
 # Install dependencies
 npm install
 
-# Setup environment variables
+# Set environment variables
 cp .env.example .env
 # Edit .env with your AI API tokens
 
-# Start backend development server
+# Start backend dev server
 cd terminal-backend
 npm install
 npm run dev
 
-# Start frontend development server (new terminal)
+# Start frontend dev server (new terminal)
 cd terminal-ui
 npm install
 npm run dev
 
-# Access development server at http://localhost:5173
+# Visit http://localhost:5173
 ```
 
 ---

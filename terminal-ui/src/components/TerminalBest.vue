@@ -20,6 +20,13 @@
       >
         ⟲
       </button>
+      <button 
+        @click="reinitializeTerminal" 
+        class="mobile-init-btn"
+        title="重新初始化终端 (移动端)"
+      >
+        📱
+      </button>
     </div>
     
     <!-- 终端容器 -->
@@ -36,6 +43,7 @@ import terminalService from '../services/terminalService'
 const terminalContainer = ref(null)
 const isConnected = ref(false)
 const isReconnecting = ref(false)
+const isMobile = ref(false)
 
 // 连接状态计算属性
 const connectionStatusClass = computed(() => ({
@@ -94,9 +102,37 @@ const refreshCursor = () => {
   terminalService.focus()
 }
 
+// 重新初始化终端（移动端）
+const reinitializeTerminal = () => {
+  console.log('[TerminalBest] Mobile terminal reinitialization triggered')
+  
+  try {
+    const success = terminalService.reinitializeTerminal()
+    if (success) {
+      console.log('[TerminalBest] Terminal reinitialization successful')
+      // 更新连接状态
+      updateConnectionStatus()
+    } else {
+      console.error('[TerminalBest] Terminal reinitialization failed')
+    }
+  } catch (error) {
+    console.error('[TerminalBest] Terminal reinitialization error:', error)
+  }
+}
+
+// 检测移动设备
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (navigator.maxTouchPoints && navigator.maxTouchPoints > 2)
+}
+
 // 生命周期
 onMounted(async () => {
   try {
+    // 检测移动端设备
+    isMobile.value = isMobileDevice()
+    console.log('[TerminalBest] Mobile device detected:', isMobile.value)
+    
     // 初始化终端
     await terminalService.init(terminalContainer.value, {
       serverUrl: props.serverUrl,
@@ -117,6 +153,14 @@ onMounted(async () => {
     
     // 定期检查连接状态
     setInterval(updateConnectionStatus, 2000)
+    
+    // 移动端特殊处理
+    if (isMobile.value) {
+      // 延迟初始化，确保移动端布局完成
+      setTimeout(() => {
+        reinitializeTerminal()
+      }, 500)
+    }
     
     emit('connected')
   } catch (error) {
@@ -282,6 +326,20 @@ defineExpose({
   text-align: center;
 }
 
+.mobile-init-btn {
+  font-weight: bold;
+  min-width: 24px;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 1px solid #5a6fd8;
+}
+
+.mobile-init-btn:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
 .terminal-container {
   flex: 1;
   background: #1e1e1e;
@@ -345,5 +403,61 @@ defineExpose({
 
 :deep(.xterm-link:hover) {
   opacity: 0.8;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .connection-status {
+    padding: 4px 8px;
+    min-height: 28px;
+    font-size: 11px;
+  }
+  
+  .reconnect-btn, .cursor-btn, .mobile-init-btn {
+    padding: 3px 6px;
+    font-size: 10px;
+    min-width: 20px;
+  }
+  
+  .terminal-container {
+    /* 移动端触摸优化 */
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 强制显示光标在移动端 */
+  :deep(.xterm-cursor) {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+  }
+  
+  /* 移动端字体大小调整 */
+  :deep(.xterm) {
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .connection-status {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  
+  .status-text {
+    order: 1;
+    flex-basis: 100%;
+  }
+  
+  .reconnect-btn, .cursor-btn, .mobile-init-btn {
+    order: 2;
+  }
+}
+
+/* 处理虚拟键盘 */
+@media screen and (max-height: 500px) {
+  .terminal-container {
+    height: calc(100vh - 100px) !important;
+  }
 }
 </style>

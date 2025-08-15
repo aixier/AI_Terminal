@@ -103,8 +103,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
 USER node
 
 # Set Anthropic environment variables for claude-code and Gemini API key
-ENV ANTHROPIC_AUTH_TOKEN="cr_54e6cbbcdc5711993b81e314ea6e470facb2b11b88d3c79b1be63619387199e3" \
-    ANTHROPIC_BASE_URL="http://44.212.20.73:3000/api/" \
+# Note: These should be set via docker run -e or docker-compose for security
+ENV ANTHROPIC_AUTH_TOKEN="" \
+    ANTHROPIC_BASE_URL="" \
     GEMINI_API_KEY=""
 
 WORKDIR /app/terminal-backend

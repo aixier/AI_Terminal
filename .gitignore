@@ -78,3 +78,9 @@ claude-relay-service/
 # Ignore specific sensitive template folders
 terminal-backend/data/public_template/cardplanet-Sandra/
 terminal-backend/data/public_template/cardplanet-Sandra/
+
+# Production Dockerfile with sensitive information
+DockerfileProduct
+
+# Production Dockerfile with sensitive information
+DockerfileProduct

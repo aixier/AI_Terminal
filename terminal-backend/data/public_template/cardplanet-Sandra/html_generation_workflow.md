@@ -157,7 +157,7 @@
 #### 4. Logo水印实现
 
 ##### 实现步骤
-1. **引入logo文件**：使用`cardplanet_logo.svg`
+1. **引入logo文件**：使用`https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/20250814-174312.png`
 2. **每张卡片添加水印**：
 ```html
 <div class="card-watermark">

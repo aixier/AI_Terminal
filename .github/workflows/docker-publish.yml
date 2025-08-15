@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_HUB_USERNAME: aixier
+  DOCKER_HUB_USERNAME: coopotfan
   IMAGE_NAME: ai-terminal
 
 jobs:

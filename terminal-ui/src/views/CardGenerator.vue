@@ -43,6 +43,7 @@
             class="folder-item"
             :class="{ expanded: expandedFolders.includes(folder.id) }"
             @click="toggleFolder(folder.id)"
+            @contextmenu.prevent="showFolderContextMenu($event, folder)"
           >
             <span class="folder-icon">{{ expandedFolders.includes(folder.id) ? '📂' : '📁' }}</span>
             <span class="folder-name">{{ folder.name }}</span>
@@ -63,6 +64,7 @@
               class="card-item"
               :class="{ active: selectedCard === card.id }"
               @click="selectCard(card.id, folder.id)"
+              @contextmenu.prevent="showCardContextMenu($event, card, folder)"
             >
               <span class="card-icon">
                 {{ getFileIcon(card.name) }}
@@ -406,6 +408,7 @@
                 class="folder-item"
                 :class="{ expanded: expandedFolders.includes(folder.id) }"
                 @click="toggleFolder(folder.id)"
+                @contextmenu.prevent="showFolderContextMenu($event, folder)"
               >
                 <span class="folder-icon">{{ expandedFolders.includes(folder.id) ? '📂' : '📁' }}</span>
                 <span class="folder-name">{{ folder.name }}</span>
@@ -426,6 +429,7 @@
                   class="card-item"
                   :class="{ active: selectedCard === card.id }"
                   @click="selectCard(card.id, folder.id)"
+                  @contextmenu.prevent="showCardContextMenu($event, card, folder)"
                 >
                   <span class="card-icon">{{ getFileIcon(card.name) }}</span>
                   <span class="card-name">{{ card.name }}</span>
@@ -546,6 +550,15 @@
     </template>
   </ResponsiveLayout>
 
+  <!-- Context Menu -->
+  <ContextMenu
+    :visible="contextMenu.visible"
+    :position="contextMenu.position"
+    :menuItems="contextMenu.items"
+    @menu-click="handleContextMenuClick"
+    @close="closeContextMenu"
+  />
+
 </template>
 
 <script setup>
@@ -562,6 +575,7 @@ import HtmlContentViewer from '../components/HtmlContentViewer.vue'
 import ResponsiveLayout from '../layouts/ResponsiveLayout.vue'
 import TabNavigation from '../components/mobile/TabNavigation.vue'
 import StartupInitializer from '../components/StartupInitializer.vue'
+import ContextMenu from '../components/ContextMenu.vue'
 import { useDevice } from '../composables/useDevice.js'
 import axios from 'axios'
 import { useLayoutStore, MOBILE_TABS } from '../store/layout.js'
@@ -639,6 +653,15 @@ const isConnected = ref(false)
 const isReconnecting = ref(false)
 const connectionStatusText = ref('未连接到后端服务')
 
+// 右键菜单状态
+const contextMenu = ref({
+  visible: false,
+  position: { x: 0, y: 0 },
+  items: [],
+  target: null,
+  targetType: null // 'folder' | 'file'
+})
+
 // 建议话题（取前几个模板名或示例）
 const suggestedTopics = computed(() => {
   const names = (templates.value || []).map(t => t.name).filter(Boolean)
@@ -648,6 +671,238 @@ const suggestedTopics = computed(() => {
 })
 
 // Methods
+
+// 右键菜单相关方法
+const showFolderContextMenu = (event, folder) => {
+  contextMenu.value = {
+    visible: true,
+    position: { x: event.clientX, y: event.clientY },
+    items: [
+      { key: 'rename', icon: '✏️', text: '重命名', disabled: false },
+      { separator: true },
+      { key: 'delete', icon: '🗑️', text: '删除文件夹', disabled: false },
+      { separator: true },
+      { key: 'refresh', icon: '🔄', text: '刷新', disabled: false }
+    ],
+    target: folder,
+    targetType: 'folder'
+  }
+}
+
+const showCardContextMenu = (event, card, folder) => {
+  const isJsonFile = card.name.toLowerCase().endsWith('.json')
+  const isHtmlFile = card.name.toLowerCase().endsWith('.html') || card.name.toLowerCase().endsWith('.htm')
+  
+  contextMenu.value = {
+    visible: true,
+    position: { x: event.clientX, y: event.clientY },
+    items: [
+      { key: 'open', icon: '📄', text: '打开', disabled: false },
+      { key: 'rename', icon: '✏️', text: '重命名', disabled: false },
+      { separator: true },
+      { key: 'download', icon: '⬇️', text: '下载', disabled: false },
+      { separator: true },
+      ...(isJsonFile ? [{ key: 'generate-html', icon: '🔄', text: '生成HTML', disabled: isGeneratingHtml.value[card.id] }] : []),
+      ...(isHtmlFile ? [{ key: 'preview', icon: '👁️', text: '预览', disabled: false }] : []),
+      { separator: true },
+      { key: 'delete', icon: '🗑️', text: '删除文件', disabled: false }
+    ].filter(item => item !== null),
+    target: { card, folder },
+    targetType: 'file'
+  }
+}
+
+const closeContextMenu = () => {
+  contextMenu.value.visible = false
+}
+
+const handleContextMenuClick = (item) => {
+  const { target, targetType } = contextMenu.value
+  
+  switch (item.key) {
+    case 'rename':
+      if (targetType === 'folder') {
+        renameFolder(target)
+      } else {
+        renameFile(target.card, target.folder)
+      }
+      break
+    case 'delete':
+      if (targetType === 'folder') {
+        deleteFolder(target)
+      } else {
+        deleteCardFile(target.card, target.folder)
+      }
+      break
+    case 'refresh':
+      refreshCardFolders()
+      break
+    case 'open':
+      selectCard(target.card.id, target.folder.id)
+      break
+    case 'download':
+      downloadFile(target.card, target.folder)
+      break
+    case 'generate-html':
+      generateHtmlFromJson(target.card, target.folder)
+      break
+    case 'preview':
+      previewHtmlFile(target.card, target.folder)
+      break
+  }
+  
+  closeContextMenu()
+}
+
+// 重命名文件夹
+const renameFolder = async (folder) => {
+  try {
+    const { value: newName } = await ElMessageBox.prompt(
+      '请输入新的文件夹名称',
+      '重命名文件夹',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputValue: folder.name,
+        inputValidator: (value) => {
+          if (!value || !value.trim()) {
+            return '文件夹名称不能为空'
+          }
+          if (value.trim() === folder.name) {
+            return '新名称与原名称相同'
+          }
+          return true
+        }
+      }
+    )
+
+    if (newName && newName.trim() !== folder.name) {
+      const response = await terminalAPI.renameFolder({
+        oldPath: folder.path || folder.id,
+        newName: newName.trim()
+      })
+      
+      if (response.success) {
+        ElMessage.success('文件夹重命名成功')
+        await refreshCardFolders()
+      } else {
+        ElMessage.error(response.message || '重命名失败')
+      }
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('重命名文件夹失败:', error)
+      ElMessage.error('重命名失败: ' + error.message)
+    }
+  }
+}
+
+// 重命名文件
+const renameFile = async (card, folder) => {
+  try {
+    const fileExt = card.name.substring(card.name.lastIndexOf('.'))
+    const fileName = card.name.substring(0, card.name.lastIndexOf('.'))
+    
+    const { value: newName } = await ElMessageBox.prompt(
+      '请输入新的文件名称（不包含扩展名）',
+      '重命名文件',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputValue: fileName,
+        inputValidator: (value) => {
+          if (!value || !value.trim()) {
+            return '文件名称不能为空'
+          }
+          if (value.trim() === fileName) {
+            return '新名称与原名称相同'
+          }
+          return true
+        }
+      }
+    )
+
+    if (newName && newName.trim() !== fileName) {
+      const response = await terminalAPI.renameFile({
+        oldPath: card.path,
+        newName: newName.trim() + fileExt
+      })
+      
+      if (response.success) {
+        ElMessage.success('文件重命名成功')
+        await refreshCardFolders()
+        // 如果当前选中的是这个文件，清除选中状态
+        if (selectedCard.value === card.id) {
+          selectedCard.value = null
+          previewContent.value = ''
+          previewType.value = ''
+        }
+      } else {
+        ElMessage.error(response.message || '重命名失败')
+      }
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('重命名文件失败:', error)
+      ElMessage.error('重命名失败: ' + error.message)
+    }
+  }
+}
+
+// 下载文件
+const downloadFile = async (card, folder) => {
+  try {
+    // 获取文件内容
+    const response = await terminalAPI.getCardContent(card.path)
+    
+    if (response.success) {
+      // 创建下载链接
+      const content = typeof response.content === 'string' 
+        ? response.content 
+        : JSON.stringify(response.content, null, 2)
+      
+      const blob = new Blob([content], { 
+        type: card.name.endsWith('.json') ? 'application/json' : 'text/html' 
+      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = card.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      ElMessage.success('文件下载成功')
+    } else {
+      ElMessage.error(response.message || '下载失败')
+    }
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载失败: ' + error.message)
+  }
+}
+
+// 预览HTML文件
+const previewHtmlFile = async (card, folder) => {
+  try {
+    const response = await terminalAPI.getCardContent(card.path)
+    
+    if (response.success) {
+      previewContent.value = response.content
+      previewType.value = 'html-content'
+      selectedCard.value = card.id
+      selectedFolder.value = folder.id
+      ElMessage.success('HTML文件预览已加载')
+    } else {
+      ElMessage.error(response.message || '预览失败')
+    }
+  } catch (error) {
+    console.error('预览HTML文件失败:', error)
+    ElMessage.error('预览失败: ' + error.message)
+  }
+}
+
 // 切换预览Tab
 const switchPreviewTab = (tab) => {
   console.log('[Preview] Switching to tab:', tab)
@@ -2114,14 +2369,18 @@ const checkAndGenerateMissingHtml = async () => {
 // 删除文件夹
 const deleteFolder = async (folder) => {
   try {
+    const cardCount = folder.cards?.length || 0
+    const countText = cardCount > 0 ? `包含 ${cardCount} 个文件` : '空文件夹'
+    
     const confirmResult = await ElMessageBox.confirm(
-      `确定要删除文件夹 "${folder.name}" 及其所有内容吗？此操作不可恢复。`,
-      '删除确认',
+      `确定要删除文件夹 "${folder.name}" 吗？\n\n📁 ${countText}\n⚠️  此操作不可恢复，所有文件都将被永久删除。`,
+      '删除文件夹确认',
       {
         confirmButtonText: '确定删除',
         cancelButtonText: '取消',
         type: 'warning',
-        confirmButtonClass: 'el-button--danger'
+        confirmButtonClass: 'el-button--danger',
+        dangerouslyUseHTMLString: false
       }
     )
     
@@ -2159,14 +2418,19 @@ const deleteFolder = async (folder) => {
 // 删除文件
 const deleteCardFile = async (card, folder) => {
   try {
+    const fileType = card.name.toLowerCase().endsWith('.json') ? 'JSON配置文件' : 
+                    (card.name.toLowerCase().endsWith('.html') || card.name.toLowerCase().endsWith('.htm')) ? 'HTML网页文件' : '文件'
+    const folderInfo = folder ? `来自文件夹: ${folder.name}` : ''
+    
     const confirmResult = await ElMessageBox.confirm(
-      `确定要删除文件 "${card.name}" 吗？此操作不可恢复。`,
-      '删除确认',
+      `确定要删除文件 "${card.name}" 吗？\n\n📄 类型: ${fileType}\n📁 ${folderInfo}\n⚠️  此操作不可恢复。`,
+      '删除文件确认',
       {
         confirmButtonText: '确定删除',
         cancelButtonText: '取消',
         type: 'warning',
-        confirmButtonClass: 'el-button--danger'
+        confirmButtonClass: 'el-button--danger',
+        dangerouslyUseHTMLString: false
       }
     )
     

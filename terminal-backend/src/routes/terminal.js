@@ -1021,6 +1021,189 @@ router.delete('/card', async (req, res) => {
   }
 })
 
+// 重命名文件夹
+router.put('/folder/rename', async (req, res) => {
+  try {
+    const fs = await import('fs/promises')
+    const path = await import('path')
+    
+    const { oldPath, newName } = req.body
+    
+    if (!oldPath || !newName) {
+      return res.status(400).json({
+        code: 400,
+        success: false,
+        message: 'oldPath and newName are required'
+      })
+    }
+    
+    // 安全检查：确保路径在允许的目录内
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    const allowedBasePath = path.join(dataPath, 'users')
+    
+    // 构建完整的旧路径
+    const fullOldPath = path.isAbsolute(oldPath) ? oldPath : path.join(allowedBasePath, 'default', 'folders', oldPath)
+    const resolvedOldPath = path.resolve(fullOldPath)
+    
+    if (!resolvedOldPath.startsWith(allowedBasePath)) {
+      return res.status(403).json({
+        code: 403,
+        success: false,
+        message: 'Access denied: Path outside allowed directory'
+      })
+    }
+    
+    // 构建新路径
+    const parentDir = path.dirname(resolvedOldPath)
+    const newPath = path.join(parentDir, newName)
+    
+    // 检查文件夹是否存在
+    try {
+      const stats = await fs.stat(resolvedOldPath)
+      if (!stats.isDirectory()) {
+        return res.status(400).json({
+          code: 400,
+          success: false,
+          message: 'Path is not a directory'
+        })
+      }
+    } catch {
+      return res.status(404).json({
+        code: 404,
+        success: false,
+        message: 'Folder not found'
+      })
+    }
+    
+    // 检查新路径是否已存在
+    try {
+      await fs.access(newPath)
+      return res.status(409).json({
+        code: 409,
+        success: false,
+        message: 'A folder with this name already exists'
+      })
+    } catch {
+      // 新路径不存在，可以重命名
+    }
+    
+    // 执行重命名
+    await fs.rename(resolvedOldPath, newPath)
+    
+    // 更新metadata.json文件
+    const metadataPath = path.join(newPath, 'metadata.json')
+    try {
+      const metadataContent = await fs.readFile(metadataPath, 'utf-8')
+      const metadata = JSON.parse(metadataContent)
+      metadata.name = newName
+      metadata.updatedAt = new Date().toISOString()
+      await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2))
+    } catch {
+      // metadata文件可能不存在，忽略错误
+    }
+    
+    console.log(`[RenameFolder] Renamed: ${resolvedOldPath} -> ${newPath}`)
+    
+    res.json({
+      code: 200,
+      success: true,
+      message: 'Folder renamed successfully',
+      newPath: newPath
+    })
+  } catch (error) {
+    console.error('Rename folder error:', error)
+    res.status(500).json({
+      code: 500,
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+// 重命名文件
+router.put('/card/rename', async (req, res) => {
+  try {
+    const fs = await import('fs/promises')
+    const path = await import('path')
+    
+    const { oldPath, newName } = req.body
+    
+    if (!oldPath || !newName) {
+      return res.status(400).json({
+        code: 400,
+        success: false,
+        message: 'oldPath and newName are required'
+      })
+    }
+    
+    // 安全检查：确保路径在允许的目录内
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    const allowedBasePath = path.join(dataPath, 'users')
+    const resolvedOldPath = path.resolve(oldPath)
+    
+    if (!resolvedOldPath.startsWith(allowedBasePath)) {
+      return res.status(403).json({
+        code: 403,
+        success: false,
+        message: 'Access denied: Path outside allowed directory'
+      })
+    }
+    
+    // 构建新路径
+    const parentDir = path.dirname(resolvedOldPath)
+    const newPath = path.join(parentDir, newName)
+    
+    // 检查文件是否存在
+    try {
+      const stats = await fs.stat(resolvedOldPath)
+      if (stats.isDirectory()) {
+        return res.status(400).json({
+          code: 400,
+          success: false,
+          message: 'Path is a directory, not a file'
+        })
+      }
+    } catch {
+      return res.status(404).json({
+        code: 404,
+        success: false,
+        message: 'File not found'
+      })
+    }
+    
+    // 检查新路径是否已存在
+    try {
+      await fs.access(newPath)
+      return res.status(409).json({
+        code: 409,
+        success: false,
+        message: 'A file with this name already exists'
+      })
+    } catch {
+      // 新路径不存在，可以重命名
+    }
+    
+    // 执行重命名
+    await fs.rename(resolvedOldPath, newPath)
+    
+    console.log(`[RenameFile] Renamed: ${resolvedOldPath} -> ${newPath}`)
+    
+    res.json({
+      code: 200,
+      success: true,
+      message: 'File renamed successfully',
+      newPath: newPath
+    })
+  } catch (error) {
+    console.error('Rename file error:', error)
+    res.status(500).json({
+      code: 500,
+      success: false,
+      message: error.message
+    })
+  }
+})
+
 // 清理会话
 router.post('/cleanup', (req, res) => {
   try {

@@ -262,6 +262,42 @@ export const deleteCard = async (targetPath) => {
   }
 }
 
+/**
+ * 重命名文件夹
+ */
+export const renameFolder = async (params) => {
+  try {
+    const response = await axios.put(`${getApiUrl()}/folder/rename`, params, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    return response.data
+  } catch (error) {
+    console.error('Rename folder error:', error)
+    return { success: false, message: error.message }
+  }
+}
+
+/**
+ * 重命名文件
+ */
+export const renameFile = async (params) => {
+  try {
+    const response = await axios.put(`${getApiUrl()}/card/rename`, params, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    return response.data
+  } catch (error) {
+    console.error('Rename file error:', error)
+    return { success: false, message: error.message }
+  }
+}
+
 export default {
   executeCommand,
   getUserFolders,
@@ -275,5 +311,7 @@ export default {
   fetchAndSaveHtml,
   saveResponseFile,
   saveCardContent,
-  deleteCard
+  deleteCard,
+  renameFolder,
+  renameFile
 }

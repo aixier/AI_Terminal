@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中文11 - 汉字的诗意密码</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* 江南灵韵风格色彩系统 */
+            --jiangnan-gray-blue: #7B8B8B;
+            --jiangnan-ink-blue: #4682B4;
+            --jiangnan-water-green: #AFEEEE;
+            --jiangnan-bamboo: #7CFC00;
+            --jiangnan-gray: #696969;
+            --jiangnan-rice-white: #F5F5DC;
+            --jiangnan-mist: #F8F6FA;
+        }
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: linear-gradient(135deg, var(--jiangnan-mist) 0%, var(--jiangnan-rice-white) 100%);
+            min-height: 100vh;
+        }
+        
+        .tutorial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        
+        .tutorial-card {
+            aspect-ratio: 3/4;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(123, 139, 139, 0.1);
+            position: relative;
+            background: linear-gradient(135deg, rgba(248, 246, 250, 0.9) 0%, rgba(245, 245, 220, 0.95) 100%);
+            backdrop-filter: blur(10px);
+        }
+        
+        .tutorial-card-content {
+            padding: 20px 20px 30px 20px;
+            height: 100%;
+            box-sizing: border-box;
+            position: relative;
+        }
+        
+        .tutorial-card-content > *:last-child {
+            margin-bottom: 20px;
+        }
+        
+        .card-watermark {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            opacity: 0.3;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        /* 江南灵韵特效 */
+        .ink-effect {
+            background: radial-gradient(circle, rgba(70, 130, 180, 0.1) 0%, transparent 70%);
+        }
+        
+        .water-ripple {
+            background: repeating-radial-gradient(circle at center, transparent 0px, rgba(175, 238, 238, 0.1) 2px, transparent 4px);
+        }
+        
+        .mist-effect {
+            background: linear-gradient(45deg, rgba(248, 246, 250, 0.6) 0%, rgba(175, 238, 238, 0.1) 50%, rgba(245, 245, 220, 0.6) 100%);
+        }
+        
+        /* 社媒平台文案区域 */
+        .social-content {
+            background: #FFFFFF;
+            border: 1px solid #E5E5E5;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 40px auto;
+            max-width: 800px;
+        }
+        
+        .copy-button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        
+        .copy-button:hover {
+            background: #0056CC;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面标题区 -->
+    <div class="text-center py-12">
+        <h1 class="text-5xl font-bold mb-4" style="color: var(--jiangnan-ink-blue);">中文11</h1>
+        <p class="text-xl opacity-80" style="color: var(--jiangnan-gray);">汉字的诗意密码</p>
+        <div class="mt-6 flex justify-center">
+            <svg width="100" height="20" class="opacity-60">
+                <path d="M10,10 Q50,2 90,10 Q50,18 10,10" stroke="var(--jiangnan-water-green)" stroke-width="2" fill="none"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- 卡片网格 -->
+    <div class="tutorial-grid pb-12">
+        
+        <!-- 卡片1：封面 -->
+        <div class="tutorial-card mist-effect">
+            <div class="tutorial-card-content flex flex-col justify-center items-center text-center">
+                <div class="mb-6">
+                    <svg width="120" height="120" class="mx-auto">
+                        <defs>
+                            <linearGradient id="chineseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#4682B4;stop-opacity:0.8" />
+                                <stop offset="50%" style="stop-color:#7B8B8B;stop-opacity:0.6" />
+                                <stop offset="100%" style="stop-color:#AFEEEE;stop-opacity:0.4" />
+                            </linearGradient>
+                        </defs>
+                        <!-- 抽象的"中"字变化 -->
+                        <rect x="58" y="20" width="4" height="80" fill="url(#chineseGrad)"/>
+                        <rect x="20" y="40" width="80" height="3" fill="url(#chineseGrad)" opacity="0.8"/>
+                        <rect x="30" y="60" width="60" height="2" fill="url(#chineseGrad)" opacity="0.6"/>
+                        <!-- 水墨氤氲效果 -->
+                        <circle cx="60" cy="60" r="45" fill="none" stroke="url(#chineseGrad)" stroke-width="1" opacity="0.3"/>
+                        <circle cx="60" cy="60" r="35" fill="none" stroke="url(#chineseGrad)" stroke-width="1" opacity="0.2"/>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold mb-3" style="color: var(--jiangnan-ink-blue);">中文11</h2>
+                <p class="text-lg mb-4" style="color: var(--jiangnan-gray);">汉字的诗意密码</p>
+                <p class="text-sm opacity-80" style="color: var(--jiangnan-gray-blue);">发现文字中的东方智慧</p>
+                <p class="text-sm mt-2 opacity-60" style="color: var(--jiangnan-gray);">探索汉字背后的文化内涵与美学密码</p>
+            </div>
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#4682B4;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#7B8B8B;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad1)" stroke-width="2"/>
+                    <path d="M12,20 L28,20 M20,12 L20,28" stroke="url(#logoGrad1)" stroke-width="2"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片2：汉字的诞生 -->
+        <div class="tutorial-card ink-effect">
+            <div class="tutorial-card-content">
+                <div class="text-center mb-6">
+                    <svg width="100" height="80" class="mx-auto">
+                        <!-- 从山形到"山"字的演变 -->
+                        <path d="M10,60 L30,20 L50,40 L70,15 L90,55" stroke="var(--jiangnan-ink-blue)" stroke-width="3" fill="none" opacity="0.7"/>
+                        <!-- 简化的"山"字 -->
+                        <path d="M10,70 L30,30 L50,50 L70,25 L90,65" stroke="var(--jiangnan-gray)" stroke-width="2" fill="none"/>
+                        <text x="50" y="80" text-anchor="middle" font-size="16" fill="var(--jiangnan-ink-blue)">山</text>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-4 text-center" style="color: var(--jiangnan-ink-blue);">汉字的诞生</h3>
+                <p class="text-sm mb-3 leading-relaxed" style="color: var(--jiangnan-gray);">从象形到意境的美丽蜕变</p>
+                <div class="space-y-2 text-sm" style="color: var(--jiangnan-gray-blue);">
+                    <div class="flex items-center">
+                        <span class="text-lg mr-2">🏔</span>
+                        <span>远古先民观察山川</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-lg mr-2">✏️</span>
+                        <span>用线条描摹轮廓</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-lg mr-2">🎨</span>
+                        <span>简化为具象符号</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-lg mr-2">💭</span>
+                        <span>最终抽象为汉字</span>
+                    </div>
+                </div>
+                <p class="text-xs mt-4 text-center opacity-75 italic" style="color: var(--jiangnan-gray);">每个汉字都承载着先民的智慧观察</p>
+            </div>
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="var(--jiangnan-ink-blue)" stroke-width="2" opacity="0.8"/>
+                    <path d="M12,20 L28,20 M20,12 L20,28" stroke="var(--jiangnan-ink-blue)" stroke-width="2" opacity="0.8"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片3：一字千面 -->
+        <div class="tutorial-card water-ripple">
+            <div class="tutorial-card-content">
+                <div class="text-center mb-6">
+                    <svg width="100" height="80" class="mx-auto">
+                        <defs>
+                            <radialGradient id="daoGrad" cx="50%" cy="50%">
+                                <stop offset="0%" style="stop-color:#4682B4;stop-opacity:0.8" />
+                                <stop offset="100%" style="stop-color:#AFEEEE;stop-opacity:0.3" />
+                            </radialGradient>
+                        </defs>
+                        <!-- 太极图形 -->
+                        <circle cx="50" cy="40" r="35" fill="url(#daoGrad)"/>
+                        <path d="M50,5 A35,35 0 0,1 50,75 A17.5,17.5 0 0,0 50,40 A17.5,17.5 0 0,1 50,5" fill="var(--jiangnan-rice-white)" opacity="0.9"/>
+                        <circle cx="50" cy="23" r="5" fill="var(--jiangnan-rice-white)"/>
+                        <circle cx="50" cy="57" r="5" fill="var(--jiangnan-ink-blue)"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-4 text-center" style="color: var(--jiangnan-ink-blue);">一字千面</h3>
+                <p class="text-sm mb-3 text-center leading-relaxed" style="color: var(--jiangnan-gray);">多重含义的艺术</p>
+                <div class="space-y-3 text-sm">
+                    <div class="bg-white bg-opacity-60 p-3 rounded-lg">
+                        <p class="font-bold" style="color: var(--jiangnan-ink-blue);">"道"字的三重境界：</p>
+                        <p class="mt-1" style="color: var(--jiangnan-gray-blue);">道路 → 方法 → 宇宙法则</p>
+                    </div>
+                    <div class="bg-white bg-opacity-60 p-3 rounded-lg">
+                        <p class="font-bold" style="color: var(--jiangnan-ink-blue);">"和"字的层次美：</p>
+                        <p class="mt-1" style="color: var(--jiangnan-gray-blue);">谐音 → 和谐 → 天人合一</p>
+                    </div>
+                </div>
+                <p class="text-xs mt-4 text-center opacity-75" style="color: var(--jiangnan-gray);">一字之中包含宇宙，这就是汉字的奥妙</p>
+            </div>
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="var(--jiangnan-water-green)" stroke-width="2" opacity="0.8"/>
+                    <path d="M12,20 L28,20 M20,12 L20,28" stroke="var(--jiangnan-water-green)" stroke-width="2" opacity="0.8"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片4：偏旁部首的秘密 -->
+        <div class="tutorial-card mist-effect">
+            <div class="tutorial-card-content">
+                <div class="text-center mb-6">
+                    <svg width="100" height="80" class="mx-auto">
+                        <!-- 积木式汉字构建 -->
+                        <rect x="15" y="20" width="25" height="20" fill="var(--jiangnan-ink-blue)" opacity="0.6" rx="3"/>
+                        <rect x="45" y="20" width="25" height="20" fill="var(--jiangnan-water-green)" opacity="0.6" rx="3"/>
+                        <rect x="75" y="20" width="20" height="20" fill="var(--jiangnan-gray)" opacity="0.6" rx="3"/>
+                        <!-- 组合箭头 -->
+                        <path d="M30,50 L50,60 M50,60 L70,50" stroke="var(--jiangnan-ink-blue)" stroke-width="2"/>
+                        <!-- 合成结果 */
+                        <text x="50" y="75" text-anchor="middle" font-size="18" fill="var(--jiangnan-ink-blue)">理</text>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-4 text-center" style="color: var(--jiangnan-ink-blue);">偏旁部首的秘密</h3>
+                <p class="text-sm mb-3 text-center leading-relaxed" style="color: var(--jiangnan-gray);">汉字的建筑学</p>
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-center justify-between bg-white bg-opacity-50 p-2 rounded">
+                        <span style="color: var(--jiangnan-ink-blue);">王 + 里</span>
+                        <span class="text-lg">→</span>
+                        <span style="color: var(--jiangnan-gray-blue);">理（治理）</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-white bg-opacity-50 p-2 rounded">
+                        <span style="color: var(--jiangnan-ink-blue);">心 + 青</span>
+                        <span class="text-lg">→</span>
+                        <span style="color: var(--jiangnan-gray-blue);">情（情感）</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-white bg-opacity-50 p-2 rounded">
+                        <span style="color: var(--jiangnan-ink-blue);">木 + 目</span>
+                        <span class="text-lg">→</span>
+                        <span style="color: var(--jiangnan-gray-blue);">相（外貌）</span>
+                    </div>
+                </div>
+                <p class="text-xs mt-4 text-center opacity-75" style="color: var(--jiangnan-gray);">偏旁部首如积木，搭建起汉字的意义世界</p>
+            </div>
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="var(--jiangnan-gray)" stroke-width="2" opacity="0.8"/>
+                    <path d="M12,20 L28,20 M20,12 L20,28" stroke="var(--jiangnan-gray)" stroke-width="2" opacity="0.8"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片5：古诗词中的文字魅力 -->
+        <div class="tutorial-card ink-effect">
+            <div class="tutorial-card-content">
+                <div class="text-center mb-6">
+                    <svg width="100" height="80" class="mx-auto">
+                        <!-- 书法笔触效果 -->
+                        <path d="M20,20 Q30,15 40,25 Q50,35 60,20 Q70,15 80,30" stroke="var(--jiangnan-ink-blue)" stroke-width="4" fill="none" opacity="0.7"/>
+                        <path d="M25,40 Q35,35 45,45 Q55,55 65,40 Q75,35 85,50" stroke="var(--jiangnan-gray)" stroke-width="3" fill="none" opacity="0.5"/>
+                        <!-- 诗句装饰 -->
+                        <circle cx="20" cy="60" r="2" fill="var(--jiangnan-ink-blue)" opacity="0.6"/>
+                        <circle cx="80" cy="60" r="2" fill="var(--jiangnan-ink-blue)" opacity="0.6"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-4 text-center" style="color: var(--jiangnan-ink-blue);">诗词中的文字魅力</h3>
+                <div class="space-y-4 text-center">
+                    <div class="bg-white bg-opacity-70 p-4 rounded-lg">
+                        <p class="text-lg font-semibold mb-2" style="color: var(--jiangnan-ink-blue);">"落红不是无情物"</p>
+                        <p class="text-sm" style="color: var(--jiangnan-gray-blue);">一个"落"字，写尽繁华后的宁静</p>
+                    </div>
+                    <div class="bg-white bg-opacity-70 p-4 rounded-lg">
+                        <p class="text-lg font-semibold mb-2" style="color: var(--jiangnan-ink-blue);">"疏影横斜水清浅"</p>
+                        <p class="text-sm" style="color: var(--jiangnan-gray-blue);">六字勾勒梅花淡雅之态</p>
+                    </div>
+                </div>
+                <p class="text-xs mt-4 text-center opacity-75" style="color: var(--jiangnan-gray);">诗人用汉字作画，每个字都是一幅意境深远的画卷</p>
+            </div>
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="var(--jiangnan-ink-blue)" stroke-width="2" opacity="0.8"/>
+                    <path d="M12,20 L28,20 M20,12 L20,28" stroke="var(--jiangnan-ink-blue)" stroke-width="2" opacity="0.8"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片6：现代汉字的新生命 -->
+        <div class="tutorial-card water-ripple">
+            <div class="tutorial-card-content">
+                <div class="text-center mb-6">
+                    <svg width="100" height="80" class="mx-auto">
+                        <!-- 传统与现代的对话 -->
+                        <rect x="10" y="20" width="35" height="40" fill="var(--jiangnan-ink-blue)" opacity="0.3" rx="5"/>
+                        <rect x="55" y="20" width="35" height="40" fill="var(--jiangnan-water-green)" opacity="0.3" rx="5"/>
+                        <!-- 连接线 -->
+                        <path d="M45,40 L55,40" stroke="var(--jiangnan-gray)" stroke-width="3"/>
+                        <!-- 古今对话符号 -->
+                        <text x="27" y="45" text-anchor="middle" font-size="14" fill="var(--jiangnan-ink-blue)">古</text>
+                        <text x="72" y="45" text-anchor="middle" font-size="14" fill="var(--jiangnan-water-green)">今</text>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-4 text-center" style="color: var(--jiangnan-ink-blue);">现代汉字的新生命</h3>
+                <p class="text-sm mb-3 text-center leading-relaxed" style="color: var(--jiangnan-gray);">网络时代的文字创新</p>
+                <div class="space-y-3 text-sm">
+                    <div class="bg-white bg-opacity-60 p-3 rounded-lg">
+                        <p class="font-bold mb-1" style="color: var(--jiangnan-ink-blue);">网络新词：</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="bg-gray-100 px-2 py-1 rounded text-xs">躺平</span>
+                            <span class="bg-gray-100 px-2 py-1 rounded text-xs">内卷</span>
+                            <span class="bg-gray-100 px-2 py-1 rounded text-xs">破防</span>
+                        </div>
+                    </div>
+                    <div class="bg-white bg-opacity-60 p-3 rounded-lg">
+                        <p class="font-bold mb-1" style="color: var(--jiangnan-ink-blue);">创意表达：</p>
+                        <p style="color: var(--jiangnan-gray-blue);">字母缩写、表情包文字、方言汉字</p>
+                    </div>
+                </div>
+                <p class="text-xs mt-4 text-center opacity-75" style="color: var(--jiangnan-gray);">古老汉字在新时代焕发新的生命力</p>
+            </div>
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="var(--jiangnan-water-green)" stroke-width="2" opacity="0.8"/>
+                    <path d="M12,20 L28,20 M20,12 L20,28" stroke="var(--jiangnan-water-green)" stroke-width="2" opacity="0.8"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片7：总结行动召唤 -->
+        <div class="tutorial-card mist-effect">
+            <div class="tutorial-card-content flex flex-col justify-center">
+                <div class="text-center mb-6">
+                    <svg width="80" height="45" class="mx-auto">
+                        <!-- 简约的"文"字图案 -->
+                        <path d="M20,15 L60,15 M40,5 L40,35 M25,25 L55,25" stroke="var(--jiangnan-ink-blue)" stroke-width="3" opacity="0.8"/>
+                        <circle cx="40" cy="20" r="20" fill="none" stroke="var(--jiangnan-water-green)" stroke-width="1" opacity="0.4"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-4 text-center" style="color: var(--jiangnan-ink-blue);">传承千年的文字密码</h3>
+                <div class="text-center space-y-2 mb-4">
+                    <p class="font-semibold" style="color: var(--jiangnan-gray-blue);">发现身边汉字之美</p>
+                    <p class="font-semibold" style="color: var(--jiangnan-gray-blue);">感受文字温度</p>
+                    <p class="font-semibold" style="color: var(--jiangnan-gray-blue);">传承文化根脉</p>
+                </div>
+                <p class="text-sm text-center italic" style="color: var(--jiangnan-gray);">每个汉字都是一把钥匙，开启东方文化的智慧之门</p>
+            </div>
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="var(--jiangnan-ink-blue)" stroke-width="2" opacity="0.8"/>
+                    <path d="M12,20 L28,20 M20,12 L20,28" stroke="var(--jiangnan-ink-blue)" stroke-width="2" opacity="0.8"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 小红书文案区域 -->
+    <div class="social-content">
+        <h3 class="text-xl font-bold mb-6" style="color: #333;">小红书平台文案内容</h3>
+        
+        <div class="mb-6">
+            <div class="flex items-center mb-2">
+                <h4 id="title" class="text-lg font-semibold" style="color: #333;">标题</h4>
+                <button class="copy-button" onclick="copyToClipboard('title')">复制</button>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <p>发现汉字里藏着的11个秘密✨每个字都是艺术品</p>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <div class="flex items-center mb-2">
+                <h4 id="content" class="text-lg font-semibold" style="color: #333;">正文</h4>
+                <button class="copy-button" onclick="copyToClipboard('content')">复制</button>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <p>最近重新审视我们每天都在用的汉字，突然发现这些方块字里藏着太多美好的秘密💫</p>
+                <br>
+                <p>从古人观察山川大地创造出第一批象形文字，到现代网络语言的创新表达，每个汉字的演变都承载着厚重的文化内涵。</p>
+                <br>
+                <p>特别是那些经典诗句中的用字，比如"落红不是无情物"中的一个"落"字，就把繁华落尽后的宁静写得淋漓尽致。还有偏旁部首的组合规律，简直就是汉字的建筑学原理！</p>
+                <br>
+                <p>整理了汉字的7个层面的美，从诞生到现代，从结构到意境，每个都让我重新爱上中文。原来我们每天使用的文字，本身就是最高级的艺术品。</p>
+                <br>
+                <p>身为中文使用者，真的太幸福了🌸</p>
+            </div>
+        </div>
+
+        <div>
+            <div class="flex items-center mb-2">
+                <h4 class="text-lg font-semibold" style="color: #333;">标签</h4>
+                <button class="copy-button" onclick="copyTags()">复制</button>
+            </div>
+            <div id="tags" class="bg-gray-50 p-4 rounded">
+                <p>#汉字之美 #中文文化 #传统文化 #文字艺术 #东方美学 #诗词鉴赏 #语言学习 #文化传承 #汉字演变 #书法美学</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            let textToCopy;
+            
+            if (elementId === 'title') {
+                textToCopy = "发现汉字里藏着的11个秘密✨每个字都是艺术品";
+            } else if (elementId === 'content') {
+                textToCopy = `最近重新审视我们每天都在用的汉字，突然发现这些方块字里藏着太多美好的秘密💫
+
+从古人观察山川大地创造出第一批象形文字，到现代网络语言的创新表达，每个汉字的演变都承载着厚重的文化内涵。
+
+特别是那些经典诗句中的用字，比如"落红不是无情物"中的一个"落"字，就把繁华落尽后的宁静写得淋漓尽致。还有偏旁部首的组合规律，简直就是汉字的建筑学原理！
+
+整理了汉字的7个层面的美，从诞生到现代，从结构到意境，每个都让我重新爱上中文。原来我们每天使用的文字，本身就是最高级的艺术品。
+
+身为中文使用者，真的太幸福了🌸`;
+            }
+            
+            navigator.clipboard.writeText(textToCopy).then(function() {
+                alert('内容已复制到剪贴板！');
+            });
+        }
+        
+        function copyTags() {
+            const textToCopy = "#汉字之美 #中文文化 #传统文化 #文字艺术 #东方美学 #诗词鉴赏 #语言学习 #文化传承 #汉字演变 #书法美学";
+            navigator.clipboard.writeText(textToCopy).then(function() {
+                alert('标签已复制到剪贴板！');
+            });
+        }
+    </script>
+</body>
+</html>

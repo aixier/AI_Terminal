@@ -56,11 +56,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # 推送版本标签
-echo "Pushing aixier/ai-terminal:v2.5..."
-docker push aixier/ai-terminal:v2.5
+echo "Pushing aixier/ai-terminal:v3.9..."
+docker push aixier/ai-terminal:v3.9
 
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to push v2.5 tag!"
+    echo "❌ Failed to push v3.9 tag!"
     exit 1
 fi
 

@@ -24,9 +24,17 @@ class SSEService {
       return
     }
 
-    // 动态获取SSE URL（同源）
-    const sseUrl = `/api/sse/stream`
-    console.log('[SSE] Connecting to:', sseUrl)
+    // 获取认证token
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.error('[SSE] No authentication token found')
+      this.emit('error', { message: 'No authentication token' })
+      return
+    }
+
+    // 动态获取SSE URL（同源）- 包含认证token作为查询参数
+    const sseUrl = `/api/sse/stream?token=${encodeURIComponent(token)}`
+    console.log('[SSE] Connecting to:', '/api/sse/stream')
 
     try {
       this.eventSource = new EventSource(sseUrl)

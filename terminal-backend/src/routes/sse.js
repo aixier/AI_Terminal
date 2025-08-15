@@ -9,7 +9,7 @@ import { promises as fsPromises } from 'fs'
 import path from 'path'
 import chokidar from 'chokidar'
 import logger from '../utils/logger.js'
-import { authenticateUser } from '../middleware/userAuth.js'
+import { authenticateUser, authenticateSSE } from '../middleware/userAuth.js'
 
 const router = express.Router()
 
@@ -326,9 +326,9 @@ const broadcastEventToUser = (username, eventType, data) => {
 }
 
 /**
- * SSE连接端点 - 需要用户认证
+ * SSE连接端点 - 需要用户认证（支持查询参数token）
  */
-router.get('/stream', authenticateUser, (req, res) => {
+router.get('/stream', authenticateSSE, (req, res) => {
   const username = req.user.username
   logger.info(`[SSE] New client connected for user: ${username}`)
 

@@ -119,6 +119,57 @@ export const authenticateUserOrDefault = async (req, res, next) => {
 }
 
 /**
+ * SSE专用认证中间件（支持查询参数token）
+ */
+export const authenticateSSE = async (req, res, next) => {
+  try {
+    // 从header或查询参数中获取token
+    let token = null
+    
+    // 先尝试从Authorization header获取
+    const authHeader = req.headers.authorization
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.replace('Bearer ', '')
+    }
+    
+    // 如果header中没有，尝试从查询参数获取
+    if (!token && req.query.token) {
+      token = req.query.token
+    }
+    
+    if (!token) {
+      return res.status(401).json({
+        code: 401,
+        success: false,
+        message: '未提供认证令牌'
+      })
+    }
+
+    // 验证token是否存在
+    const user = await userService.findUserByToken(token)
+    if (!user) {
+      return res.status(401).json({
+        code: 401,
+        success: false,
+        message: '无效的用户令牌'
+      })
+    }
+
+    // 将用户信息添加到请求对象
+    req.user = user
+    next()
+    
+  } catch (error) {
+    console.error('[UserAuth] SSE Authentication error:', error)
+    res.status(500).json({
+      code: 500,
+      success: false,
+      message: '认证服务错误'
+    })
+  }
+}
+
+/**
  * 确保用户文件夹存在的中间件
  */
 export const ensureUserFolder = async (req, res, next) => {

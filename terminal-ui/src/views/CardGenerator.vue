@@ -2127,10 +2127,7 @@ const loadTemplates = async () => {
               type: 'folder'
             })
             
-            // 递归处理子文件夹和文件
-            if (item.children && item.children.length > 0) {
-              templates.push(...convertToTemplates(item.children, fullName))
-            }
+            // 不递归处理子文件夹和文件，只显示第一级
           } else if (item.type === 'file') {
             // 文件作为模板
             templates.push({

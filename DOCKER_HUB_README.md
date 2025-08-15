@@ -1,11 +1,13 @@
-# 🐳 AI Terminal - Next-Gen Web Terminal with AI Intelligence
+# 🐳 AI Terminal - World's First AI-Powered Web Terminal Platform
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/coopotfan/ai-terminal)](https://hub.docker.com/r/coopotfan/ai-terminal)
-[![Docker Image Size](https://img.shields.io/docker/image-size/coopotfan/ai-terminal)](https://hub.docker.com/r/coopotfan/ai-terminal)
+[![Docker Image Size](https://img.shields.io/docker/image-size/coopotfan/ai-terminal/latest)](https://hub.docker.com/r/coopotfan/ai-terminal)
+[![GitHub Stars](https://img.shields.io/github/stars/aixier/AI_Terminal?style=social)](https://github.com/aixier/AI_Terminal/stargazers)
 [![GitHub](https://img.shields.io/badge/GitHub-AI_Terminal-blue)](https://github.com/aixier/AI_Terminal)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/aixier/AI_Terminal/docker-publish.yml)](https://github.com/aixier/AI_Terminal/actions)
 
-## 🚀 Revolutionary Web Terminal Platform with Claude + Gemini Integration
+## 🚀 Breakthrough Innovation: AI-Integrated Web Terminal Revolution
 
 **AI Terminal** transforms traditional command-line interfaces into intelligent, web-accessible platforms. Built for developers, researchers, and teams who need powerful AI tools in accessible, collaborative environments.
 

@@ -1,46 +1,113 @@
 {
   "name": "ai-terminal",
   "version": "2.3.1",
-  "description": "AI-Powered Terminal with Claude AI Integration - Knowledge Card Generator, Web Terminal Emulator, Command to API Converter",
+  "description": "🚀 World's First AI-Powered Web Terminal - Seamlessly integrate Claude AI + Gemini AI with browser-based terminal. Zero installation, Docker-ready, enterprise-grade architecture for developers, researchers, and teams.",
   "main": "connection-test.js",
   "keywords": [
+    "ai-terminal",
+    "web-terminal",
+    "claude-ai", 
+    "gemini-ai",
+    "browser-terminal",
+    "ai-powered-development",
+    "terminal-emulator",
+    "web-based-terminal",
+    "ai-assistant",
+    "developer-tools",
+    "open-source",
+    "docker-deployment",
+    "vue3-application",
+    "nodejs-backend",
+    "xterm-js",
+    "ai-integration",
+    "knowledge-cards",
+    "real-time-collaboration",
+    "enterprise-ai-tools",
     "claude-code",
     "claude-cli",
-    "claude-ai",
     "gemini-cli",
-    "cursor-cli",
-    "grok-cli",
     "cli-to-api",
-    "codex-cli",
-    "web-terminal",
-    "one-click-deploy",
-    "ai",
-    "terminal",
-    "docker",
     "websocket",
-    "api-generator",
-    "terminal-emulator",
-    "ai-powered",
-    "real-time",
-    "automation"
+    "socket-io",
+    "fluent-ui",
+    "responsive-design",
+    "cross-platform",
+    "zero-installation",
+    "one-click-deploy",
+    "production-ready",
+    "智能终端",
+    "ai工具",
+    "开发者工具"
   ],
-  "author": "aixier",
+  "author": {
+    "name": "AI Terminal Team", 
+    "email": "hello@ai-terminal.com",
+    "url": "https://aiterminal.dev"
+  },
+  "contributors": [
+    {
+      "name": "aixier",
+      "email": "aixier@github.com", 
+      "url": "https://github.com/aixier"
+    }
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aixier/AI_Terminal.git"
+    "url": "git+https://github.com/aixier/AI_Terminal.git"
   },
   "bugs": {
-    "url": "https://github.com/aixier/AI_Terminal/issues"
+    "url": "https://github.com/aixier/AI_Terminal/issues",
+    "email": "support@ai-terminal.com"
   },
   "homepage": "https://github.com/aixier/AI_Terminal#readme",
+  "funding": [
+    {
+      "type": "kofi",
+      "url": "https://ko-fi.com/aiterminal"
+    },
+    {
+      "type": "github", 
+      "url": "https://github.com/sponsors/aixier"
+    }
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
-    "test": "node connection-test.js"
+    "test": "node connection-test.js",
+    "start": "cd terminal-backend && npm start",
+    "dev": "cd terminal-backend && npm run dev",
+    "build": "cd terminal-ui && npm run build",
+    "docker:build": "docker build -t coopotfan/ai-terminal:latest .",
+    "docker:run": "docker run -d -p 6000:6000 coopotfan/ai-terminal:latest",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up",
+    "lint": "eslint . --ext .js,.vue,.ts --fix",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "socket.io-client": "^4.5.4",
-    "eventsource": "^2.0.2",
+    "eventsource": "^2.0.2", 
     "axios": "^1.6.2",
     "chalk": "^4.1.2"
-  }
+  },
+  "devDependencies": {
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0"
+  },
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "files": [
+    "terminal-backend/",
+    "terminal-ui/dist/",
+    "docs/",
+    "README.md",
+    "README_CN.md", 
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
 }

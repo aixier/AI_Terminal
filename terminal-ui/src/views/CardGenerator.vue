@@ -185,9 +185,6 @@
           <span class="terminal-title">
             <span class="terminal-toggle">{{ showTerminal ? '▼' : '▶' }}</span>
             terminal
-            <span v-if="!showTerminal" class="terminal-status-mini">
-              {{ isClaudeInitialized ? '✅ Claude就绪' : isInitializingClaude ? '🔄 初始化中...' : '⚪ 未初始化' }}
-            </span>
           </span>
           <div class="terminal-actions" v-if="showTerminal">
             <!-- 流式状态指示器 -->
@@ -197,27 +194,6 @@
             </div>
             
             <!-- AI CLI 初始化按钮 -->
-            <div class="ai-init-buttons">
-              <button
-                class="init-ai-btn claude-btn"
-                :class="{ 'initializing': isInitializingClaude }"
-                @click="initializeClaude"
-                :disabled="isInitializingClaude"
-              >
-                <span v-if="isInitializingClaude">🔄 初始化中...</span>
-                <span v-else>🤖 初始化 Claude</span>
-              </button>
-              
-              <button
-                class="init-ai-btn gemini-btn"
-                :class="{ 'initializing': isInitializingGemini }"
-                @click="initializeGemini"
-                :disabled="isInitializingGemini"
-              >
-                <span v-if="isInitializingGemini">🔄 初始化中...</span>
-                <span v-else>💎 初始化 Gemini</span>
-              </button>
-            </div>
           </div>
         </div>
         <div class="terminal-content" ref="terminalContainer" v-show="showTerminal">
@@ -482,27 +458,6 @@
         <div v-else-if="currentMobileTab === 'terminal'" class="mobile-tab-content terminal-tab">
           <div class="mobile-terminal-header">
             <span class="terminal-title">Terminal</span>
-            <div class="mobile-ai-buttons">
-              <button
-                class="mobile-init-btn claude-btn"
-                :class="{ 'initializing': isInitializingClaude }"
-                @click="initializeClaude"
-                :disabled="isInitializingClaude"
-              >
-                <span v-if="isInitializingClaude">🔄</span>
-                <span v-else>🤖</span>
-              </button>
-              
-              <button
-                class="mobile-init-btn gemini-btn"
-                :class="{ 'initializing': isInitializingGemini }"
-                @click="initializeGemini"
-                :disabled="isInitializingGemini"
-              >
-                <span v-if="isInitializingGemini">🔄</span>
-                <span v-else>💎</span>
-              </button>
-            </div>
             
             <!-- 流式状态指示器 -->
             <div v-if="streamingStatus.isStreaming" class="streaming-indicator">
@@ -618,10 +573,6 @@ const terminalContainer = ref(null)
 const cardFolders = ref([])
 const templates = ref([])
 const expandedFolders = ref([])
-const isClaudeInitialized = ref(false)
-const isInitializingClaude = ref(false)
-const isGeminiInitialized = ref(false)
-const isInitializingGemini = ref(false)
 const streamingStatus = ref({
   isStreaming: false,
   bufferLength: 0
@@ -1046,151 +997,7 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// Initialize Claude in terminal
-const initializeClaude = async () => {
-  if (isInitializingClaude.value || isClaudeInitialized.value) return
-  
-  console.log('[Claude Init] Starting Claude initialization')
-  isInitializingClaude.value = true
-  
-  // 自动展开终端以显示初始化过程
-  showTerminal.value = true
-  console.log('[Claude Init] Terminal expanded to show initialization')
-  
-  try {
-    // Check if terminal service is connected
-    if (!terminalService.isReady()) {
-      console.warn('[Claude Init] Terminal service not ready. Details:', {
-        isConnected: terminalService.isConnected,
-        sessionId: terminalService.sessionId,
-        terminal: !!terminalService.terminal,
-        ws: terminalService.ws ? terminalService.ws.readyState : 'no ws'
-      })
-      ElMessage.warning('终端服务未就绪，请确保后端正在运行')
-      isInitializingClaude.value = false
-      return
-    }
-    
-    console.log('[Claude Init] Terminal service is ready')
-    ElMessage.info('正在初始化 Claude，请查看终端...')
-    
-    // 在终端中显示初始化信息
-    terminalService.terminal.write('\r\n\x1b[36m========== Initializing Claude ==========\x1b[0m\r\n')
-    terminalService.terminal.write('\x1b[33mSending command: claude --dangerously-skip-permissions\x1b[0m\r\n')
-    
-    // Send claude command with the flag
-    const claudeCommand = 'claude --dangerously-skip-permissions'
-    console.log('[Claude Init] Sending command:', claudeCommand)
-    
-    // 发送命令 - 确保回显
-    terminalService.terminal.write(`\x1b[32m$ ${claudeCommand}\x1b[0m\r\n`)
-    
-    // Send the actual command
-    terminalService.sendCommand(claudeCommand)
-    await new Promise(resolve => setTimeout(resolve, 100))
-    terminalService.sendInput('\r')
-    
-    // Wait for Claude to initialize
-    console.log('[Claude Init] Waiting for Claude to initialize...')
-    terminalService.terminal.write('\x1b[36mWaiting for Claude to start...\x1b[0m\r\n')
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    
-    // Check if Claude is ready
-    const isReady = await terminalService.checkOutput(/claude>|╭─|▌/, 5000)
-    
-    if (isReady) {
-      console.log('[Claude Init] Claude is ready')
-      terminalService.terminal.write('\x1b[32m✓ Claude initialized successfully!\x1b[0m\r\n')
-    } else {
-      console.log('[Claude Init] Claude initialization may still be in progress')
-      terminalService.terminal.write('\x1b[33m⚠ Claude may still be initializing...\x1b[0m\r\n')
-    }
-    
-    isClaudeInitialized.value = true
-    ElMessage.success('Claude 初始化成功！')
-    
-  } catch (error) {
-    console.error('[Claude Init] Error:', error)
-    terminalService.terminal.write(`\x1b[31m✗ Error: ${error.message}\x1b[0m\r\n`)
-    ElMessage.error('Claude 初始化失败: ' + error.message)
-  } finally {
-    isInitializingClaude.value = false
-    terminalService.terminal.write('\x1b[36m========================================\x1b[0m\r\n')
-  }
-}
 
-// Initialize Gemini in terminal
-const initializeGemini = async () => {
-  if (isInitializingGemini.value || isGeminiInitialized.value) return
-  
-  console.log('[Gemini Init] Starting Gemini initialization')
-  isInitializingGemini.value = true
-  
-  // 自动展开终端以显示初始化过程
-  showTerminal.value = true
-  console.log('[Gemini Init] Terminal expanded to show initialization')
-  
-  try {
-    // Check if terminal service is connected
-    if (!terminalService.isReady()) {
-      console.warn('[Gemini Init] Terminal service not ready')
-      ElMessage.warning('终端服务未就绪，请确保后端正在运行')
-      isInitializingGemini.value = false
-      return
-    }
-    
-    console.log('[Gemini Init] Terminal service is ready')
-    ElMessage.info('正在初始化 Gemini，请查看终端...')
-    
-    // 在终端中显示初始化信息
-    terminalService.terminal.write('\r\n\x1b[35m========== Initializing Gemini ==========\x1b[0m\r\n')
-    terminalService.terminal.write('\x1b[33mChecking gcloud auth and AI platform...\x1b[0m\r\n')
-    
-    // Step 1: Check gcloud auth status
-    terminalService.terminal.write('\x1b[32m$ gcloud auth list\x1b[0m\r\n')
-    terminalService.sendCommand('gcloud auth list')
-    await new Promise(resolve => setTimeout(resolve, 100))
-    terminalService.sendInput('\r')
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Step 2: Check if AI Platform is enabled
-    terminalService.terminal.write('\x1b[32m$ gcloud services list --enabled | grep aiplatform\x1b[0m\r\n')
-    terminalService.sendCommand('gcloud services list --enabled | grep aiplatform')
-    await new Promise(resolve => setTimeout(resolve, 100))
-    terminalService.sendInput('\r')
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Step 3: Try to initialize Gemini with AI CLI
-    terminalService.terminal.write('\x1b[32m$ ai models list\x1b[0m\r\n')
-    terminalService.sendCommand('ai models list')
-    await new Promise(resolve => setTimeout(resolve, 100))
-    terminalService.sendInput('\r')
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    
-    // Check for successful response patterns
-    const isReady = await terminalService.checkOutput(/gemini|models|vertexai/, 5000)
-    
-    if (isReady) {
-      console.log('[Gemini Init] Gemini AI is ready')
-      terminalService.terminal.write('\x1b[32m✓ Gemini AI initialized successfully!\x1b[0m\r\n')
-    } else {
-      console.log('[Gemini Init] Gemini initialization may need additional setup')
-      terminalService.terminal.write('\x1b[33m⚠ Gemini may need authentication or setup...\x1b[0m\r\n')
-      terminalService.terminal.write('\x1b[36mPlease run: gcloud auth application-default login\x1b[0m\r\n')
-    }
-    
-    isGeminiInitialized.value = true
-    ElMessage.success('Gemini 初始化完成！')
-    
-  } catch (error) {
-    console.error('[Gemini Init] Error:', error)
-    terminalService.terminal.write(`\x1b[31m✗ Error: ${error.message}\x1b[0m\r\n`)
-    ElMessage.error('Gemini 初始化失败: ' + error.message)
-  } finally {
-    isInitializingGemini.value = false
-    terminalService.terminal.write('\x1b[35m========================================\x1b[0m\r\n')
-  }
-}
 
 const generateCard = async () => {
   if (!currentTopic.value.trim() || isGenerating.value) return
@@ -1554,10 +1361,6 @@ const manualReconnect = async () => {
     // 重新初始化终端
     await initializeXTerm()
     
-    // 如果Claude未初始化，尝试初始化
-    if (!isClaudeInitialized.value) {
-      await initializeClaude()
-    }
     
     ElMessage.success('重新连接成功')
   } catch (error) {
@@ -2569,13 +2372,6 @@ watch(() => layoutStore.activeMobileTab, async (newTab) => {
     try {
       await nextTick() // Wait for DOM update
       await initializeXTerm()
-      // Initialize Claude after terminal is ready
-      setTimeout(() => {
-        console.log('[CardGenerator] Attempting to initialize Claude for mobile...')
-        initializeClaude().catch(err => {
-          console.warn('[CardGenerator] Claude initialization failed on mobile:', err)
-        })
-      }, 1000)
     } catch (err) {
       console.warn('[CardGenerator] Mobile terminal initialization failed:', err)
     }
@@ -2587,10 +2383,6 @@ const onInitializationComplete = async (result) => {
   console.log('[CardGenerator] Initialization complete:', result)
   
   if (result.success || result.skipped) {
-    // 标记Claude已初始化（如果成功）
-    if (result.success) {
-      isClaudeInitialized.value = true
-    }
     
     // 隐藏初始化界面
     showInitializer.value = false
@@ -3307,106 +3099,6 @@ const openLink = (which) => {
   align-items: center;
 }
 
-.ai-init-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.init-ai-btn {
-  padding: 6px 12px;
-  border: 1px solid #444;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  background: #3a3a3a;
-  color: #e0e0e0;
-}
-
-.init-ai-btn.claude-btn {
-  border-color: #4a9eff;
-}
-
-.init-ai-btn.claude-btn:hover:not(:disabled) {
-  background: #4a9eff;
-  color: white;
-  transform: translateY(-1px);
-}
-
-.init-ai-btn.gemini-btn {
-  border-color: #9c27b0;
-}
-
-.init-ai-btn.gemini-btn:hover:not(:disabled) {
-  background: #9c27b0;
-  color: white;
-  transform: translateY(-1px);
-}
-
-.init-ai-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.init-ai-btn.initializing {
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
-}
-
-/* 移动端按钮样式 */
-.mobile-ai-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.mobile-init-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #444;
-  border-radius: 6px;
-  background: #3a3a3a;
-  color: #e0e0e0;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mobile-init-btn.claude-btn {
-  border-color: #4a9eff;
-}
-
-.mobile-init-btn.claude-btn:hover:not(:disabled) {
-  background: #4a9eff;
-  color: white;
-}
-
-.mobile-init-btn.gemini-btn {
-  border-color: #9c27b0;
-}
-
-.mobile-init-btn.gemini-btn:hover:not(:disabled) {
-  background: #9c27b0;
-  color: white;
-}
-
-.mobile-init-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.mobile-init-btn.initializing {
-  animation: pulse 1.5s infinite;
-}
 
 .preview-content {
   flex: 1;

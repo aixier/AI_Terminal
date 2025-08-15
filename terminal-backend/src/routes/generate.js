@@ -79,6 +79,7 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
 风格：根据主题自动选择最合适的风格（理解其精神内核，不只是表面元素）
 语言：全中文
 从${claudePath}文档开始，按其指引阅读全部4个文档获取创作框架。
+参考：（填写主题补充说明或链接，非必填）（如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成）
 记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
 生成的json文档保存在[${userCardPath}]`
       

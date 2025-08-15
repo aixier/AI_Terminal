@@ -1,14 +1,53 @@
 <template>
-  <div class="terminal-container" ref="terminalContainer">
-    <!-- 终端将挂载到这里 -->
+  <div class="terminal-wrapper">
+    <!-- 连接状态栏 -->
+    <div class="connection-status" :class="connectionStatusClass">
+      <span class="status-indicator"></span>
+      <span class="status-text">{{ connectionStatusText }}</span>
+      <button 
+        v-if="!isConnected" 
+        @click="reconnect" 
+        class="reconnect-btn"
+        :disabled="isReconnecting"
+      >
+        {{ isReconnecting ? '重连中...' : '重新连接' }}
+      </button>
+      <button 
+        v-if="isConnected" 
+        @click="refreshCursor" 
+        class="cursor-btn"
+        title="刷新光标 (Ctrl+Shift+R)"
+      >
+        ⟲
+      </button>
+    </div>
+    
+    <!-- 终端容器 -->
+    <div class="terminal-container" ref="terminalContainer">
+      <!-- 终端将挂载到这里 -->
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import terminalService from '../services/terminalService'
 
 const terminalContainer = ref(null)
+const isConnected = ref(false)
+const isReconnecting = ref(false)
+
+// 连接状态计算属性
+const connectionStatusClass = computed(() => ({
+  'connected': isConnected.value,
+  'disconnected': !isConnected.value,
+  'reconnecting': isReconnecting.value
+}))
+
+const connectionStatusText = computed(() => {
+  if (isReconnecting.value) return '重连中...'
+  return isConnected.value ? '已连接' : '连接断开'
+})
 
 // Props
 const props = defineProps({
@@ -29,6 +68,32 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['connected', 'disconnected', 'error'])
 
+// 连接状态监听
+const updateConnectionStatus = () => {
+  const status = terminalService.getStatus()
+  isConnected.value = status.isConnected
+  isReconnecting.value = status.isReconnecting || false
+}
+
+// 重连方法
+const reconnect = async () => {
+  try {
+    isReconnecting.value = true
+    await terminalService.reconnect()
+    updateConnectionStatus()
+  } catch (error) {
+    console.error('Reconnection failed:', error)
+  } finally {
+    isReconnecting.value = false
+  }
+}
+
+// 刷新光标
+const refreshCursor = () => {
+  terminalService.refreshCursor()
+  terminalService.focus()
+}
+
 // 生命周期
 onMounted(async () => {
   try {
@@ -46,9 +111,17 @@ onMounted(async () => {
     // 设置快捷键
     setupKeyboardShortcuts()
     
+    // 监听连接状态变化
+    terminalService.onConnectionChange = updateConnectionStatus
+    updateConnectionStatus()
+    
+    // 定期检查连接状态
+    setInterval(updateConnectionStatus, 2000)
+    
     emit('connected')
   } catch (error) {
     console.error('Failed to initialize terminal:', error)
+    updateConnectionStatus()
     emit('error', error)
   }
 })
@@ -90,6 +163,12 @@ function setupKeyboardShortcuts() {
       e.preventDefault()
       terminalService.clear()
     }
+    
+    // Ctrl+Shift+R: 刷新光标
+    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+      e.preventDefault()
+      refreshCursor()
+    }
   })
 }
 
@@ -115,9 +194,96 @@ defineExpose({
 </script>
 
 <style scoped>
-.terminal-container {
+.terminal-wrapper {
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #404040;
+  font-size: 12px;
+  color: #cccccc;
+  min-height: 32px;
+}
+
+.connection-status.connected {
+  background: #1a3d1a;
+  border-color: #2d5a2d;
+}
+
+.connection-status.disconnected {
+  background: #3d1a1a;
+  border-color: #5a2d2d;
+}
+
+.connection-status.reconnecting {
+  background: #3d3d1a;
+  border-color: #5a5a2d;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.connected .status-indicator {
+  background: #4caf50;
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+}
+
+.disconnected .status-indicator {
+  background: #f44336;
+  box-shadow: 0 0 4px rgba(244, 67, 54, 0.5);
+}
+
+.reconnecting .status-indicator {
+  background: #ff9800;
+  box-shadow: 0 0 4px rgba(255, 152, 0, 0.5);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.reconnect-btn, .cursor-btn {
+  padding: 4px 8px;
+  background: #404040;
+  border: 1px solid #666;
+  border-radius: 3px;
+  color: #cccccc;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.reconnect-btn:hover:not(:disabled), .cursor-btn:hover {
+  background: #505050;
+}
+
+.reconnect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cursor-btn {
+  font-weight: bold;
+  min-width: 24px;
+  text-align: center;
+}
+
+.terminal-container {
+  flex: 1;
   background: #1e1e1e;
   position: relative;
   overflow: hidden;

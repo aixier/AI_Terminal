@@ -505,6 +505,66 @@ class TerminalService {
   }
 
   /**
+   * 获取状态信息
+   */
+  getStatus() {
+    return {
+      isConnected: this.isConnected,
+      isReconnecting: this.isReconnecting,
+      sessionId: this.sessionId,
+      reconnectAttempts: this.reconnectAttempts,
+      hasTerminal: !!this.terminal
+    }
+  }
+
+  /**
+   * 手动重连
+   */
+  async reconnect() {
+    console.log('[TerminalService] Manual reconnect triggered')
+    if (this.isReconnecting) {
+      console.log('[TerminalService] Already reconnecting, skipping')
+      return
+    }
+    
+    // 重置重连次数
+    this.reconnectAttempts = 0
+    
+    // 清理当前连接
+    if (this.socket) {
+      this.socket.disconnect()
+      this.socket = null
+    }
+    
+    this.isConnected = false
+    this.sessionId = null
+    
+    // 尝试重新连接
+    await this.attemptReconnect()
+  }
+
+  /**
+   * 刷新光标
+   */
+  refreshCursor() {
+    if (this.terminal) {
+      // 发送显示光标的ANSI控制序列
+      this.terminal.write('\x1b[?25h')
+      console.log('[TerminalService] Cursor refreshed')
+    }
+  }
+
+  /**
+   * 聚焦终端
+   */
+  focus() {
+    if (this.terminal) {
+      this.terminal.focus()
+      console.log('[TerminalService] Terminal focused')
+    }
+  }
+
+  /**
    * 清理资源
    */
   cleanup() {

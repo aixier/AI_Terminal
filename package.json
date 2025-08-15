@@ -1,6 +1,6 @@
 {
   "name": "ai-terminal",
-  "version": "2.3.1",
+  "version": "3.9.8",
   "description": "🚀 World's First AI-Powered Web Terminal - Seamlessly integrate Claude AI + Gemini AI with browser-based terminal. Zero installation, Docker-ready, enterprise-grade architecture for developers, researchers, and teams.",
   "main": "connection-test.js",
   "keywords": [

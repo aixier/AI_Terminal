@@ -46,6 +46,8 @@ service.interceptors.response.use(
 
       // 401: 未登录
       if (res.code === 401) {
+        // 清除失效的token
+        localStorage.removeItem('token')
         // 跳转到登录页
         window.location.href = '/login'
       }
@@ -59,6 +61,16 @@ service.interceptors.response.use(
   error => {
     // 对响应错误做点什么
     console.error('Response error:', error)
+    
+    // 检查是否是401未授权错误(token失效)
+    if (error.response && error.response.status === 401) {
+      // 清除失效的token
+      localStorage.removeItem('token')
+      // 跳转到登录页
+      window.location.href = '/login'
+      return Promise.reject(error)
+    }
+    
     // 只在不是取消请求的情况下显示错误消息
     if (error.code !== 'ECONNABORTED' && error.message !== 'Network Error') {
       ElMessage({

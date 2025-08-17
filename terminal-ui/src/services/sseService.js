@@ -105,21 +105,40 @@ class SSEService {
         this.isConnected = false
         this.emit('error', error)
 
-        // 自动重连逻辑
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.reconnectAttempts++
-          console.log(`[SSE] Reconnecting... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-          
-          setTimeout(() => {
-            this.disconnect()
-            this.connect()
-          }, this.reconnectDelay * this.reconnectAttempts)
-        } else {
-          console.error('[SSE] Max reconnection attempts reached')
-          this.emit('connection:failed', { 
-            message: 'Failed to establish SSE connection after multiple attempts' 
-          })
+        // 检查是否是认证错误 - EventSource在401时会立即失败
+        const token = localStorage.getItem('token')
+        if (!token) {
+          console.error('[SSE] No token found, redirecting to login')
+          localStorage.removeItem('token')
+          window.location.href = '/login'
+          return
         }
+
+        // 当SSE连接失败时，通过fetch验证token有效性
+        this.verifyTokenAndHandleAuth().then(isValid => {
+          if (!isValid) {
+            console.error('[SSE] Token invalid, redirecting to login')
+            localStorage.removeItem('token')
+            window.location.href = '/login'
+            return
+          }
+
+          // Token有效但连接失败，进行重连
+          if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++
+            console.log(`[SSE] Reconnecting... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+            
+            setTimeout(() => {
+              this.disconnect()
+              this.connect()
+            }, this.reconnectDelay * this.reconnectAttempts)
+          } else {
+            console.error('[SSE] Max reconnection attempts reached')
+            this.emit('connection:failed', { 
+              message: 'Failed to establish SSE connection after multiple attempts' 
+            })
+          }
+        })
       }
 
       // 连接打开
@@ -206,12 +225,22 @@ class SSEService {
    */
   async triggerRefresh() {
     try {
+      const token = localStorage.getItem('token')
       const response = await fetch(`/api/sse/refresh`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
         }
       })
+      
+      // 检查401错误
+      if (response.status === 401) {
+        console.error('[SSE] Unauthorized, redirecting to login')
+        localStorage.removeItem('token')
+        window.location.href = '/login'
+        return
+      }
       
       const result = await response.json()
       console.log('[SSE] Manual refresh triggered:', result)
@@ -227,13 +256,56 @@ class SSEService {
    */
   async getStatus() {
     try {
-      const response = await fetch(`/api/sse/status`)
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/sse/status`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      })
+      
+      // 检查401错误
+      if (response.status === 401) {
+        console.error('[SSE] Unauthorized, redirecting to login')
+        localStorage.removeItem('token')
+        window.location.href = '/login'
+        return null
+      }
+      
       const status = await response.json()
       console.log('[SSE] Status:', status)
       return status
     } catch (error) {
       console.error('[SSE] Failed to get status:', error)
       return null
+    }
+  }
+
+  /**
+   * 验证token有效性
+   */
+  async verifyTokenAndHandleAuth() {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        return false
+      }
+
+      // 使用一个简单的API端点验证token
+      const response = await fetch('/api/sse/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      // 如果返回401，token无效
+      if (response.status === 401) {
+        return false
+      }
+
+      return response.ok
+    } catch (error) {
+      console.error('[SSE] Token verification failed:', error)
+      return false
     }
   }
 

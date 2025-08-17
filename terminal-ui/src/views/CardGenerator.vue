@@ -179,8 +179,17 @@
         </div>
       </div>
 
+      <!-- Resizable Splitter -->
+      <ResizableSplitter 
+        v-if="showTerminal"
+        direction="horizontal" 
+        :min-size="200" 
+        :max-size="800"
+        @resize="handleTerminalResize"
+      />
+
       <!-- Bottom: Terminal Area (可折叠) -->
-      <div class="terminal-area" :class="{ collapsed: !showTerminal }">
+      <div class="terminal-area" :class="{ collapsed: !showTerminal }" :style="terminalStyle">
         <div class="terminal-header" @click="showTerminal = !showTerminal">
           <span class="terminal-title">
             <span class="terminal-toggle">{{ showTerminal ? '▼' : '▶' }}</span>
@@ -554,6 +563,7 @@ import sseService from '../services/sseService'
 import ValidatedJsonViewer from '../components/ValidatedJsonViewer.vue'
 import SmartUrlPreview from '../components/SmartUrlPreview.vue'
 import HtmlContentViewer from '../components/HtmlContentViewer.vue'
+import ResizableSplitter from '../components/ResizableSplitter.vue'
 import ResponsiveLayout from '../layouts/ResponsiveLayout.vue'
 import TabNavigation from '../components/mobile/TabNavigation.vue'
 import StartupInitializer from '../components/StartupInitializer.vue'
@@ -591,6 +601,7 @@ const responseUrls = ref({
   originalUrl: ''
 })
 const activePreviewTab = ref('shareLink') // 当前激活的tab
+const terminalHeight = ref(300) // 终端区域高度
 
 // 上传相关状态  
 const fileInput = ref(null)
@@ -694,6 +705,17 @@ const showCardContextMenu = (event, card, folder) => {
 
 const closeContextMenu = () => {
   contextMenu.value.visible = false
+}
+
+// 处理终端区域大小调整
+const handleTerminalResize = (newHeight) => {
+  terminalHeight.value = newHeight
+  // 调整后需要触发终端重新调整大小
+  nextTick(() => {
+    if (window.terminalInstance && window.terminalInstance.fit) {
+      window.terminalInstance.fit()
+    }
+  })
 }
 
 const handleContextMenuClick = (item) => {
@@ -2525,6 +2547,18 @@ const isHtmlSelected = computed(() => {
   return name.endsWith('.html') || name.endsWith('.htm')
 })
 
+// 计算终端区域样式
+const terminalStyle = computed(() => {
+  if (!showTerminal.value) {
+    return { height: '48px' } // 只显示header
+  }
+  return { 
+    height: `${terminalHeight.value}px`,
+    'min-height': '200px',
+    'max-height': '800px'
+  }
+})
+
 const handlePreviewSelected = async () => {
   console.log('[Preview] handlePreviewSelected:start', { selectedCard: selectedCard.value, selectedFolder: selectedFolder.value })
   try {
@@ -3006,9 +3040,10 @@ const openLink = (which) => {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  gap: 20px;
+  gap: 0; /* 移除gap，让splitter紧贴 */
   min-width: 0; /* 防止flex子元素撑开 */
   max-width: calc(100vw - 560px); /* 左侧240px + 右侧320px */
+  min-height: 0; /* 防止flex子元素超出容器 */
 }
 
 .preview-area,
@@ -3023,15 +3058,21 @@ const openLink = (which) => {
 
 .preview-area {
   flex: 1;
-}
-
-.terminal-area {
-  height: 300px;
-  transition: height 0.3s ease;
+  min-height: 200px; /* 确保预览区域有最小高度 */
+  margin-bottom: 8px; /* 与splitter保持一点距离 */
 }
 
 .terminal-area.collapsed {
-  height: 48px; /* 只显示header */
+  height: 48px !important; /* 只显示header */
+}
+
+.terminal-area:not(.collapsed) {
+  transition: none; /* 禁用transition，让拖拽更流畅 */
+  margin-top: 8px; /* 与splitter保持一点距离 */
+}
+
+.terminal-area {
+  flex-shrink: 0; /* 防止终端区域被压缩 */
 }
 
 .area-title {

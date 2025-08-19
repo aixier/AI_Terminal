@@ -34,14 +34,14 @@
 
 ---
 
-## 🎉 Latest Release: v3.9.8 "Enhanced Connection Management"
+## 🎉 Latest Release: v3.10.21 "Claude CLI Integration Fixed"
 
 ### 🆕 Breakthrough Features
-- **🔌 Real-time Connection Management** - Visual connection status with auto-recovery
-- **🎯 Smart Terminal Recovery** - One-click cursor refresh and reconnection
-- **🔒 Secure Docker Deployments** - Dual-mode images for development and production
-- **⚡ Enhanced xterm Integration** - Improved terminal reliability and user experience
-- **🛡️ Production-Ready Security** - Separated sensitive configurations for safe distribution
+- **🐛 Fixed Claude CLI Execution** - Resolved timeout issues in Docker containers
+- **⚡ Optimized API Performance** - `/api/generate/cc` now responds in 7-10 seconds
+- **🔧 Enhanced Card Generation** - Dynamic parameter generation for cardplanet-Sandra template
+- **📊 100% Concurrent Success Rate** - Tested with 10 parallel requests
+- **📝 Comprehensive Documentation** - Added node-pty and Claude CLI integration guides
 
 ### 🚀 Quick Start (30 Seconds)
 

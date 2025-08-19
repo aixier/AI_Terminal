@@ -255,20 +255,22 @@ POST /api/generate/card
 ```
 
 **特殊模板参数生成（cardplanet-Sandra）：**
-当使用 `cardplanet-Sandra` 模板时，系统会自动通过前置提示词生成三个参数：
+当使用 `cardplanet-Sandra` 模板时，系统会自动通过 Claude CLI 生成三个动态参数：
 - **style**: 根据主题类别自动选择合适风格
-- **language**: 根据主题判断语言类型
-- **reference**: 自动检索主题相关内容
+- **language**: 根据主题判断语言类型（中文/英文/中英双语）
+- **reference**: 自动检索主题相关内容（100字以内）
 
-**内部处理流程：**
+**内部处理流程：**（v3.10.21 更新）
 1. 参数验证和主题清理
-2. 如果是 cardplanet-Sandra 模板，执行三个前置提示词：
-   - 风格生成：`根据"${topic}"类别按CLAUDE.md第五点选择合适风格`
-   - 语言判断：`根据"${topic}"判断语言（中文/英文/中英双语）`
-   - 参考生成：`自行检索"${topic}"获取更多内容，返回核心要点`
-3. 构建完整提示词并执行Claude命令
-4. 等待文件生成（最多7分钟）
-5. 返回生成结果
+2. 判断模板类型（单文件 .md 或文件夹模板）
+3. 如果是 cardplanet-Sandra 模板，调用 `claudeExecutorDirect.generateCardParameters()`：
+   - 使用与 `/api/generate/cc` 相同的底层机制（echo pipe + Claude CLI）
+   - 一次性生成三个参数的 JSON 响应（15秒超时）
+   - 解析 JSON 获取 style、language、reference 参数
+4. 构建完整提示词，嵌入动态参数
+5. 执行 Claude 命令生成卡片内容
+6. 监控文件生成（每2秒检查，最多7分钟）
+7. 返回生成结果（支持 JSON 和 HTML 格式）
 
 **响应：**
 ```json

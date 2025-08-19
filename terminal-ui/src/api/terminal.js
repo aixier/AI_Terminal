@@ -109,26 +109,42 @@ export const getTemplateContent = async (templateId) => {
  */
 export const getCardContent = async (cardPath) => {
   try {
+    console.log('[API Request] getCardContent called with path:', cardPath)
+    
     // 支持JSON、HTML和Markdown文件
     const supportedExtensions = ['.json', '.html', '.htm', '.md', '.markdown']
     const fileExt = cardPath.substring(cardPath.lastIndexOf('.')).toLowerCase()
     
     if (!supportedExtensions.includes(fileExt)) {
-      console.warn('getCardContent: Unsupported file type:', fileExt)
+      console.warn('[API Request] getCardContent: Unsupported file type:', fileExt)
       return { success: false, message: `Unsupported file type: ${fileExt}` }
     }
     
-    const response = await axios.get(`${getApiUrl()}/card`, {
-      params: { path: cardPath },
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+    const apiUrl = `${getApiUrl()}/card`
+    const requestParams = { path: cardPath }
+    const requestHeaders = {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+    
+    console.log('[API Request] Making GET request to:', apiUrl)
+    console.log('[API Request] Request params:', requestParams)
+    console.log('[API Request] Request headers:', requestHeaders)
+    
+    const response = await axios.get(apiUrl, {
+      params: requestParams,
+      headers: requestHeaders
     })
+    
+    console.log('[API Response] Status:', response.status)
+    console.log('[API Response] Data:', response.data)
+    
     return response.data
   } catch (error) {
-    console.error('Get card content error:', error)
+    console.error('[API Error] getCardContent failed:', error)
+    console.error('[API Error] Error response:', error.response?.data)
+    console.error('[API Error] Error status:', error.response?.status)
     // 返回失败而不是抛出错误，让调用方处理
-    return { success: false, message: error.message }
+    return { success: false, message: error.message, errorDetails: error.response?.data }
   }
 }
 

@@ -171,8 +171,52 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 console.log('     ✓ Body Parser middleware registered')
 
-// 3. 安全中间件 - 暂时禁用，调试完成后启用
-console.log('  3️⃣ Security middleware: DISABLED (for debugging)')
+// 3. 请求日志中间件
+console.log('  3️⃣ Registering Request Logging middleware...')
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString()
+  const logMessage = `[${timestamp}] ${req.method} ${req.url}`
+  
+  // 记录请求头和参数
+  console.log('\n' + '='.repeat(80))
+  console.log(`📥 [REQUEST] ${req.method} ${req.url}`)
+  console.log(`📅 Time: ${timestamp}`)
+  console.log(`🌐 Origin: ${req.get('Origin') || 'No Origin'}`)
+  console.log(`🔑 Authorization: ${req.get('Authorization') ? 'Present' : 'Missing'}`)
+  
+  if (Object.keys(req.query).length > 0) {
+    console.log(`🔍 Query Params:`, req.query)
+  }
+  
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log(`📦 Request Body:`, req.body)
+  }
+  
+  // 记录响应
+  const originalSend = res.send
+  res.send = function(data) {
+    console.log(`📤 [RESPONSE] Status: ${res.statusCode}`)
+    if (data && typeof data === 'string' && data.length < 500) {
+      try {
+        const parsed = JSON.parse(data)
+        console.log(`📋 Response Data:`, parsed)
+      } catch (e) {
+        console.log(`📋 Response Data (raw):`, data.substring(0, 200))
+      }
+    } else if (data) {
+      console.log(`📋 Response Size: ${data.length} characters`)
+    }
+    console.log('='.repeat(80) + '\n')
+    
+    originalSend.call(this, data)
+  }
+  
+  next()
+})
+console.log('     ✓ Request Logging middleware registered')
+
+// 4. 安全中间件 - 暂时禁用，调试完成后启用
+console.log('  4️⃣ Security middleware: DISABLED (for debugging)')
 // app.use(limitRequestSize)
 // app.use(auditLog)
 // app.use(rateLimit)
@@ -183,8 +227,8 @@ console.log('  3️⃣ Security middleware: DISABLED (for debugging)')
 // ========================================
 console.log('🛣️ REGISTERING API ROUTES:')
 
-// 4. API路由 - 暂时禁用认证，调试完成后启用
-console.log('  4️⃣ Registering API routes...')
+// 5. API路由 - 暂时禁用认证，调试完成后启用
+console.log('  5️⃣ Registering API routes...')
 app.use('/api/auth', authRoutes)
 console.log('     ✓ /api/auth route registered')
 
@@ -213,7 +257,7 @@ app.use('/api/workspace', workspaceRoutes)
 console.log('     ✓ /api/workspace route registered')
 
 // 5. API信息路由 (移到/api-info避免与静态文件冲突)
-console.log('  5️⃣ Registering API info route...')
+console.log('  6️⃣ Registering API info route...')
 app.get('/api-info', (req, res) => {
   res.json({
     service: 'AI Terminal Backend',
@@ -239,7 +283,7 @@ app.get('/api-info', (req, res) => {
 console.log('     ✓ API info route registered')
 
 // 6. 健康检查路由
-console.log('  6️⃣ Registering health check route...')
+console.log('  7️⃣ Registering health check route...')
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
@@ -297,7 +341,7 @@ const shouldServeStatic = process.env.NODE_ENV === 'production' || process.env.S
 console.log(`  Decision: ${shouldServeStatic ? '✅ WILL SERVE' : '❌ WILL NOT SERVE'} static files`)
 
 if (shouldServeStatic) {
-  console.log('  7️⃣ Registering static file middleware...')
+  console.log('  8️⃣ Registering static file middleware...')
   console.log(`     Path to check: ${staticPath}`)
   
   // 检查静态文件路径是否存在

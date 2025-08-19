@@ -753,7 +753,17 @@ router.get('/card', async (req, res) => {
     // 安全检查：确保路径在允许的目录内
     const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
     const allowedBasePath = path.join(dataPath, 'users')
-    const resolvedPath = path.resolve(cardPath)
+    
+    // 如果路径是相对路径，需要相对于用户工作区解析
+    let resolvedPath
+    if (path.isAbsolute(cardPath)) {
+      resolvedPath = path.resolve(cardPath)
+    } else {
+      // 相对路径需要基于用户工作区目录解析
+      const username = req.user?.username || 'default'
+      const userWorkspacePath = path.join(dataPath, 'users', username, 'workspace')
+      resolvedPath = path.resolve(userWorkspacePath, cardPath)
+    }
     
     if (!resolvedPath.startsWith(allowedBasePath)) {
       return res.status(403).json({

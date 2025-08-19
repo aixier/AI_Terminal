@@ -230,9 +230,22 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
     console.log('[GenerateCard API] Starting generation for topic:', topic)
     console.log('[GenerateCard API] Template path:', templatePath)
     console.log('[GenerateCard API] Output path:', userCardPath)
-    console.log('[GenerateCard API] ============ COMPLETE PROMPT ============')
+    
+    // 输出完整组装后的提示词
+    console.log('\n🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥')
+    console.log('🎯 [FINAL-PROMPT] ============ COMPLETE ASSEMBLED PROMPT ============')
+    console.log('📋 [FINAL-PROMPT] Template:', templateName)
+    console.log('📝 [FINAL-PROMPT] Topic:', topic)
+    if (isFolder && templateName === 'cardplanet-Sandra') {
+      console.log('🎨 [FINAL-PROMPT] Style:', style)
+      console.log('🌐 [FINAL-PROMPT] Language:', language)
+      console.log('📚 [FINAL-PROMPT] Reference:', referenceContent ? referenceContent.substring(0, 100) + '...' : 'N/A')
+    }
+    console.log('📐 [FINAL-PROMPT] Length:', prompt.length, 'chars')
+    console.log('💬 [FINAL-PROMPT] ========== FULL PROMPT BEGIN ==========\n')
     console.log(prompt)
-    console.log('[GenerateCard API] ============ END PROMPT ============')
+    console.log('\n💬 [FINAL-PROMPT] ========== FULL PROMPT END ==========')
+    console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n')
     
     // 设置超时时间（7分钟）- cardplanet-Sandra模板需要更长时间
     const timeout = 420000

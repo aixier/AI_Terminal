@@ -1565,14 +1565,18 @@ const toggleFolder = (folderId) => {
 
 // Select a card
 const selectCard = (cardId, folderId) => {
+  console.log('[CardGenerator] selectCard called:', { cardId, folderId })
   selectedCard.value = cardId
   selectedFolder.value = folderId
   // Load card content if needed
+  console.log('[CardGenerator] About to call loadCardContent')
   loadCardContent(cardId, folderId)
+  console.log('[CardGenerator] loadCardContent call completed')
 }
 
 // Load card content
 const loadCardContent = async (cardId, folderId) => {
+  console.log('[LoadCardContent] Function started:', { cardId, folderId })
   try {
     // 清除之前的URL状态
     responseUrls.value = {
@@ -1580,34 +1584,57 @@ const loadCardContent = async (cardId, folderId) => {
       originalUrl: ''
     }
     
-    // 找到对应的卡片 - 需要递归查找以支持子文件夹
-    let folder = cardFolders.value.find(f => f.id === folderId)
-    let card = null
+    console.log('[LoadCardContent] Looking for folder:', folderId)
+    console.log('[LoadCardContent] Available folders:', cardFolders.value.map(f => ({ id: f.id, name: f.name })))
+    console.log('[LoadCardContent] Target folderId:', folderId)
+    console.log('[LoadCardContent] Full cardFolders data:', JSON.stringify(cardFolders.value, null, 2))
     
-    if (folder) {
-      // 先在主文件夹中查找
-      card = folder.cards?.find(c => c.id === cardId)
-      
-      // 如果没找到，在子文件夹中查找
-      if (!card && folder.subfolders) {
-        for (const subfolder of folder.subfolders) {
-          if (subfolder.id === folderId) {
-            folder = subfolder
-            card = subfolder.cards?.find(c => c.id === cardId)
-            break
-          }
+    // 详细检查每个文件夹的匹配情况
+    cardFolders.value.forEach((f, index) => {
+      console.log(`[LoadCardContent] Folder ${index}: id="${f.id}", name="${f.name}", matches folderId: ${f.id === folderId}`)
+    })
+    
+    // 递归查找文件夹的函数
+    const findFolderRecursive = (folders, targetId) => {
+      for (const folder of folders) {
+        if (folder.id === targetId) {
+          return folder
+        }
+        if (folder.subfolders && folder.subfolders.length > 0) {
+          const found = findFolderRecursive(folder.subfolders, targetId)
+          if (found) return found
         }
       }
+      return null
     }
-    if (!card) return
+    
+    // 找到对应的文件夹 - 使用递归查找
+    let folder = findFolderRecursive(cardFolders.value, folderId)
+    let card = null
+    
+    console.log('[LoadCardContent] Found folder:', folder ? { id: folder.id, name: folder.name } : 'null')
+    
+    if (folder) {
+      // 在找到的文件夹中查找卡片
+      card = folder.cards?.find(c => c.id === cardId)
+      console.log('[LoadCardContent] Card found:', card ? card.name : 'null')
+    }
+    
+    if (!card) {
+      console.log('[LoadCardContent] No card found, returning early')
+      return
+    }
     
     console.log('[CardContent] Loading card:', card.name, 'path:', card.path)
     
     // 根据文件扩展名确定预览类型
     const fileName = card.name.toLowerCase()
+    console.log('[CardContent] File name (lowercase):', fileName)
+    console.log('[CardContent] Checking file type conditions...')
     
     // 检查是否是响应文件
     if (fileName.includes('-response.json')) {
+      console.log('[CardContent] Matched: Response JSON file')
       console.log('[CardContent] Detected response file:', card.name)
       
       try {
@@ -1679,6 +1706,7 @@ const loadCardContent = async (cardId, folderId) => {
         }
       }
     } else if (fileName.endsWith('.md') || fileName.endsWith('.markdown')) {
+      console.log('[CardContent] Matched: Markdown file')
       console.log('[CardContent] Loading Markdown file:', card.name)
       
       try {
@@ -1701,6 +1729,7 @@ const loadCardContent = async (cardId, folderId) => {
         previewContent.value = '加载Markdown文件失败: ' + error.message
       }
     } else if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
+      console.log('[CardContent] Matched: HTML file')
       console.log('[CardContent] Loading HTML file:', card.name)
       
       try {
@@ -1727,6 +1756,7 @@ const loadCardContent = async (cardId, folderId) => {
         previewContent.value = `${baseUrl}/api/terminal/card/html/${folder.id}/${encodeURIComponent(card.name)}`
       }
     } else if (fileName.endsWith('.json')) {
+      console.log('[CardContent] Matched: Regular JSON file')
       previewType.value = 'json'
       // JSON文件：使用API读取文件内容
       try {
@@ -1762,6 +1792,7 @@ const loadCardContent = async (cardId, folderId) => {
         }
       }
     } else {
+      console.log('[CardContent] Matched: Other file type (fallback)')
       // 其他类型文件：显示基本信息
       previewType.value = 'html'
       previewContent.value = `data:text/html;charset=utf-8,
@@ -1795,9 +1826,12 @@ const loadCardContent = async (cardId, folderId) => {
     
     ElMessage.success('卡片加载成功')
   } catch (error) {
-    console.error('[CardContent] Failed to load card content:', error)
+    console.error('[LoadCardContent] ERROR in loadCardContent:', error)
+    console.error('[LoadCardContent] Error stack:', error.stack)
     ElMessage.error('加载卡片失败: ' + error.message)
   }
+  
+  console.log('[LoadCardContent] Function completed')
 }
 
 // Handle JSON fixed event
@@ -2215,12 +2249,12 @@ const loadCardFolders = async () => {
 // 转换文件夹结构以适配前端显示
 const transformFolder = (folder) => {
   return {
-    id: folder.id,
+    id: folder.path, // 使用完整路径作为文件夹ID: card/2019的人工智能
     name: folder.name,
     path: folder.path,
     type: 'folder',
     cards: folder.children ? folder.children.filter(item => item.type === 'file').map(file => ({
-      id: file.id,
+      id: file.path, // 使用完整路径作为文件ID: card/2019的人工智能/2019_ai_dune_style.html
       name: file.name,
       path: file.path,
       type: file.fileType || 'file',

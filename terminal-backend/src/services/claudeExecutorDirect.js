@@ -11,12 +11,18 @@ class ClaudeExecutorDirectService {
    */
   async executePrompt(prompt, timeout = 30000, purpose = 'general') {
     const startTime = Date.now()
+    const sessionId = `${purpose}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
     
-    console.log(`\n[ClaudeExecutorDirect] ==================== START ====================`)
-    console.log(`[ClaudeExecutorDirect] Purpose: ${purpose}`)
-    console.log(`[ClaudeExecutorDirect] Timeout: ${timeout}ms`)
-    console.log(`[ClaudeExecutorDirect] Prompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}`)
-    console.log(`[ClaudeExecutorDirect] ==============================================`)
+    console.log(`\n🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥`)
+    console.log(`🚀 [PROMPT-SEND-${sessionId}] ========== SENDING PROMPT TO CLAUDE ==========`)
+    console.log(`🎯 [PROMPT-SEND-${sessionId}] Purpose: ${purpose}`)
+    console.log(`⏱️  [PROMPT-SEND-${sessionId}] Timeout: ${timeout}ms`)
+    console.log(`📊 [PROMPT-SEND-${sessionId}] Prompt Length: ${prompt.length} chars`)
+    console.log(`🕐 [PROMPT-SEND-${sessionId}] Timestamp: ${new Date().toISOString()}`)
+    console.log(`\n💬 [PROMPT-CONTENT-${sessionId}] ====== FULL PROMPT BEGIN ======`)
+    console.log(prompt)
+    console.log(`💬 [PROMPT-CONTENT-${sessionId}] ====== FULL PROMPT END ======`)
+    console.log(`🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n`)
     
     return new Promise((resolve) => {
       let output = ''
@@ -28,9 +34,9 @@ class ClaudeExecutorDirectService {
       const escapedPrompt = prompt.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')
       const command = `echo "${escapedPrompt}" | claude --dangerously-skip-permissions`
       
-      console.log(`[ClaudeExecutorDirect] Using echo pipe method`)
-      console.log(`[ClaudeExecutorDirect] Command: sh -c "${command.substring(0, 100)}..."`)
-      console.log(`[ClaudeExecutorDirect] Auth token present:`, !!process.env.ANTHROPIC_AUTH_TOKEN)
+      console.log(`🚀 [CLAUDE-EXEC-${sessionId}] Using echo pipe method`)
+      console.log(`📌 [CLAUDE-EXEC-${sessionId}] Full Command: sh -c "${command}"`)
+      console.log(`🔑 [CLAUDE-EXEC-${sessionId}] Auth token present:`, !!process.env.ANTHROPIC_AUTH_TOKEN)
       
       const child = spawn('sh', ['-c', command], {
         env: {
@@ -44,18 +50,18 @@ class ClaudeExecutorDirectService {
         cwd: process.cwd()
       })
       
-      console.log(`[ClaudeExecutorDirect] Process spawned with PID:`, child.pid)
+      console.log(`🔧 [CLAUDE-EXEC-${sessionId}] Process spawned with PID:`, child.pid)
       
       // 收集标准输出
       child.stdout.on('data', (data) => {
         output += data.toString()
-        console.log(`[ClaudeExecutorDirect] Output chunk: ${data.toString().substring(0, 100)}`)
+        console.log(`📥 [PROMPT-RESPONSE-${sessionId}] Received chunk: ${data.toString().substring(0, 100)}${data.toString().length > 100 ? '...' : ''}`)
       })
       
       // 收集错误输出
       child.stderr.on('data', (data) => {
         errorOutput += data.toString()
-        console.log(`[ClaudeExecutorDirect] Error: ${data.toString()}`)
+        console.log(`❌ [CLAUDE-EXEC-${sessionId}] Error: ${data.toString()}`)
       })
       
       // 处理进程退出
@@ -64,11 +70,15 @@ class ClaudeExecutorDirectService {
         const executionTime = Date.now() - startTime
         
         if (code === 0 && output) {
-          console.log(`[ClaudeExecutorDirect] ==================== SUCCESS ====================`)
-          console.log(`[ClaudeExecutorDirect] Execution time: ${executionTime}ms`)
-          console.log(`[ClaudeExecutorDirect] Output length: ${output.length} bytes`)
-          console.log(`[ClaudeExecutorDirect] Output: ${output.substring(0, 200)}${output.length > 200 ? '...' : ''}`)
-          console.log(`[ClaudeExecutorDirect] =================================================\n`)
+          console.log(`\n✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅`)
+          console.log(`🎉 [PROMPT-RETURN-${sessionId}] ========== CLAUDE RESPONSE RECEIVED ==========`)
+          console.log(`⏱️  [PROMPT-RETURN-${sessionId}] Execution time: ${executionTime}ms`)
+          console.log(`📊 [PROMPT-RETURN-${sessionId}] Response length: ${output.length} bytes`)
+          console.log(`🕐 [PROMPT-RETURN-${sessionId}] Timestamp: ${new Date().toISOString()}`)
+          console.log(`\n📄 [RESPONSE-CONTENT-${sessionId}] ====== RESPONSE BEGIN ======`)
+          console.log(output.substring(0, 500) + (output.length > 500 ? '\n... [truncated]' : ''))
+          console.log(`📄 [RESPONSE-CONTENT-${sessionId}] ====== RESPONSE END ======`)
+          console.log(`✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅\n`)
           
           resolve({
             success: true,
@@ -76,10 +86,12 @@ class ClaudeExecutorDirectService {
             executionTime: executionTime
           })
         } else {
-          console.log(`[ClaudeExecutorDirect] ==================== FAILED ====================`)
-          console.log(`[ClaudeExecutorDirect] Exit code: ${code}`)
-          console.log(`[ClaudeExecutorDirect] Error: ${errorOutput}`)
-          console.log(`[ClaudeExecutorDirect] ================================================\n`)
+          console.log(`\n❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌`)
+          console.log(`🚨 [PROMPT-FAILED-${sessionId}] ========== EXECUTION FAILED ==========`)
+          console.log(`⚠️  [PROMPT-FAILED-${sessionId}] Exit code: ${code}`)
+          console.log(`📛 [PROMPT-FAILED-${sessionId}] Error: ${errorOutput}`)
+          console.log(`🕐 [PROMPT-FAILED-${sessionId}] Timestamp: ${new Date().toISOString()}`)
+          console.log(`❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌\n`)
           
           resolve({
             success: false,
@@ -108,7 +120,11 @@ class ClaudeExecutorDirectService {
       // 超时处理
       setTimeout(() => {
         if (!processExited) {
-          console.log(`[ClaudeExecutorDirect] Killing process due to timeout`)
+          console.log(`\n⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰`)
+          console.log(`⌛ [PROMPT-TIMEOUT-${sessionId}] ========== EXECUTION TIMEOUT ==========`)
+          console.log(`🔴 [PROMPT-TIMEOUT-${sessionId}] Killing process after ${timeout}ms`)
+          console.log(`🕐 [PROMPT-TIMEOUT-${sessionId}] Timestamp: ${new Date().toISOString()}`)
+          console.log(`⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰⏰\n`)
           child.kill('SIGTERM')
           
           resolve({
@@ -140,7 +156,7 @@ class ClaudeExecutorDirectService {
 
 1. 风格：根据主题类别(心理/知识/创意等)按CLAUDE.md第五点（风格选择指南）自动匹配原则选择合适风格
 2. 语言：判断主题语言，如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"
-3. 参考：检索主题相关内容，返回核心要点（100字以内）
+3. 参考：检索主题相关内容，返回核心要点（500字以内）
 
 请以JSON格式返回，格式如下：
 {
@@ -149,19 +165,45 @@ class ClaudeExecutorDirectService {
   "reference": "参考要点"
 }`
 
-      const result = await this.executePrompt(mergedPrompt, 15000, 'generate_card_params')
+      const result = await this.executePrompt(mergedPrompt, 60000, 'generate_card_params')
       
       if (result.success && result.output) {
         try {
-          const params = JSON.parse(result.output)
-          console.log(`[ClaudeExecutorDirect] Parameters generated successfully`)
+          console.log(`[ClaudeExecutorDirect] Raw output for JSON parsing:`)
+          console.log(`[ClaudeExecutorDirect] "${result.output}"`)
+          console.log(`[ClaudeExecutorDirect] Output length: ${result.output.length} chars`)
+          
+          // 尝试提取 JSON 代码块中的内容
+          let jsonString = result.output.trim()
+          
+          // 查找 ```json 代码块
+          const jsonBlockMatch = jsonString.match(/```json\s*([\s\S]*?)\s*```/)
+          if (jsonBlockMatch) {
+            jsonString = jsonBlockMatch[1].trim()
+            console.log(`[ClaudeExecutorDirect] Extracted JSON from code block: "${jsonString}"`)
+          }
+          
+          // 如果没有代码块，尝试查找 JSON 对象
+          if (!jsonBlockMatch) {
+            const jsonMatch = jsonString.match(/\{[\s\S]*\}/)
+            if (jsonMatch) {
+              jsonString = jsonMatch[0].trim()
+              console.log(`[ClaudeExecutorDirect] Extracted JSON object: "${jsonString}"`)
+            }
+          }
+          
+          const params = JSON.parse(jsonString)
+          console.log(`[ClaudeExecutorDirect] Parameters generated successfully:`, params)
           return {
             style: params.style || '根据主题理解其精神内核',
             language: params.language || '根据主题的语言确定',
             reference: params.reference || '检索主题相关内容'
           }
         } catch (e) {
-          console.log(`[ClaudeExecutorDirect] JSON parse failed, using defaults`)
+          console.log(`[ClaudeExecutorDirect] JSON parse failed:`, e.message)
+          console.log(`[ClaudeExecutorDirect] Raw output causing parse error:`)
+          console.log(`"${result.output}"`)
+          console.log(`[ClaudeExecutorDirect] Using defaults`)
         }
       }
     } catch (error) {

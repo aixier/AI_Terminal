@@ -14,8 +14,8 @@ AI Terminal Backend 是一个功能强大的Web终端后端服务，支持AI卡�
 - ⚡ 简化的Claude命令执行接口
 
 **版本信息：**
-- **当前版本**: v3.10.20
-- **更新日期**: 2025-01-19
+- **当前版本**: v3.10.27
+- **更新日期**: 2025-08-19
 - **API 版本**: v1.0
 
 ---
@@ -258,19 +258,29 @@ POST /api/generate/card
 当使用 `cardplanet-Sandra` 模板时，系统会自动通过 Claude CLI 生成三个动态参数：
 - **style**: 根据主题类别自动选择合适风格
 - **language**: 根据主题判断语言类型（中文/英文/中英双语）
-- **reference**: 自动检索主题相关内容（100字以内）
+- **reference**: 自动检索主题相关内容（500字以内）
 
-**内部处理流程：**（v3.10.21 更新）
+**内部处理流程：**（v3.10.27 更新）
 1. 参数验证和主题清理
 2. 判断模板类型（单文件 .md 或文件夹模板）
 3. 如果是 cardplanet-Sandra 模板，调用 `claudeExecutorDirect.generateCardParameters()`：
    - 使用与 `/api/generate/cc` 相同的底层机制（echo pipe + Claude CLI）
-   - 一次性生成三个参数的 JSON 响应（15秒超时）
-   - 解析 JSON 获取 style、language、reference 参数
-4. 构建完整提示词，嵌入动态参数
+   - 一次性生成三个参数的 JSON 响应（60秒超时，优化后的时间）
+   - 智能解析 Claude 响应：支持 markdown 代码块（```json...```）和纯 JSON 格式
+   - 提取并验证 style、language、reference 参数
+4. 构建完整提示词，嵌入动态生成的真实参数
 5. 执行 Claude 命令生成卡片内容
 6. 监控文件生成（每2秒检查，最多7分钟）
 7. 返回生成结果（支持 JSON 和 HTML 格式）
+
+**参数生成示例响应：**
+```json
+{
+  "style": "技术教学风格 - 系统性讲解复杂技术概念，注重逻辑结构和实例说明",
+  "language": "英文",
+  "reference": "区块链基础涵盖分布式账本技术、加密哈希、共识机制、去中心化网络、智能合约等核心概念。重点理解区块链的不可篡改性、透明性和去信任化特征，以及在数字货币、供应链管理等领域的应用。"
+}
+```
 
 **响应：**
 ```json
@@ -677,6 +687,13 @@ eventSource.addEventListener('error', (e) => {
 ---
 
 ## 版本历史
+
+### v3.10.27 (2025-08-19)
+- 🔧 修复 cardplanet-Sandra 模板参数生成 JSON 解析问题
+- ⏱️  优化参数生成超时：15秒 → 60秒，提高成功率
+- 🧠 智能解析 Claude 响应：支持 markdown 代码块（```json...```）和纯 JSON
+- ✅ 现在可正确提取动态生成的 style、language、reference 参数
+- 🎯 完善日志追踪系统，便于调试和监控
 
 ### v3.10.21 (2025-01-19)
 - 🐛 修复 `/api/generate/cc` 接口在容器中执行超时问题

@@ -470,6 +470,7 @@ docker run --memory=1g --cpus=2 coopotfan/ai-terminal:latest
 
 ### Getting Help
 - 📖 [Comprehensive Documentation](./docs/)
+- 🔌 [API Documentation](./API_DOCUMENTATION.md) - Complete REST API reference
 - ❓ [FAQ Section](./docs/FAQ.md)
 - 🐛 [Issue Tracker](https://github.com/aixier/AI_Terminal/issues)
 - 💬 [Community Discussions](https://github.com/aixier/AI_Terminal/discussions)

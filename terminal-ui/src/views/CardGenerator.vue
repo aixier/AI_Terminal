@@ -404,13 +404,6 @@
               </div>
             </div>
 
-            <!-- 主题建议（从模板或示例生成） -->
-            <div v-if="suggestedTopics.length" class="topic-suggestions">
-              <div class="suggestions-title">主题建议</div>
-              <div class="suggestions-list">
-                <button v-for="(s, i) in suggestedTopics" :key="i" class="suggestion-chip" @click="currentTopic = s">{{ s }}</button>
-              </div>
-            </div>
 
             <!-- 输入区域置底（紧贴底栏上方） -->
             <div class="mobile-input-section sticky-bottom">
@@ -446,15 +439,22 @@
           
           <!-- 文件操作栏（根据选中项上下文展示） -->
           <div v-if="selectedCard && selectedFolder" class="file-action-bar">
-            <!-- response.json / html 直接预览 -->
-            <button v-if="isResponseJsonSelected || isHtmlSelected" class="action-btn primary" @click="handlePreviewSelected">预览</button>
-            <!-- 普通 json 同时提供两种模式 -->
-            <template v-else-if="isPlainJsonSelected">
-              <button class="action-btn primary" @click="viewJsonSelected">预览JSON</button>
-              <button class="action-btn" @click="generateFromSelectedJson" :disabled="isGeneratingHtml[selectedCard]">生成预览</button>
-            </template>
-            <!-- 其他类型不可预览时提示生成 -->
-            <button v-else class="action-btn" @click="handlePreviewSelected">生成预览</button>
+            <!-- 加载状态指示器 -->
+            <div v-if="isLoadingPreview" class="loading-indicator">
+              <div class="loading-progress-bar">
+                <div class="loading-progress-fill" :style="{ width: previewLoadingProgress + '%' }"></div>
+              </div>
+              <span class="loading-text">加载中... {{ previewLoadingProgress }}%</span>
+            </div>
+            
+            <!-- 预览按钮 -->
+            <button 
+              class="action-btn primary" 
+              @click="handlePreviewSelected"
+              :disabled="isLoadingPreview"
+            >
+              {{ isLoadingPreview ? '加载中...' : '预览' }}
+            </button>
             <button class="action-btn" :disabled="!responseUrls.shareLink" @click="copyLink('share')">复制分享</button>
             <button class="action-btn" :disabled="!responseUrls.shareLink" @click="openLink('share')">打开分享</button>
             <button class="action-btn" :disabled="!responseUrls.originalUrl" @click="copyLink('original')">复制原始</button>
@@ -708,6 +708,8 @@ const streamingStatus = ref({
 const previewContent = ref('')
 const previewType = ref('')
 const isGeneratingHtml = ref({})
+const isLoadingPreview = ref(false) // 预览内容加载状态
+const previewLoadingProgress = ref(0) // 预览加载进度
 const showTerminal = ref(true) // Terminal默认显示，方便查看初始化过程
 const iframeScaleMode = ref('fit') // 'fit' or 'fill' - 默认适应模式，显示完整内容
 const iframeSandbox = ref('allow-scripts allow-forms allow-popups allow-same-origin allow-storage-access-by-user-activation')
@@ -771,13 +773,6 @@ const contextMenu = ref({
   targetType: null // 'folder' | 'file'
 })
 
-// 建议话题（取前几个模板名或示例）
-const suggestedTopics = computed(() => {
-  const names = (templates.value || []).map(t => t.name).filter(Boolean)
-  const uniq = Array.from(new Set(names)).slice(0, 6)
-  if (uniq.length) return uniq
-  return ['效率提升', '学习计划', '旅行攻略', '产品介绍', '技术要点']
-})
 
 // Methods
 
@@ -1568,10 +1563,17 @@ const selectCard = (cardId, folderId) => {
   console.log('[CardGenerator] selectCard called:', { cardId, folderId })
   selectedCard.value = cardId
   selectedFolder.value = folderId
-  // Load card content if needed
-  console.log('[CardGenerator] About to call loadCardContent')
-  loadCardContent(cardId, folderId)
-  console.log('[CardGenerator] loadCardContent call completed')
+  
+  // 移动端：预加载内容，但不自动触发全屏预览，等用户点击"预览"按钮
+  // 桌面端：加载内容并在右侧预览区域显示
+  if (device.isMobile.value) {
+    console.log('[CardGenerator] Mobile: Pre-loading content for preview button')
+    // 移动端也加载内容，但不切换到预览模式，让用户通过操作栏按钮控制
+    loadCardContent(cardId, folderId)
+  } else {
+    console.log('[CardGenerator] Desktop: Loading content for preview area')
+    loadCardContent(cardId, folderId)
+  }
 }
 
 // Load card content
@@ -2174,6 +2176,9 @@ const getFileIcon = (fileName) => {
     case 'html':
     case 'htm':
       return '🌐'
+    case 'md':
+    case 'markdown':
+      return '📝'
     default:
       return '📄'
   }
@@ -2195,6 +2200,9 @@ const getFileType = (fileName) => {
     case 'html':
     case 'htm':
       return 'HTML'
+    case 'md':
+    case 'markdown':
+      return 'MD'
     default:
       return ext.toUpperCase()
   }
@@ -2819,6 +2827,14 @@ const isHtmlSelected = computed(() => {
   return name.endsWith('.html') || name.endsWith('.htm')
 })
 
+const isMarkdownSelected = computed(() => {
+  const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
+  const card = folder?.cards?.find(c => c.id === selectedCard.value)
+  if (!card) return false
+  const name = (card.name || '').toLowerCase()
+  return name.endsWith('.md') || name.endsWith('.markdown')
+})
+
 // 计算终端区域样式
 const terminalStyle = computed(() => {
   if (!showTerminal.value) {
@@ -2831,42 +2847,284 @@ const terminalStyle = computed(() => {
   }
 })
 
-const handlePreviewSelected = async () => {
-  console.log('[Preview] handlePreviewSelected:start', { selectedCard: selectedCard.value, selectedFolder: selectedFolder.value })
-  try {
-    const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
-    const card = folder?.cards?.find(c => c.id === selectedCard.value)
-    if (!card) { console.warn('[Preview] no card selected'); return }
-    const name = (card.name || '').toLowerCase()
-    console.log('[Preview] detect file', { name })
+// 预览状态日志函数
+const logPreviewState = (context) => {
+  console.log(`[Preview] ${context}:`, {
+    previewType: previewType.value,
+    hasPreviewContent: !!previewContent.value,
+    contentLength: typeof previewContent.value === 'string' ? previewContent.value.length : 'non-string',
+    responseUrls: responseUrls.value,
+    activeTab: activePreviewTab.value
+  })
+}
 
+const handlePreviewSelected = async () => {
+  console.log('[Preview] handlePreviewSelected:start', { 
+    selectedCard: selectedCard.value, 
+    selectedFolder: selectedFolder.value 
+  })
+  
+  // 设置加载状态
+  isLoadingPreview.value = true
+  previewLoadingProgress.value = 0
+  
+  try {
+    // 详细调试信息
+    console.log('[Preview] Available folders:', cardFolders.value.map(f => ({ id: f.id, name: f.name, cardCount: f.cards?.length })))
+    
+    // 递归查找文件夹的函数
+    const findFolderRecursive = (folders, targetId) => {
+      for (const folder of folders) {
+        if (folder.id === targetId) {
+          return folder
+        }
+        if (folder.subfolders && folder.subfolders.length > 0) {
+          const found = findFolderRecursive(folder.subfolders, targetId)
+          if (found) return found
+        }
+      }
+      return null
+    }
+    
+    const folder = findFolderRecursive(cardFolders.value, selectedFolder.value)
+    console.log('[Preview] Found folder:', folder ? { id: folder.id, name: folder.name, cardCount: folder.cards?.length } : null)
+    
+    if (folder && folder.cards) {
+      console.log('[Preview] Cards in folder:', folder.cards.map(c => ({ id: c.id, name: c.name })))
+    }
+    
+    const card = folder?.cards?.find(c => c.id === selectedCard.value)
+    console.log('[Preview] Found card:', card ? { id: card.id, name: card.name, path: card.path } : null)
+    
+    if (!card) { 
+      console.warn('[Preview] Card selection debug:', {
+        selectedCard: selectedCard.value,
+        selectedFolder: selectedFolder.value,
+        folderFound: !!folder,
+        folderCards: folder?.cards?.length || 0,
+        availableCardIds: folder?.cards?.map(c => c.id) || []
+      })
+      ElMessage.warning('请先选择一个文件')
+      return 
+    }
+    
+    const name = (card.name || '').toLowerCase()
+    console.log('[Preview] detect file', { name, cardPath: card.path })
+    
+    // 显示加载进度
+    previewLoadingProgress.value = 20
+    ElMessage.info(`正在加载 ${card.name}...`)
+
+    // 先加载内容（如果还没有加载的话）
+    if (!previewContent.value) {
+      console.log('[Preview] No preview content, loading card content first')
+      previewLoadingProgress.value = 40
+      
+      await loadCardContent(card.id, folder.id)
+      
+      console.log('[Preview] After loading card content:', { 
+        hasContent: !!previewContent.value, 
+        previewType: previewType.value,
+        contentType: typeof previewContent.value
+      })
+      
+      previewLoadingProgress.value = 70
+    }
+
+    // 统一移动端预览交互：所有文件类型都使用全屏预览
     if (name.includes('-response.json')) {
-      console.log('[Preview] branch: response.json → loadCardContent')
-      await loadCardContent(card.id, folder.id)
+      console.log('[Preview] branch: response.json → preview')
+      previewLoadingProgress.value = 85
+      
+      try {
+        // 验证response.json内容
+        if (!previewContent.value) {
+          throw new Error('Response文件内容为空')
+        }
+        
+        // 验证是否有有效的URL数据
+        if (previewType.value !== 'iframe' && !responseUrls.value.shareLink && !responseUrls.value.originalUrl) {
+          throw new Error('Response文件中未找到有效的预览链接')
+        }
+        
+        // 所有验证通过，标记解析成功
+        previewLoadingProgress.value = 100
+        ElMessage.success('Response文件解析成功，正在打开预览')
+        
+        // 只有在所有验证都通过的情况下才触发预览
+        if (device.isMobile.value) {
+          console.log('[Preview] All validations passed, opening fullscreen preview')
+          layoutStore.toggleFullScreen('preview')
+        }
+        
+      } catch (error) {
+        console.error('[Preview] Response file processing failed:', error)
+        let errorMessage = 'Response文件预览失败'
+        if (error.message.includes('为空')) {
+          errorMessage = 'Response文件内容为空，可能文件损坏或未完整生成'
+        } else if (error.message.includes('未找到有效的预览链接')) {
+          errorMessage = 'Response文件中缺少预览链接信息，请重新生成HTML'
+        } else {
+          errorMessage = `Response文件处理错误: ${error.message}`
+        }
+        ElMessage.error(errorMessage)
+        return
+      }
+      
       logPreviewState('after load response.json')
-      console.log('[Preview] toggleFullScreen("preview")')
-      layoutStore.toggleFullScreen('preview')
     } else if (name.endsWith('.html') || name.endsWith('.htm')) {
-      console.log('[Preview] branch: html → loadCardContent')
-      await loadCardContent(card.id, folder.id)
+      console.log('[Preview] branch: html → preview')
+      previewLoadingProgress.value = 80
+      
+      try {
+        // HTML文件需要特殊处理和验证
+        if (!previewContent.value || !previewType.value?.includes('html')) {
+          ElMessage.info('正在加载HTML文件...')
+          await loadCardContent(card.id, folder.id)
+        }
+        
+        // 验证HTML内容
+        if (!previewContent.value) {
+          throw new Error('HTML文件内容为空')
+        }
+        
+        // 验证HTML内容格式
+        if (typeof previewContent.value === 'string' && previewContent.value.length > 0) {
+          // 简单验证HTML标签
+          if (!previewContent.value.includes('<html') && !previewContent.value.includes('<div') && !previewContent.value.includes('<body')) {
+            console.warn('[Preview] HTML content may not be valid HTML format')
+          }
+          console.log('[Preview] HTML content validation passed, length:', previewContent.value.length)
+        } else {
+          throw new Error('HTML文件内容格式错误')
+        }
+        
+        // 验证previewType
+        if (!previewType.value || !previewType.value.includes('html')) {
+          throw new Error(`HTML预览类型错误: ${previewType.value}`)
+        }
+        
+        // 所有验证通过，标记解析成功
+        previewLoadingProgress.value = 100
+        ElMessage.success('HTML文件解析成功，正在打开预览')
+        
+        // 只有在所有验证都通过的情况下才触发预览
+        if (device.isMobile.value) {
+          console.log('[Preview] HTML validation successful, opening fullscreen preview')
+          layoutStore.toggleFullScreen('preview')
+        }
+        
+      } catch (error) {
+        console.error('[Preview] HTML processing failed:', error)
+        let errorMessage = 'HTML文件预览失败'
+        if (error.message.includes('内容为空')) {
+          errorMessage = 'HTML文件内容为空，可能文件未完整保存或已损坏'
+        } else if (error.message.includes('内容格式错误')) {
+          errorMessage = 'HTML文件格式不正确，请检查文件内容'
+        } else if (error.message.includes('预览类型错误')) {
+          errorMessage = 'HTML文件类型识别失败，请重新加载文件'
+        } else {
+          errorMessage = `HTML文件处理错误: ${error.message}`
+        }
+        ElMessage.error(errorMessage)
+        return
+      }
+      
       logPreviewState('after load html')
-      console.log('[Preview] toggleFullScreen("preview")')
-      layoutStore.toggleFullScreen('preview')
+    } else if (name.endsWith('.md') || name.endsWith('.markdown')) {
+      console.log('[Preview] branch: markdown → preview')
+      previewLoadingProgress.value = 90
+      
+      // MD文件通常加载很快，但也需要验证
+      if (!previewContent.value || previewType.value !== 'markdown') {
+        ElMessage.warning('Markdown内容尚未加载，请稍候...')
+        return
+      }
+      
+      // Markdown文件验证成功，标记解析成功
+      previewLoadingProgress.value = 100
+      ElMessage.success('Markdown文件解析成功，正在打开预览')
+      
+      // 只有在验证通过的情况下才触发预览
+      if (device.isMobile.value) {
+        console.log('[Preview] Markdown validation successful, opening fullscreen preview')
+        layoutStore.toggleFullScreen('preview')
+      }
+      
+      logPreviewState('after load markdown')
     } else if (name.endsWith('.json')) {
-      console.log('[Preview] branch: json(default) → view JSON (or choose generate)')
-      // 默认行为：直接看JSON
-      await viewJsonSelected()
+      console.log('[Preview] branch: json → view JSON in fullscreen')
+      previewLoadingProgress.value = 80
+      
+      try {
+        // JSON文件需要特殊处理和验证
+        if (!previewContent.value || previewType.value !== 'json') {
+          ElMessage.info('正在解析JSON文件...')
+          await loadCardContent(card.id, folder.id)
+        }
+        
+        // 验证JSON内容
+        if (!previewContent.value) {
+          throw new Error('JSON文件内容为空')
+        }
+        
+        // 尝试解析JSON以验证格式
+        if (typeof previewContent.value === 'string') {
+          try {
+            JSON.parse(previewContent.value)
+            console.log('[Preview] JSON format validation passed')
+          } catch (parseError) {
+            throw new Error(`JSON格式错误: ${parseError.message}`)
+          }
+        }
+        
+        // 确保previewType被正确设置
+        if (previewType.value !== 'json') {
+          previewType.value = 'json'
+        }
+        
+        // 所有验证通过，标记解析成功  
+        previewLoadingProgress.value = 100
+        ElMessage.success('JSON文件解析成功，正在打开预览')
+        
+        // 只有在所有验证都通过的情况下才触发预览
+        if (device.isMobile.value) {
+          console.log('[Preview] JSON validation successful, opening fullscreen preview')
+          layoutStore.toggleFullScreen('preview')
+        }
+        
+      } catch (error) {
+        console.error('[Preview] JSON processing failed:', error)
+        let errorMessage = 'JSON文件预览失败'
+        if (error.message.includes('内容为空')) {
+          errorMessage = 'JSON文件内容为空，可能文件未完整生成或已损坏'
+        } else if (error.message.includes('JSON格式错误')) {
+          errorMessage = `JSON格式不正确: ${error.message.split(': ')[1] || '语法错误'}`
+        } else if (error.message.includes('解析')) {
+          errorMessage = '无法解析JSON文件，请检查文件格式是否正确'
+        } else {
+          errorMessage = `JSON文件处理错误: ${error.message}`
+        }
+        ElMessage.error(errorMessage)
+        return
+      }
+      
+      logPreviewState('after load json')
     } else {
       console.log('[Preview] unsupported file type')
       ElMessage.info('该文件不支持预览')
     }
   } catch (e) {
     console.error('[Preview] Failed:', e)
-    ElMessage.error('预览失败：' + e.message)
+    ElMessage.error(`预览失败: ${e.message}`)
+  } finally {
+    // 清理加载状态
+    isLoadingPreview.value = false
+    previewLoadingProgress.value = 0
   }
 }
 
-// 仅预览原始JSON
+// 仅预览原始JSON - 保留给桌面端或特殊需要时使用
 const viewJsonSelected = async () => {
   try {
     const folder = cardFolders.value.find(f => f.id === selectedFolder.value)
@@ -2880,7 +3138,9 @@ const viewJsonSelected = async () => {
       await loadCardContent(card.id, folder.id)
     }
     previewType.value = 'json'
-    layoutStore.toggleFullScreen('preview')
+    if (device.isMobile.value) {
+      layoutStore.toggleFullScreen('preview')
+    }
     logPreviewState('after viewJsonSelected')
   } catch (e) {
     console.error('[Preview] viewJsonSelected error', e)
@@ -2895,7 +3155,9 @@ const generateFromSelectedJson = async () => {
     if (!card) return
     console.log('[Preview] generateFromSelectedJson')
     await generateHtmlFromJson(card, folder)
-    layoutStore.toggleFullScreen('preview')
+    if (device.isMobile.value) {
+      layoutStore.toggleFullScreen('preview')
+    }
     logPreviewState('after generateFromSelectedJson')
   } catch (e) {
     console.error('[Preview] generateFromSelectedJson error', e)
@@ -3262,6 +3524,7 @@ const openLink = (which) => {
 
 .card-item.active {
   background: #2a2a2a;
+  border-left: 2px solid #4a9eff;
 }
 
 .card-item.active::before {
@@ -3273,6 +3536,61 @@ const openLink = (which) => {
   width: 2px;
   background: #4a9eff;
   border-radius: 2px;
+}
+
+/* 移动端增强选中状态高亮 - 绿色主题 */
+@media (max-width: 768px) {
+  .card-item.active {
+    background: linear-gradient(90deg, #065f46 0%, #1f2937 100%) !important;
+    border: 2px solid #10b981 !important;
+    border-left: 4px solid #34d399 !important;
+    color: #6ee7b7 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+    transform: translateX(4px) !important;
+    position: relative !important;
+  }
+  
+  .card-item.active::before {
+    content: '▶' !important;
+    position: absolute !important;
+    left: -8px !important;
+    color: #34d399 !important;
+    font-size: 12px !important;
+    animation: pulse 1.5s infinite !important;
+  }
+  
+  .card-item.active .card-name {
+    color: #d1fae5 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  }
+  
+  .card-item.active .card-icon {
+    filter: brightness(1.5) saturate(1.3) drop-shadow(0 0 4px rgba(52, 211, 153, 0.5)) !important;
+    transform: scale(1.1) !important;
+  }
+  
+  .card-item.active .card-type {
+    background: #10b981 !important;
+    color: white !important;
+    border-color: #10b981 !important;
+  }
+}
+
+/* 桌面端也增强选中状态 - 绿色主题 */
+.card-item.active {
+  background: linear-gradient(90deg, #047857 0%, #2a2a2a 100%);
+  border-left: 3px solid #10b981;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  transform: translateX(2px);
+}
+
+.card-item.active .card-name {
+  color: #6ee7b7;
+}
+
+.card-item.active .card-icon {
+  filter: brightness(1.3) saturate(1.2);
 }
 
 .card-icon {
@@ -4190,12 +4508,79 @@ const openLink = (which) => {
 /* 模板选择区域左对齐 */
 .mobile-template-section,
 .mobile-template-grid,
-.mobile-template-card,
 .template-header,
-.topic-suggestions,
 .mobile-input-section,
 .input-row {
   text-align: left;
+}
+
+/* 移动端模板卡片样式 */
+.mobile-template-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  position: relative;
+}
+
+.mobile-template-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.mobile-template-card.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%) !important;
+  border: 2px solid #10b981 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3) !important;
+  transform: scale(1.02) !important;
+}
+
+.mobile-template-card .template-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.mobile-template-card.active .template-icon {
+  filter: brightness(1.3) drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
+}
+
+.mobile-template-card .template-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-template-card .template-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+}
+
+.mobile-template-card.active .template-name {
+  color: #34d399 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-template-card .template-desc {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.3;
+}
+
+.mobile-template-card.active .template-desc {
+  color: #6ee7b7 !important;
+}
+
+.mobile-template-card .template-check {
+  display: none; /* 隐藏勾号 */
 }
 
 /* 文件 Tab 列表左对齐 */
@@ -4381,21 +4766,125 @@ const openLink = (which) => {
 .action-btn:disabled { opacity: .5; cursor: not-allowed; }
 .action-btn.primary { background: #238636; border-color: #2ea043; color: #fff; }
 
-/* 主题建议 */
-.topic-suggestions { padding: 12px 16px; }
-.suggestions-title { color: #8b949e; font-size: 14px; margin-bottom: 8px; }
-.suggestions-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.suggestion-chip { padding: 8px 12px; background:#1b1f24; border:1px solid #30363d; color:#c9d1d9; border-radius:9999px; font-size:12px; }
 
 /* 输入置底 */
 .sticky-bottom { position: sticky; bottom: 0; padding-bottom: calc(var(--spacing-mobile-safe-area, env(safe-area-inset-bottom)) + 6px); background: linear-gradient(180deg, rgba(22,27,34,0), rgba(22,27,34,.9) 30%); backdrop-filter: blur(6px); }
 
 /* 让全屏预览内容铺满可视区域 */
 .fill { position: absolute; inset: 0; }
-.mobile-preview-content.fill { background: #0d1117; overflow: hidden; display: flex; flex-direction: column; }
+.mobile-preview-content.fill { 
+  background: #0d1117; 
+  overflow: hidden; 
+  display: flex; 
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+}
 .mobile-preview-content.fill :deep(iframe),
-.mobile-preview-content.fill :deep(webview) { width: 100%; height: 100%; border: 0; }
-.json-viewer-preview.fill { position: absolute; inset: 0; overflow: auto; }
+.mobile-preview-content.fill :deep(webview) { 
+  width: 100%; 
+  height: 100%; 
+  border: 0; 
+  flex: 1;
+}
+.json-viewer-preview.fill { 
+  position: absolute; 
+  inset: 0; 
+  overflow: auto; 
+  background: #0d1117;
+}
+
+/* 移动端HTML预览优化 */
+.mobile-preview-content .html-content-viewer-container {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1;
+}
+
+.mobile-preview-content .html-content-viewer-container :deep(iframe) {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
+
+/* 移动端Markdown预览优化 */
+.mobile-preview-content .markdown-viewer-preview.fill {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 16px;
+  background: #0d1117;
+  color: #c9d1d9;
+  line-height: 1.6;
+}
+
+.mobile-preview-content .markdown-viewer-preview.fill :deep(h1),
+.mobile-preview-content .markdown-viewer-preview.fill :deep(h2),
+.mobile-preview-content .markdown-viewer-preview.fill :deep(h3) {
+  color: #f0f6fc;
+  margin-top: 24px;
+  margin-bottom: 16px;
+}
+
+.mobile-preview-content .markdown-viewer-preview.fill :deep(p) {
+  margin-bottom: 16px;
+}
+
+.mobile-preview-content .markdown-viewer-preview.fill :deep(pre) {
+  background: #161b22;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 14px;
+}
+
+.mobile-preview-content .markdown-viewer-preview.fill :deep(code) {
+  background: #161b22;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* 加载进度条样式 */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.loading-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loading-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.loading-text {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 500;
+  min-width: 80px;
+  text-align: right;
+}
 
 /* 移动端预览Tabs */
 .mobile-preview-tabs {
@@ -4427,5 +4916,25 @@ const openLink = (which) => {
 .mobile-preview-tab.disabled {
   opacity: .5;
 }
-.preview-body { flex: 1; position: relative; }
+.preview-body { 
+  flex: 1; 
+  position: relative; 
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+/* 修复移动端预览容器样式 */
+.mobile-preview-content .preview-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mobile-preview-content .preview-body > *:not(.html-content-viewer-container) {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
 </style>

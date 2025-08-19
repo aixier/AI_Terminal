@@ -11,6 +11,7 @@
 ### Developer Documentation
 - [System Architecture](./architecture/system-architecture.md) - Technical architecture overview
 - [API Documentation](./api/README.md) - Complete API reference
+- [Node-PTY & Claude CLI Integration](./node-pty-claude-integration.md) - Claude CLI integration guide
 - [Deployment Guide](./deployment/docker.md) - Docker deployment instructions
 - [Configuration](./deployment/configuration.md) - Environment variables and settings
 

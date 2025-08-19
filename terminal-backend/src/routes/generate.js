@@ -3,6 +3,8 @@ import path from 'path'
 import fs from 'fs/promises'
 import apiTerminalService from '../utils/apiTerminalService.js'
 import terminalManager from '../services/terminalManager.js'
+import claudeExecutor from '../services/claudeExecutor.js'
+import claudeExecutorDirect from '../services/claudeExecutorDirect.js'
 import { authenticateUser, authenticateUserOrDefault, ensureUserFolder } from '../middleware/userAuth.js'
 import userService from '../services/userService.js'
 
@@ -152,73 +154,17 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
     }
     
     // 使用前置提示词生成参数
-    console.log(`[GenerateCard API] Step 1: Generating prompt parameters using pre-prompts for topic: ${topic}`)
+    console.log(`[GenerateCard API] Step 1: Generating prompt parameters for topic: ${topic}`)
     console.log(`[GenerateCard API] Sanitized topic: ${sanitizedTopic}`)
+    console.log(`[GenerateCard API] Template: ${templateName}`)
     
-    // 生成三个参数的前置提示词
-    let style = ''
-    let language = ''
-    let referenceContent = ''
+    // 使用直接执行服务生成参数（避免 PTY 兼容性问题）
+    const { style, language, reference: referenceContent } = await claudeExecutorDirect.generateCardParameters(topic, templateName)
     
-    if (templateName === 'cardplanet-Sandra') {
-      // 通过Claude生成三个参数
-      const generatePromptParam = async (promptText) => {
-        try {
-          const paramApiId = `param_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-          await apiTerminalService.executeClaude(paramApiId, promptText)
-          
-          // 等待生成完成（最多10秒）
-          await new Promise(resolve => setTimeout(resolve, 3000))
-          
-          // 获取输出
-          const output = await apiTerminalService.getLastOutput(paramApiId)
-          
-          // 清理会话
-          await apiTerminalService.destroySession(paramApiId)
-          
-          return output?.trim() || ''
-        } catch (error) {
-          console.error(`[GenerateCard API] Error generating parameter:`, error)
-          return ''
-        }
-      }
-      
-      // 定义三个前置提示词
-      const stylePrompt = `根据"${topic}"类别(心理/知识/创意等)按CLAUDE.md第五点（风格选择指南）自动匹配原则选择合适风格。直接返回风格描述，不要解释。`
-      
-      const languagePrompt = `请根据"${topic}"判断语言。如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"。直接返回语言类型。`
-      
-      const referencePrompt = `如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索"${topic}"获取更多内容进行生成。返回核心要点（100字以内）。`
-      
-      console.log(`[GenerateCard API] ========== STYLE PROMPT ==========`)
-      console.log(stylePrompt)
-      console.log(`[GenerateCard API] ==================================`)
-      style = await generatePromptParam(stylePrompt)
-      if (!style) style = '根据主题理解其精神内核，自动选择合适的风格'
-      console.log(`[GenerateCard API] Generated style: ${style}`)
-      
-      console.log(`[GenerateCard API] ========== LANGUAGE PROMPT ==========`)
-      console.log(languagePrompt)
-      console.log(`[GenerateCard API] =====================================`)
-      language = await generatePromptParam(languagePrompt)
-      if (!language) language = '根据主题的语言确定语言类型'
-      console.log(`[GenerateCard API] Generated language: ${language}`)
-      
-      console.log(`[GenerateCard API] ========== REFERENCE PROMPT ==========`)
-      console.log(referencePrompt)
-      console.log(`[GenerateCard API] ======================================`)
-      referenceContent = await generatePromptParam(referencePrompt)
-      if (!referenceContent) referenceContent = '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
-      console.log(`[GenerateCard API] Generated reference: ${referenceContent}`)
-      
-    } else {
-      // 非cardplanet-Sandra模板不需要这些参数
-      referenceContent = ''
-    }
-    
-    console.log(`[GenerateCard API] Generated Style: ${style}`)
-    console.log(`[GenerateCard API] Generated Language: ${language}`)
-    console.log(`[GenerateCard API] Generated Reference: ${referenceContent.substring(0, 200)}...`)
+    console.log(`[GenerateCard API] ========== PARAMETERS RECEIVED ==========`)
+    console.log(`[GenerateCard API] Style: ${style}`)
+    console.log(`[GenerateCard API] Language: ${language}`)
+    console.log(`[GenerateCard API] Reference: ${referenceContent.substring(0, 200)}${referenceContent.length > 200 ? '...' : ''}`)
     
     if (isFolder) {
       // 文件夹模式
@@ -702,74 +648,29 @@ router.post('/card/stream', authenticateUserOrDefault, ensureUserFolder, async (
       // 使用前置提示词生成参数
       sendSSE('status', { step: 'generating_prompt_parameters' })
       
-      let style = ''
-      let language = ''
-      let referenceContent = ''
+      console.log(`[Stream API] Step 1: Generating prompt parameters for topic: ${topic}`)
+      console.log(`[Stream API] Template: ${templateName}`)
       
+      // 发送参数生成开始事件
       if (templateName === 'cardplanet-Sandra') {
-        // 通过Claude生成三个参数
-        const generatePromptParam = async (promptText, paramName) => {
-          try {
-            sendSSE('parameter_progress', { param: paramName, status: 'generating' })
-            
-            const paramApiId = `param_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-            await apiTerminalService.executeClaude(paramApiId, promptText)
-            
-            // 等待生成完成
-            await new Promise(resolve => setTimeout(resolve, 3000))
-            
-            // 获取输出
-            const output = await apiTerminalService.getLastOutput(paramApiId)
-            
-            // 清理会话
-            await apiTerminalService.destroySession(paramApiId)
-            
-            sendSSE('parameter_progress', { param: paramName, status: 'completed', value: output })
-            return output?.trim() || ''
-          } catch (error) {
-            console.error(`[Stream API] Error generating ${paramName}:`, error)
-            sendSSE('parameter_progress', { param: paramName, status: 'error' })
-            return ''
-          }
-        }
-        
-        // 定义三个前置提示词
-        const stylePrompt = `根据"${topic}"类别(心理/知识/创意等)按CLAUDE.md第五点（风格选择指南）自动匹配原则选择合适风格。直接返回风格描述，不要解释。`
-        
-        const languagePrompt = `请根据"${topic}"判断语言。如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"。直接返回语言类型。`
-        
-        const referencePrompt = `如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索"${topic}"获取更多内容进行生成。返回核心要点（100字以内）。`
-        
-        // 生成三个参数
-        console.log(`[Stream API] ========== STYLE PROMPT ==========`)
-        console.log(stylePrompt)
-        console.log(`[Stream API] ==================================`)
-        style = await generatePromptParam(stylePrompt, 'style')
-        if (!style) style = '根据主题理解其精神内核，自动选择合适的风格'
-        console.log(`[Stream API] Generated style: ${style}`)
-        
-        console.log(`[Stream API] ========== LANGUAGE PROMPT ==========`)
-        console.log(languagePrompt)
-        console.log(`[Stream API] =====================================`)
-        language = await generatePromptParam(languagePrompt, 'language')
-        if (!language) language = '根据主题的语言确定语言类型'
-        console.log(`[Stream API] Generated language: ${language}`)
-        
-        console.log(`[Stream API] ========== REFERENCE PROMPT ==========`)
-        console.log(referencePrompt)
-        console.log(`[Stream API] ======================================`)
-        referenceContent = await generatePromptParam(referencePrompt, 'reference')
-        if (!referenceContent) referenceContent = '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
-        console.log(`[Stream API] Generated reference: ${referenceContent}`)
-        
+        sendSSE('parameter_progress', { param: 'all', status: 'generating' })
+      }
+      
+      // 使用直接执行服务生成参数（避免 PTY 兼容性问题）
+      const { style, language, reference: referenceContent } = await claudeExecutorDirect.generateCardParameters(topic, templateName)
+      
+      console.log(`[Stream API] ========== PARAMETERS RECEIVED ==========`)
+      console.log(`[Stream API] Style: ${style}`)
+      console.log(`[Stream API] Language: ${language}`)
+      console.log(`[Stream API] Reference: ${referenceContent.substring(0, 200)}${referenceContent.length > 200 ? '...' : ''}`)
+      
+      // 发送参数生成完成事件
+      if (templateName === 'cardplanet-Sandra') {
         sendSSE('parameters', { 
           style: style,
           language: language,
-          reference: referenceContent.substring(0, 100) + '...'
+          reference: referenceContent.substring(0, 100) + (referenceContent.length > 100 ? '...' : '')
         })
-      } else {
-        // 非cardplanet-Sandra模板不需要这些参数
-        referenceContent = ''
       }
       
       if (isFolder) {
@@ -1006,134 +907,46 @@ router.post('/cc', async (req, res) => {
       })
     }
     
-    console.log(`[CC API] Received prompt: ${prompt.substring(0, 100)}...`)
+    console.log(`[CC API] ==================== REQUEST ====================`)
+    console.log(`[CC API] Prompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}`)
     console.log(`[CC API] Timeout: ${timeout}ms`)
+    console.log(`[CC API] =================================================`)
     
-    // 创建临时终端会话
-    const sessionId = `cc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-    const pty = await terminalManager.create(sessionId)
-    
-    if (!pty) {
-      return res.status(500).json({
-        code: 500,
-        success: false,
-        message: '创建终端会话失败'
-      })
-    }
-    
-    // 收集输出
-    let output = ''
-    let commandExecuted = false
-    
-    // 监听输出
-    pty.onData((data) => {
-      output += data
-      
-      // 检测命令是否执行完成（通过检测新的提示符）
-      if (data.includes('$') && commandExecuted) {
-        // 命令执行完成
-      }
-    })
-    
-    // 执行Claude命令
-    const escapedPrompt = prompt.replace(/"/g, '\\"')
-    const command = `claude --dangerously-skip-permissions -p "${escapedPrompt}"`
-    
-    console.log(`[CC API] Executing command: ${command.substring(0, 150)}...`)
-    pty.write(command + '\r')
-    commandExecuted = true
-    
-    // 等待执行完成或超时
-    const startTime = Date.now()
-    const checkInterval = 100 // 每100ms检查一次
-    
-    const waitForCompletion = new Promise((resolve) => {
-      const intervalId = setInterval(() => {
-        // 检查是否超时
-        if (Date.now() - startTime >= timeout) {
-          clearInterval(intervalId)
-          resolve({ success: false, reason: 'timeout' })
-        }
-        
-        // 检查输出中是否有结束标志
-        const lines = output.split('\n')
-        const lastLine = lines[lines.length - 1] || lines[lines.length - 2]
-        
-        // 检查Claude命令是否完成执行
-        // Claude输出后会返回到提示符
-        if (commandExecuted && output.includes('\r\n') && output.length > command.length + 20) {
-          // 检查是否有新的提示符出现（命令执行完成）
-          const outputAfterCommand = output.substring(output.indexOf(command) + command.length)
-          if (outputAfterCommand.includes('$') && (outputAfterCommand.includes('\r\n') || outputAfterCommand.length > 50)) {
-            clearInterval(intervalId)
-            resolve({ success: true })
-          }
-        }
-      }, checkInterval)
-    })
-    
-    const result = await waitForCompletion
-    
-    // 清理终端会话
-    terminalManager.destroy(sessionId)
+    // 使用直接执行服务（避免 PTY 兼容性问题）
+    const result = await claudeExecutorDirect.executePrompt(prompt, timeout, 'cc_api')
     
     if (!result.success) {
-      return res.json({
-        code: 408,
+      console.log(`[CC API] Execution failed: ${result.error}`)
+      
+      // 根据错误类型返回不同的状态码
+      const statusCode = result.error === 'Execution timeout' ? 408 : 500
+      
+      return res.status(statusCode).json({
+        code: statusCode,
         success: false,
-        message: '执行超时',
+        message: result.error || '执行失败',
         timeout: timeout,
-        partialOutput: output
+        partialOutput: result.output
       })
     }
     
-    // 简化的输出清理逻辑
-    // 查找命令执行后的输出
-    const commandPattern = /claude --dangerously-skip-permissions.*?\n/
-    const commandMatch = output.match(commandPattern)
-    
-    let cleanOutput = ''
-    if (commandMatch) {
-      // 获取命令之后的所有内容
-      const afterCommand = output.substring(output.indexOf(commandMatch[0]) + commandMatch[0].length)
-      
-      // 移除ANSI转义序列
-      const cleaned = afterCommand
-        .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')  // ANSI转义序列
-        .replace(/\x1b\[\?[0-9]+[hl]/g, '')      // 特殊转义序列
-        .replace(/\[[\?0-9]+[hl]/g, '')          // 未转义的特殊序列
-        .replace(/\r/g, '')                      // 回车符
-      
-      // 按行分割并过滤
-      const lines = cleaned.split('\n')
-      const outputLines = []
-      
-      for (const line of lines) {
-        const trimmed = line.trim()
-        // 停止条件：遇到新的提示符
-        if (trimmed.includes(':~$') || trimmed.match(/^[a-f0-9]+:~\$/)) {
-          break
-        }
-        // 添加非空行
-        if (trimmed) {
-          outputLines.push(trimmed)
-        }
-      }
-      
-      cleanOutput = outputLines.join('\n').trim()
-    }
-    
-    console.log(`[CC API] Command completed successfully`)
+    console.log(`[CC API] ==================== SUCCESS ====================`)
+    console.log(`[CC API] Execution time: ${result.executionTime}ms`)
+    console.log(`[CC API] Output length: ${result.output.length} bytes`)
+    console.log(`[CC API] =================================================`)
     
     return res.json({
       code: 200,
       success: true,
-      output: cleanOutput,
-      executionTime: Date.now() - startTime
+      output: result.output,
+      executionTime: result.executionTime
     })
     
   } catch (error) {
-    console.error('[CC API] Error:', error)
+    console.error(`[CC API] ==================== ERROR ====================`)
+    console.error(`[CC API] Unexpected error:`, error)
+    console.error(`[CC API] ===============================================`)
+    
     return res.status(500).json({
       code: 500,
       success: false,

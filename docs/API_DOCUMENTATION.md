@@ -14,7 +14,7 @@ AI Terminal Backend 是一个功能强大的Web终端后端服务，支持AI卡�
 - ⚡ 简化的Claude命令执行接口
 
 **版本信息：**
-- **当前版本**: v3.10.3
+- **当前版本**: v3.10.20
 - **更新日期**: 2025-01-19
 - **API 版本**: v1.0
 
@@ -335,14 +335,13 @@ POST /api/generate/cc
 - `prompt`: 要发送给Claude的提示词（必需）
 - `timeout`: 执行超时时间，单位毫秒（可选，默认30000，最大600000）
 
-**内部实现逻辑：**
-1. 创建临时终端会话（sessionId格式：`cc_时间戳_随机字符串`）
-2. 监听终端输出数据
-3. 执行命令：`claude --dangerously-skip-permissions -p "${prompt}"`
+**内部实现逻辑：**（v3.10.21 更新）
+1. 使用 echo pipe 方式执行 Claude CLI（避免 TTY 交互问题）
+2. 命令格式：`echo "${prompt}" | claude --dangerously-skip-permissions`
+3. 通过 child_process.spawn 执行 shell 命令
 4. 等待命令执行完成或超时
-5. 清理输出内容（移除ANSI转义序列、命令本身、提示符等）
-6. 销毁终端会话
-7. 返回清理后的输出
+5. 返回 Claude 的响应输出
+6. 执行时间通常在 7-10 秒之间
 
 **响应：**
 ```json
@@ -676,6 +675,12 @@ eventSource.addEventListener('error', (e) => {
 ---
 
 ## 版本历史
+
+### v3.10.21 (2025-01-19)
+- 🐛 修复 `/api/generate/cc` 接口在容器中执行超时问题
+- 🔧 改进 Claude CLI 执行方式，使用 echo pipe 避免 TTY 交互
+- ⚡ 优化响应时间，稳定在 7-10 秒
+- 📝 更新 node-pty 与 Claude CLI 集成文档
 
 ### v3.10.3 (2025-01-19)
 - ✨ 新增 `/api/generate/cc` 接口，支持直接执行Claude命令

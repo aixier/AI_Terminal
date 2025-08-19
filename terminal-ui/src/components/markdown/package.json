@@ -1,0 +1,23 @@
+{
+  "name": "@ai-terminal/markdown",
+  "version": "1.0.0",
+  "description": "Comprehensive Markdown rendering module with Milkdown",
+  "dependencies": {
+    "@milkdown/core": "^7.3.6",
+    "@milkdown/ctx": "^7.3.6",
+    "@milkdown/preset-gfm": "^7.3.6",
+    "@milkdown/plugin-mermaid": "^7.3.6",
+    "@milkdown/plugin-prism": "^7.3.6",
+    "@milkdown/plugin-math": "^7.3.6",
+    "@milkdown/plugin-tooltip": "^7.3.6",
+    "@milkdown/plugin-slash": "^7.3.6",
+    "@milkdown/plugin-emoji": "^7.3.6",
+    "@milkdown/plugin-table": "^7.3.6",
+    "@milkdown/theme-material": "^7.3.6",
+    "@milkdown/vue": "^7.3.6",
+    "katex": "^0.16.8",
+    "mermaid": "^10.6.1",
+    "prismjs": "^1.29.0",
+    "dompurify": "^3.0.5"
+  }
+}

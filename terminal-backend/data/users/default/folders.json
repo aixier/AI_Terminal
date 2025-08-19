@@ -1,0 +1,18 @@
+{
+  "folders": [
+    {
+      "id": "default-cards",
+      "name": "📁 卡片收集",
+      "description": "默认卡片文件夹",
+      "color": "#2196f3",
+      "files": []
+    },
+    {
+      "id": "default-notes",
+      "name": "📝 笔记文档",
+      "description": "默认笔记文件夹",
+      "color": "#4caf50",
+      "files": []
+    }
+  ]
+}

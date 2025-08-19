@@ -1,12 +1,12 @@
 {
   "name": "ai-terminal",
-  "version": "3.9.8",
+  "version": "3.10.2",
   "description": "🚀 World's First AI-Powered Web Terminal - Seamlessly integrate Claude AI + Gemini AI with browser-based terminal. Zero installation, Docker-ready, enterprise-grade architecture for developers, researchers, and teams.",
   "main": "connection-test.js",
   "keywords": [
     "ai-terminal",
     "web-terminal",
-    "claude-ai", 
+    "claude-ai",
     "gemini-ai",
     "browser-terminal",
     "ai-powered-development",
@@ -40,14 +40,14 @@
     "开发者工具"
   ],
   "author": {
-    "name": "AI Terminal Team", 
+    "name": "AI Terminal Team",
     "email": "hello@ai-terminal.com",
     "url": "https://aiterminal.dev"
   },
   "contributors": [
     {
       "name": "aixier",
-      "email": "aixier@github.com", 
+      "email": "aixier@github.com",
       "url": "https://github.com/aixier"
     }
   ],
@@ -67,7 +67,7 @@
       "url": "https://ko-fi.com/aiterminal"
     },
     {
-      "type": "github", 
+      "type": "github",
       "url": "https://github.com/sponsors/aixier"
     }
   ],
@@ -87,10 +87,10 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "socket.io-client": "^4.5.4",
-    "eventsource": "^2.0.2", 
     "axios": "^1.6.2",
-    "chalk": "^4.1.2"
+    "chalk": "^4.1.2",
+    "eventsource": "^2.0.2",
+    "socket.io-client": "^4.5.4"
   },
   "devDependencies": {
     "eslint": "^8.50.0",
@@ -106,7 +106,7 @@
     "terminal-ui/dist/",
     "docs/",
     "README.md",
-    "README_CN.md", 
+    "README_CN.md",
     "LICENSE",
     "CHANGELOG.md"
   ]

@@ -2,6 +2,7 @@ import express from 'express'
 import terminalManager from '../services/terminalManager.js'
 import path from 'path'
 import fs from 'fs/promises'
+import { authenticateUserOrDefault } from '../middleware/userAuth.js'
 
 const router = express.Router()
 
@@ -65,106 +66,86 @@ router.delete('/sessions/:sessionId', (req, res) => {
   }
 })
 
-// 获取用户的卡片文件夹列表
-router.get('/folders', async (req, res) => {
+// 获取用户的完整workspace结构（文件夹和文件）
+router.get('/folders', authenticateUserOrDefault, async (req, res) => {
   try {
     const fs = await import('fs/promises')
     const path = await import('path')
     
-    // 使用默认用户
-    const userId = 'default'
+    // 从认证中间件获取用户名
+    const userId = req.user?.username || 'default'
     const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
-    const userFoldersPath = path.join(dataPath, 'users', userId, 'folders')
+    const userWorkspacePath = path.join(dataPath, 'users', userId, 'workspace')
     
     // 确保目录存在
     try {
-      await fs.access(userFoldersPath)
+      await fs.access(userWorkspacePath)
     } catch {
-      // 如果目录不存在，创建它
-      await fs.mkdir(userFoldersPath, { recursive: true })
-      
-      // 创建默认文件夹
-      const defaultFolderPath = path.join(userFoldersPath, 'default-folder')
-      await fs.mkdir(defaultFolderPath, { recursive: true })
-      await fs.mkdir(path.join(defaultFolderPath, 'cards'), { recursive: true })
-      
-      const defaultMetadata = {
-        id: 'default-folder',
-        name: '默认文件夹',
-        description: '默认卡片文件夹',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        cardCount: 0,
-        color: '#0078d4'
-      }
-      
-      await fs.writeFile(
-        path.join(defaultFolderPath, 'metadata.json'),
-        JSON.stringify(defaultMetadata, null, 2)
-      )
+      await fs.mkdir(userWorkspacePath, { recursive: true })
     }
     
-    // 读取所有文件夹
-    const folderDirs = await fs.readdir(userFoldersPath)
-    const folders = []
-    
-    for (const folderDir of folderDirs) {
-      const folderPath = path.join(userFoldersPath, folderDir)
-      const metadataPath = path.join(folderPath, 'metadata.json')
+    // 递归读取目录结构的辅助函数
+    const readDirectory = async (dirPath, relativePath = '') => {
+      const items = []
+      const entries = await fs.readdir(dirPath)
       
-      try {
-        const stats = await fs.stat(folderPath)
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry)
+        const relPath = relativePath ? path.join(relativePath, entry) : entry
+        const stats = await fs.stat(fullPath)
+        
         if (stats.isDirectory()) {
-          // 读取元数据
-          let metadata = {
-            id: folderDir,
-            name: folderDir,
-            cardCount: 0,
-            color: '#0078d4'
+          // 处理文件夹
+          const folder = {
+            id: relPath.replace(/[\\\/]/g, '-'),
+            name: entry,
+            path: fullPath,
+            relativePath: relPath,
+            type: 'folder',
+            children: await readDirectory(fullPath, relPath) // 递归读取子目录
           }
-          
-          try {
-            const metadataContent = await fs.readFile(metadataPath, 'utf-8')
-            metadata = { ...metadata, ...JSON.parse(metadataContent) }
-          } catch {
-            // 如果没有metadata文件，使用默认值
+          items.push(folder)
+        } else if (stats.isFile()) {
+          // 处理文件
+          const ext = path.extname(entry).toLowerCase()
+          const file = {
+            id: relPath.replace(/[\\\/]/g, '-'),
+            name: entry,
+            path: fullPath,
+            relativePath: relPath,
+            type: 'file',
+            fileType: ext.substring(1), // 去掉点号
+            size: stats.size,
+            modified: stats.mtime
           }
-          
-          // 计算卡片数量
-          const cardsPath = path.join(folderPath, 'cards')
-          try {
-            const cards = await fs.readdir(cardsPath)
-            metadata.cardCount = cards.filter(card => card.endsWith('.json')).length
-          } catch {
-            // 卡片目录可能不存在
-          }
-          
-          folders.push(metadata)
+          items.push(file)
         }
-      } catch (error) {
-        console.error(`Error reading folder ${folderDir}:`, error)
       }
+      
+      return items
     }
     
-    // 如果没有文件夹，返回默认文件夹
-    if (folders.length === 0) {
-      folders.push({
-        id: 'default-folder',
-        name: '默认文件夹',
-        description: '默认卡片文件夹',
-        cardCount: 0,
-        color: '#0078d4'
-      })
-    }
+    // 读取workspace根目录的内容
+    const workspaceContent = await readDirectory(userWorkspacePath)
+    
+    // 分离根目录的文件和文件夹
+    const rootFiles = workspaceContent.filter(item => item.type === 'file')
+    const folders = workspaceContent.filter(item => item.type === 'folder')
     
     res.json({
       code: 200,
       success: true,
-      folders: folders,
+      data: {
+        userId: userId,
+        workspacePath: userWorkspacePath,
+        rootFiles: rootFiles,    // 根目录下的文件
+        folders: folders,         // 文件夹（包含其子文件和子文件夹）
+        totalItems: workspaceContent.length
+      },
       message: 'success'
     })
   } catch (error) {
-    console.error('Get folders error:', error)
+    console.error('Get workspace structure error:', error)
     res.status(500).json({
       code: 500,
       success: false,
@@ -174,15 +155,15 @@ router.get('/folders', async (req, res) => {
 })
 
 // 获取cards目录树结构
-router.get('/cards-directory', async (req, res) => {
+router.get('/cards-directory', authenticateUserOrDefault, async (req, res) => {
   try {
     const fs = await import('fs/promises')
     const path = await import('path')
     
-    const userId = 'default'
+    const userId = req.user?.username || 'default'
     // 支持Docker环境：优先使用DATA_PATH环境变量
     const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
-    const cardsBasePath = path.join(dataPath, 'users', userId, 'folders', 'default-folder', 'cards')
+    const cardsBasePath = path.join(dataPath, 'users', userId, 'workspace')
     
     const folders = []
     
@@ -252,14 +233,14 @@ router.get('/cards-directory', async (req, res) => {
 })
 
 // 获取指定文件夹的卡片列表
-router.get('/folders/:folderId/cards', async (req, res) => {
+router.get('/folders/:folderId/cards', authenticateUserOrDefault, async (req, res) => {
   try {
     const fs = await import('fs/promises')
     const path = await import('path')
     
-    const userId = 'default'
+    const userId = req.user?.username || 'default'
     const { folderId } = req.params
-    const cardsPath = path.join(dataPath, 'users', userId, 'folders', folderId, 'cards')
+    const cardsPath = path.join(dataPath, 'users', userId, 'workspace', folderId)
     
     const cards = []
     
@@ -521,19 +502,19 @@ router.get('/templates', async (req, res) => {
 })
 
 // 提供HTML文件的静态服务
-router.get('/card/html/:folderId/:fileName', async (req, res) => {
+router.get('/card/html/:folderId/:fileName', authenticateUserOrDefault, async (req, res) => {
   try {
     const fs = await import('fs/promises')
     const path = await import('path')
     
     const { folderId, fileName } = req.params
-    const userId = 'default'
+    const userId = req.user?.username || 'default'
     
     // 定义dataPath
     const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
     
     // 构建文件路径
-    const filePath = path.join(dataPath, 'users', userId, 'folders', 'default-folder', 'cards', folderId, fileName)
+    const filePath = path.join(dataPath, 'users', userId, 'workspace', folderId, fileName)
     
     // 安全检查：确保文件在允许的目录内
     const allowedBasePath = path.join(dataPath, 'users')
@@ -683,7 +664,7 @@ router.post('/fetch-and-save-html', async (req, res) => {
 })
 
 // 保存生成的HTML文件
-router.post('/save-html', async (req, res) => {
+router.post('/save-html', authenticateUserOrDefault, async (req, res) => {
   try {
     const fs = await import('fs/promises')
     const path = await import('path')
@@ -707,7 +688,7 @@ router.post('/save-html', async (req, res) => {
       console.log('Saving HTML to same directory as JSON:', finalPath)
     } else {
       // 使用备用逻辑
-      const userId = 'default'
+      const userId = req.user?.username || 'default'
       const folderName = folderId || 'default-folder'
       const cardsPath = path.join(dataPath, 'users', userId, 'folders', folderName, 'cards')
       
@@ -1042,7 +1023,7 @@ router.put('/folder/rename', async (req, res) => {
     const allowedBasePath = path.join(dataPath, 'users')
     
     // 构建完整的旧路径
-    const fullOldPath = path.isAbsolute(oldPath) ? oldPath : path.join(allowedBasePath, 'default', 'folders', oldPath)
+    const fullOldPath = path.isAbsolute(oldPath) ? oldPath : path.join(allowedBasePath, 'default', 'workspace', oldPath)
     const resolvedOldPath = path.resolve(fullOldPath)
     
     if (!resolvedOldPath.startsWith(allowedBasePath)) {

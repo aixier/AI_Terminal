@@ -99,9 +99,8 @@ const handleLogin = async () => {
     
     // 保存token和用户信息
     localStorage.setItem('token', res.data.token)
-    if (loginForm.remember) {
-      localStorage.setItem('username', loginForm.username)
-    }
+    // 始终保存当前登录的用户名，用于显示
+    localStorage.setItem('username', loginForm.username)
     
     // 保存用户信息到store
     terminalStore.setUserInfo(res.data.user)

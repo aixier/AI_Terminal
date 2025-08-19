@@ -84,7 +84,7 @@ class ApiTerminalService extends EventEmitter {
   }
 
   /**
-   * 执行Claude命令 - 直接使用 claude -p 参数
+   * 执行Claude命令 - 使用环境变量直接执行
    */
   async executeClaude(apiId, prompt) {
     const terminal = await this.createTerminalSession(apiId)
@@ -92,9 +92,19 @@ class ApiTerminalService extends EventEmitter {
     console.log(`[ApiTerminalService] Executing Claude command for API: ${apiId}`)
     console.log(`[ApiTerminalService] Prompt: ${prompt.substring(0, 100)}...`)
     
-    // 直接执行claude命令，使用-p参数传递prompt
-    const command = `claude --dangerously-skip-permissions -p "${prompt.replace(/"/g, '\\"')}"`
-    console.log(`[ApiTerminalService] Command: ${command}`)
+    // 简化的命令执行方式 - Claude会自动使用环境变量中的ANTHROPIC_AUTH_TOKEN
+    // 转义prompt中的双引号和反斜杠
+    const escapedPrompt = prompt.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    const command = `claude --dangerously-skip-permissions -p "${escapedPrompt}"`
+    
+    console.log(`[ApiTerminalService] ========== CLAUDE EXECUTION ==========`)
+    console.log(`[ApiTerminalService] API ID: ${apiId}`)
+    console.log(`[ApiTerminalService] Original Prompt Length: ${prompt.length} characters`)
+    console.log(`[ApiTerminalService] ========== FULL PROMPT ==========`)
+    console.log(prompt)
+    console.log(`[ApiTerminalService] ========== COMMAND ==========`)
+    console.log(command)
+    console.log(`[ApiTerminalService] ==============================`)
     
     terminal.pty.write(command + '\r')
     
@@ -103,6 +113,74 @@ class ApiTerminalService extends EventEmitter {
     
     console.log(`[ApiTerminalService] ✅ Claude command sent for API: ${apiId}`)
     return true
+  }
+  
+  /**
+   * 确保Claude已登录
+   */
+  async ensureClaudeLogin(terminal) {
+    console.log(`[ApiTerminalService] Ensuring Claude login...`)
+    
+    // 检查环境变量
+    const authToken = process.env.ANTHROPIC_AUTH_TOKEN
+    const baseUrl = process.env.ANTHROPIC_BASE_URL
+    
+    if (!authToken) {
+      throw new Error('ANTHROPIC_AUTH_TOKEN environment variable not set')
+    }
+    
+    console.log(`[ApiTerminalService] Using auth token: ${authToken.substring(0, 10)}...`)
+    console.log(`[ApiTerminalService] Using base URL: ${baseUrl}`)
+    
+    // 先启动Claude会话
+    terminal.pty.write('claude\r')
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // 然后在Claude会话中执行登录
+    const loginCommand = `/login ${authToken}`
+    console.log(`[ApiTerminalService] Executing login command in Claude session`)
+    
+    terminal.pty.write(loginCommand + '\r')
+    
+    // 等待登录完成
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    
+    // 退出Claude会话回到shell
+    terminal.pty.write('/exit\r')
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    console.log(`[ApiTerminalService] ✅ Claude login completed`)
+  }
+
+  /**
+   * 获取终端会话的最后输出
+   */
+  async getLastOutput(apiId) {
+    const terminal = this.terminals.get(apiId)
+    if (!terminal) {
+      console.warn(`[ApiTerminalService] No terminal found for API: ${apiId}`)
+      return ''
+    }
+    
+    const outputBuffer = this.outputBuffers.get(apiId) || []
+    
+    // 获取最后的有意义输出（过滤掉控制字符和提示符）
+    const lastOutput = outputBuffer
+      .join('')
+      .split('\n')
+      .filter(line => {
+        // 过滤掉空行、提示符和控制字符
+        const cleanLine = line.replace(/\[.*?\]/g, '').trim()
+        return cleanLine && 
+               !cleanLine.startsWith('$') && 
+               !cleanLine.startsWith('>') &&
+               !cleanLine.includes('claude --dangerously-skip-permissions')
+      })
+      .slice(-10) // 取最后10行
+      .join('\n')
+      .trim()
+    
+    return lastOutput
   }
 
   /**

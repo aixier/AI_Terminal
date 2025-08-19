@@ -1,0 +1,424 @@
+/**
+ * Fluent Design主题样式
+ * 适配AI Terminal项目的设计风格
+ */
+
+/* 根变量定义 */
+.markdown-viewer[data-theme="fluent"],
+.markdown-editor[data-theme="fluent"] {
+  --md-primary-color: #0078d4;
+  --md-primary-hover: #106ebe;
+  --md-primary-active: #005a9e;
+  --md-background: #faf9f8;
+  --md-surface: #ffffff;
+  --md-surface-variant: #f3f2f1;
+  --md-border: #edebe9;
+  --md-border-strong: #d2d0ce;
+  --md-text-primary: #323130;
+  --md-text-secondary: #605e5c;
+  --md-text-tertiary: #a19f9d;
+  --md-success: #107c10;
+  --md-warning: #ff8c00;
+  --md-error: #d13438;
+  --md-info: #0078d4;
+  
+  /* 代码块颜色 */
+  --md-code-bg: #f8f8f8;
+  --md-code-border: #e1e1e1;
+  --md-code-text: #d73a49;
+  
+  /* 阴影 */
+  --md-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --md-shadow-2: 0 2px 6px rgba(0, 0, 0, 0.15);
+  --md-shadow-3: 0 4px 12px rgba(0, 0, 0, 0.2);
+  
+  /* 边距 */
+  --md-spacing-xs: 4px;
+  --md-spacing-sm: 8px;
+  --md-spacing-md: 16px;
+  --md-spacing-lg: 24px;
+  --md-spacing-xl: 32px;
+  
+  /* 字体 */
+  --md-font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --md-font-mono: 'Cascadia Code', 'SF Mono', Monaco, 'Inconsolata', 'Fira Code', monospace;
+}
+
+/* 暗色主题变量 */
+.markdown-viewer[data-theme="fluent-dark"],
+.markdown-editor[data-theme="fluent-dark"] {
+  --md-primary-color: #60cdff;
+  --md-primary-hover: #4fc3f7;
+  --md-primary-active: #29b6f6;
+  --md-background: #1e1e1e;
+  --md-surface: #2d2d30;
+  --md-surface-variant: #3e3e42;
+  --md-border: #484848;
+  --md-border-strong: #6e6e6e;
+  --md-text-primary: #ffffff;
+  --md-text-secondary: #cccccc;
+  --md-text-tertiary: #969696;
+  --md-success: #4ec946;
+  --md-warning: #ffcc02;
+  --md-error: #f48771;
+  --md-info: #60cdff;
+  
+  --md-code-bg: #0d1117;
+  --md-code-border: #30363d;
+  --md-code-text: #f97583;
+}
+
+/* 基础样式 */
+.markdown-viewer,
+.markdown-editor {
+  font-family: var(--md-font-family);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--md-text-primary);
+  background-color: var(--md-background);
+  padding: var(--md-spacing-lg);
+  border-radius: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* 标题样式 */
+.markdown-viewer h1,
+.markdown-editor h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--md-text-primary);
+  margin: var(--md-spacing-xl) 0 var(--md-spacing-lg) 0;
+  border-bottom: 2px solid var(--md-border-strong);
+  padding-bottom: var(--md-spacing-sm);
+}
+
+.markdown-viewer h2,
+.markdown-editor h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--md-text-primary);
+  margin: var(--md-spacing-lg) 0 var(--md-spacing-md) 0;
+  border-bottom: 1px solid var(--md-border);
+  padding-bottom: var(--md-spacing-xs);
+}
+
+.markdown-viewer h3,
+.markdown-editor h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--md-text-primary);
+  margin: var(--md-spacing-lg) 0 var(--md-spacing-sm) 0;
+}
+
+.markdown-viewer h4,
+.markdown-editor h4,
+.markdown-viewer h5,
+.markdown-editor h5,
+.markdown-viewer h6,
+.markdown-editor h6 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--md-text-primary);
+  margin: var(--md-spacing-md) 0 var(--md-spacing-sm) 0;
+}
+
+/* 段落和文本 */
+.markdown-viewer p,
+.markdown-editor p {
+  margin: var(--md-spacing-md) 0;
+  color: var(--md-text-primary);
+}
+
+.markdown-viewer strong,
+.markdown-editor strong {
+  font-weight: 600;
+  color: var(--md-text-primary);
+}
+
+.markdown-viewer em,
+.markdown-editor em {
+  font-style: italic;
+  color: var(--md-text-secondary);
+}
+
+/* 链接样式 */
+.markdown-viewer a,
+.markdown-editor a {
+  color: var(--md-primary-color);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.markdown-viewer a:hover,
+.markdown-editor a:hover {
+  color: var(--md-primary-hover);
+  border-bottom-color: var(--md-primary-hover);
+}
+
+/* 列表样式 */
+.markdown-viewer ul,
+.markdown-editor ul,
+.markdown-viewer ol,
+.markdown-editor ol {
+  margin: var(--md-spacing-md) 0;
+  padding-left: var(--md-spacing-lg);
+}
+
+.markdown-viewer li,
+.markdown-editor li {
+  margin: var(--md-spacing-xs) 0;
+  color: var(--md-text-primary);
+}
+
+.markdown-viewer li::marker,
+.markdown-editor li::marker {
+  color: var(--md-primary-color);
+}
+
+/* 任务列表 */
+.markdown-viewer .task-list-item,
+.markdown-editor .task-list-item {
+  list-style: none;
+  margin-left: -var(--md-spacing-lg);
+  padding-left: var(--md-spacing-lg);
+}
+
+.markdown-viewer .task-list-item input[type="checkbox"],
+.markdown-editor .task-list-item input[type="checkbox"] {
+  margin-right: var(--md-spacing-sm);
+  accent-color: var(--md-primary-color);
+}
+
+/* 引用块 */
+.markdown-viewer blockquote,
+.markdown-editor blockquote {
+  margin: var(--md-spacing-lg) 0;
+  padding: var(--md-spacing-md) var(--md-spacing-lg);
+  border-left: 4px solid var(--md-primary-color);
+  background-color: var(--md-surface-variant);
+  border-radius: 0 4px 4px 0;
+  color: var(--md-text-secondary);
+  font-style: italic;
+}
+
+/* 代码样式 */
+.markdown-viewer code,
+.markdown-editor code {
+  font-family: var(--md-font-mono);
+  font-size: 0.9em;
+  background-color: var(--md-code-bg);
+  color: var(--md-code-text);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--md-code-border);
+}
+
+.markdown-viewer pre,
+.markdown-editor pre {
+  margin: var(--md-spacing-lg) 0;
+  padding: var(--md-spacing-md);
+  background-color: var(--md-code-bg);
+  border: 1px solid var(--md-code-border);
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: var(--md-shadow-1);
+}
+
+.markdown-viewer pre code,
+.markdown-editor pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--md-text-primary);
+}
+
+/* 表格样式 */
+.markdown-viewer table,
+.markdown-editor table {
+  width: 100%;
+  margin: var(--md-spacing-lg) 0;
+  border-collapse: collapse;
+  background-color: var(--md-surface);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--md-shadow-1);
+}
+
+.markdown-viewer th,
+.markdown-editor th,
+.markdown-viewer td,
+.markdown-editor td {
+  padding: var(--md-spacing-sm) var(--md-spacing-md);
+  border: 1px solid var(--md-border);
+  text-align: left;
+}
+
+.markdown-viewer th,
+.markdown-editor th {
+  background-color: var(--md-surface-variant);
+  font-weight: 600;
+  color: var(--md-text-primary);
+}
+
+.markdown-viewer tr:nth-child(even),
+.markdown-editor tr:nth-child(even) {
+  background-color: var(--md-surface-variant);
+}
+
+/* 分隔线 */
+.markdown-viewer hr,
+.markdown-editor hr {
+  margin: var(--md-spacing-xl) 0;
+  border: none;
+  height: 2px;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    var(--md-border-strong), 
+    transparent
+  );
+}
+
+/* 图片样式 */
+.markdown-viewer img,
+.markdown-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: var(--md-shadow-2);
+  margin: var(--md-spacing-md) 0;
+}
+
+/* 自定义容器样式 */
+.custom-container {
+  margin: var(--md-spacing-lg) 0;
+  padding: var(--md-spacing-md);
+  border-radius: 8px;
+  border-left: 4px solid;
+  background-color: var(--md-surface-variant);
+}
+
+.custom-container-title {
+  font-weight: 600;
+  margin-bottom: var(--md-spacing-sm);
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
+}
+
+.custom-container.info {
+  border-left-color: var(--md-info);
+  background-color: rgba(0, 120, 212, 0.1);
+}
+
+.custom-container.info .custom-container-title {
+  color: var(--md-info);
+}
+
+.custom-container.warning {
+  border-left-color: var(--md-warning);
+  background-color: rgba(255, 140, 0, 0.1);
+}
+
+.custom-container.warning .custom-container-title {
+  color: var(--md-warning);
+}
+
+.custom-container.danger {
+  border-left-color: var(--md-error);
+  background-color: rgba(209, 52, 56, 0.1);
+}
+
+.custom-container.danger .custom-container-title {
+  color: var(--md-error);
+}
+
+.custom-container.tip {
+  border-left-color: var(--md-success);
+  background-color: rgba(16, 124, 16, 0.1);
+}
+
+.custom-container.tip .custom-container-title {
+  color: var(--md-success);
+}
+
+/* Mermaid图表样式 */
+.mermaid {
+  display: flex;
+  justify-content: center;
+  margin: var(--md-spacing-lg) 0;
+  background-color: var(--md-surface);
+  border-radius: 8px;
+  padding: var(--md-spacing-md);
+  box-shadow: var(--md-shadow-1);
+}
+
+/* 数学公式样式 */
+.katex {
+  font-size: 1em;
+}
+
+.katex-display {
+  margin: var(--md-spacing-lg) 0;
+  text-align: center;
+  background-color: var(--md-surface);
+  padding: var(--md-spacing-md);
+  border-radius: 8px;
+  border: 1px solid var(--md-border);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .markdown-viewer,
+  .markdown-editor {
+    padding: var(--md-spacing-md);
+    font-size: 14px;
+  }
+  
+  .markdown-viewer h1,
+  .markdown-editor h1 {
+    font-size: 1.75rem;
+  }
+  
+  .markdown-viewer h2,
+  .markdown-editor h2 {
+    font-size: 1.375rem;
+  }
+  
+  .markdown-viewer table,
+  .markdown-editor table {
+    font-size: 0.875rem;
+  }
+  
+  .markdown-viewer th,
+  .markdown-editor th,
+  .markdown-viewer td,
+  .markdown-editor td {
+    padding: var(--md-spacing-xs) var(--md-spacing-sm);
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .markdown-viewer,
+  .markdown-editor {
+    background: white;
+    color: black;
+    box-shadow: none;
+    padding: 0;
+  }
+  
+  .markdown-viewer a,
+  .markdown-editor a {
+    color: black;
+    text-decoration: underline;
+  }
+  
+  .custom-container {
+    border: 1px solid #ccc;
+    break-inside: avoid;
+  }
+}

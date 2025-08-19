@@ -25,10 +25,11 @@ const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
 const userHealthCheckIntervals = new Map() // username -> interval
 
 /**
- * 获取用户的监控目录
+ * 获取用户的监控目录 - 监控整个workspace
  */
 const getUserWatchDir = (username) => {
-  return path.join(dataPath, 'users', username, 'folders', 'default-folder', 'cards')
+  // 监控用户的整个workspace目录
+  return path.join(dataPath, 'users', username, 'workspace')
 }
 
 /**
@@ -58,7 +59,7 @@ const scanDirectory = async (dir) => {
   const files = new Map()
   
   const scan = async (currentDir, depth = 0) => {
-    if (depth > 3) return // cards目录下最多3层深度就够了
+    if (depth > 5) return // workspace目录下最多5层深度
     
     try {
       const items = await fsPromises.readdir(currentDir, { withFileTypes: true })
@@ -181,7 +182,7 @@ const initUserWatcher = (username) => {
   const watcher = chokidar.watch(watchDir, {
     persistent: true,
     ignoreInitial: true,  // 忽略初始扫描，只监控新的变化
-    depth: 3,  // cards目录下3层深度足够
+    depth: 5,  // workspace目录下5层深度
     awaitWriteFinish: {
       stabilityThreshold: 400,  // 稍作等待，确保写入完成
       pollInterval: 100

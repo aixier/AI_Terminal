@@ -105,12 +105,12 @@ export const getTemplateContent = async (templateId) => {
 }
 
 /**
- * 获取卡片内容 - 仅用于读取JSON文件内容
+ * 获取卡片内容 - 支持读取JSON、HTML和Markdown文件内容
  */
 export const getCardContent = async (cardPath) => {
   try {
-    // 支持JSON和HTML文件
-    const supportedExtensions = ['.json', '.html', '.htm']
+    // 支持JSON、HTML和Markdown文件
+    const supportedExtensions = ['.json', '.html', '.htm', '.md', '.markdown']
     const fileExt = cardPath.substring(cardPath.lastIndexOf('.')).toLowerCase()
     
     if (!supportedExtensions.includes(fileExt)) {

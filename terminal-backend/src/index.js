@@ -16,6 +16,7 @@ import sseRoutes from './routes/sse.js'
 import previewRoutes from './routes/preview.js'
 import generateRoutes from './routes/generate.js'
 import uploadRoutes from './routes/upload.js'
+import workspaceRoutes from './routes/workspace.js'
 import { setupSocketHandlers } from './services/socketService.js'
 import websocketService from './services/websocketService.js'
 // import { preventCommandInjection, limitRequestSize, auditLog, rateLimit } from './middleware/security.js'
@@ -208,6 +209,9 @@ console.log('     ✓ /api/sse route registered')
 app.use('/api/preview', previewRoutes)
 console.log('     ✓ /api/preview route registered')
 
+app.use('/api/workspace', workspaceRoutes)
+console.log('     ✓ /api/workspace route registered')
+
 // 5. API信息路由 (移到/api-info避免与静态文件冲突)
 console.log('  5️⃣ Registering API info route...')
 app.get('/api-info', (req, res) => {
@@ -225,7 +229,8 @@ app.get('/api-info', (req, res) => {
         claude: '/api/claude',
         generate: '/api/generate',
         sse: '/api/sse',
-        preview: '/api/preview'
+        preview: '/api/preview',
+        workspace: '/api/workspace'
       }
     },
     message: 'Welcome to AI Terminal Backend Service'

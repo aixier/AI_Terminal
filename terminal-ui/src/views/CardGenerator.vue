@@ -21,6 +21,20 @@
     
     <!-- Left Sidebar - My Cards -->
     <div class="left-sidebar">
+      <!-- User Info Section -->
+      <div class="user-info-section">
+        <div class="user-avatar">
+          <span class="avatar-icon">👤</span>
+        </div>
+        <div class="user-details">
+          <div class="username">{{ currentUsername }}</div>
+          <button class="logout-btn" @click="handleLogout" title="退出登录">
+            <span class="logout-icon">🚪</span>
+            <span class="logout-text">退出</span>
+          </button>
+        </div>
+      </div>
+      
       <div class="sidebar-header">
         <span class="sidebar-title">我的卡片</span>
         <span v-if="isConnected" class="connection-indicator" title="已连接">
@@ -58,6 +72,52 @@
           </div>
           
           <div v-if="expandedFolders.includes(folder.id)" class="cards-list">
+            <!-- Render subfolders -->
+            <div 
+              v-for="subfolder in folder.subfolders" 
+              :key="subfolder.id"
+              class="folder-container subfolder"
+            >
+              <div 
+                class="folder-item subfolder-item"
+                :class="{ expanded: expandedFolders.includes(subfolder.id) }"
+                @click="toggleFolder(subfolder.id)"
+                @contextmenu.prevent="showFolderContextMenu($event, subfolder)"
+              >
+                <span class="folder-icon">{{ expandedFolders.includes(subfolder.id) ? '📂' : '📁' }}</span>
+                <span class="folder-name">{{ subfolder.name }}</span>
+                <span class="folder-count">({{ subfolder.cards?.length || 0 }})</span>
+              </div>
+              
+              <div v-if="expandedFolders.includes(subfolder.id)" class="cards-list subfolder-cards">
+                <div 
+                  v-for="card in subfolder.cards" 
+                  :key="card.id"
+                  class="card-item"
+                  :class="{ active: selectedCard === card.id }"
+                  @click="selectCard(card.id, subfolder.id)"
+                  @contextmenu.prevent="showCardContextMenu($event, card, subfolder)"
+                >
+                  <span class="card-icon">
+                    {{ getFileIcon(card.name) }}
+                  </span>
+                  <span class="card-name">{{ card.name }}</span>
+                  <div class="card-actions">
+                    <button 
+                      v-if="getFileIcon(card.name) === '📄' && !card.name.includes('-response')"
+                      class="generate-html-btn"
+                      @click.stop="generateHtmlForCard(card, subfolder)"
+                      :disabled="isGeneratingHtml[card.id]"
+                      :title="isGeneratingHtml[card.id] ? '生成中...' : '生成HTML页面'"
+                    >
+                      {{ isGeneratingHtml[card.id] ? '⏳' : '🎨' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Render direct files -->
             <div 
               v-for="card in folder.cards" 
               :key="card.id"
@@ -170,6 +230,13 @@
             :data="previewContent"
             class="json-viewer-preview"
             @fixed="handleJsonFixed"
+          />
+          
+          <!-- Markdown文件查看器 -->
+          <SimpleMarkdownViewer
+            v-else-if="previewContent && previewType === 'markdown'"
+            :content="previewContent"
+            class="markdown-viewer-preview"
           />
           
           <!-- 默认内容 -->
@@ -419,6 +486,50 @@
               </div>
               
               <div v-if="expandedFolders.includes(folder.id)" class="cards-list">
+                <!-- Render subfolders in mobile view -->
+                <div 
+                  v-for="subfolder in folder.subfolders" 
+                  :key="subfolder.id"
+                  class="folder-container subfolder"
+                >
+                  <div 
+                    class="folder-item subfolder-item"
+                    :class="{ expanded: expandedFolders.includes(subfolder.id) }"
+                    @click="toggleFolder(subfolder.id)"
+                    @contextmenu.prevent="showFolderContextMenu($event, subfolder)"
+                  >
+                    <span class="folder-icon">{{ expandedFolders.includes(subfolder.id) ? '📂' : '📁' }}</span>
+                    <span class="folder-name">{{ subfolder.name }}</span>
+                    <span class="folder-count">({{ subfolder.cards?.length || 0 }})</span>
+                  </div>
+                  
+                  <div v-if="expandedFolders.includes(subfolder.id)" class="cards-list subfolder-cards">
+                    <div 
+                      v-for="card in subfolder.cards" 
+                      :key="card.id"
+                      class="card-item"
+                      :class="{ active: selectedCard === card.id }"
+                      @click="selectCard(card.id, subfolder.id)"
+                      @contextmenu.prevent="showCardContextMenu($event, card, subfolder)"
+                    >
+                      <span class="card-icon">{{ getFileIcon(card.name) }}</span>
+                      <span class="card-name">{{ card.name }}</span>
+                      <div class="card-actions">
+                        <button 
+                          v-if="getFileIcon(card.name) === '📄' && !card.name.includes('-response')"
+                          class="generate-html-btn"
+                          @click.stop="generateHtmlForCard(card, subfolder)"
+                          :disabled="isGeneratingHtml[card.id]"
+                          :title="isGeneratingHtml[card.id] ? '生成中...' : '生成HTML页面'"
+                        >
+                          {{ isGeneratingHtml[card.id] ? '⏳' : '🎨' }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Render direct files in mobile view -->
                 <div 
                   v-for="card in folder.cards" 
                   :key="card.id"
@@ -530,6 +641,7 @@
             :key="activePreviewTab + (responseUrls.shareLink || responseUrls.originalUrl || previewContent)"
           />
           <ValidatedJsonViewer v-else-if="previewContent && previewType === 'json'" :data="previewContent" class="json-viewer-preview fill" />
+          <SimpleMarkdownViewer v-else-if="previewContent && previewType === 'markdown'" :content="previewContent" class="markdown-viewer-preview fill" />
           <div v-else class="empty-state">暂无可预览内容</div>
         </div>
       </div>
@@ -564,6 +676,7 @@ import ValidatedJsonViewer from '../components/ValidatedJsonViewer.vue'
 import SmartUrlPreview from '../components/SmartUrlPreview.vue'
 import HtmlContentViewer from '../components/HtmlContentViewer.vue'
 import ResizableSplitter from '../components/ResizableSplitter.vue'
+import SimpleMarkdownViewer from '../components/SimpleMarkdownViewer.vue'
 import ResponsiveLayout from '../layouts/ResponsiveLayout.vue'
 import TabNavigation from '../components/mobile/TabNavigation.vue'
 import StartupInitializer from '../components/StartupInitializer.vue'
@@ -571,9 +684,14 @@ import ContextMenu from '../components/ContextMenu.vue'
 import { useDevice } from '../composables/useDevice.js'
 import axios from 'axios'
 import { useLayoutStore, MOBILE_TABS } from '../store/layout.js'
+import { useRouter } from 'vue-router'
+
+// Router
+const router = useRouter()
 
 // State
 const showInitializer = ref(true)  // 显示初始化界面
+const currentUsername = ref(localStorage.getItem('username') || 'Default User')
 const currentTopic = ref('')
 const isGenerating = ref(false)
 const selectedTemplate = ref(0)
@@ -754,6 +872,41 @@ const handleContextMenuClick = (item) => {
   }
   
   closeContextMenu()
+}
+
+// 处理退出登录
+const handleLogout = () => {
+  ElMessageBox.confirm(
+    '确定要退出登录吗？',
+    '退出确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    // 清除本地存储
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    
+    // 清理终端服务
+    if (terminalService) {
+      terminalService.cleanup()
+    }
+    
+    // 断开SSE连接
+    if (sseUnsubscribe) {
+      sseUnsubscribe()
+    }
+    sseService.disconnect()
+    
+    ElMessage.success('已退出登录')
+    
+    // 跳转到登录页
+    router.push('/login')
+  }).catch(() => {
+    // 用户取消退出
+  })
 }
 
 // 重命名文件夹
@@ -1427,11 +1580,25 @@ const loadCardContent = async (cardId, folderId) => {
       originalUrl: ''
     }
     
-    // 找到对应的卡片
-    const folder = cardFolders.value.find(f => f.id === folderId)
-    if (!folder) return
+    // 找到对应的卡片 - 需要递归查找以支持子文件夹
+    let folder = cardFolders.value.find(f => f.id === folderId)
+    let card = null
     
-    const card = folder.cards.find(c => c.id === cardId)
+    if (folder) {
+      // 先在主文件夹中查找
+      card = folder.cards?.find(c => c.id === cardId)
+      
+      // 如果没找到，在子文件夹中查找
+      if (!card && folder.subfolders) {
+        for (const subfolder of folder.subfolders) {
+          if (subfolder.id === folderId) {
+            folder = subfolder
+            card = subfolder.cards?.find(c => c.id === cardId)
+            break
+          }
+        }
+      }
+    }
     if (!card) return
     
     console.log('[CardContent] Loading card:', card.name, 'path:', card.path)
@@ -1510,6 +1677,28 @@ const loadCardContent = async (cardId, folderId) => {
           message: error.message,
           file: card.name
         }
+      }
+    } else if (fileName.endsWith('.md') || fileName.endsWith('.markdown')) {
+      console.log('[CardContent] Loading Markdown file:', card.name)
+      
+      try {
+        // 读取Markdown文件内容
+        const response = await terminalAPI.getCardContent(card.path)
+        
+        if (response && response.success) {
+          // 成功读取Markdown内容，使用markdown渲染模式
+          previewType.value = 'markdown'
+          previewContent.value = response.content
+          console.log('[CardContent] Markdown content loaded successfully, length:', response.content.length)
+        } else {
+          console.warn('[CardContent] Failed to load Markdown content')
+          previewType.value = 'text'
+          previewContent.value = '无法加载Markdown文件'
+        }
+      } catch (error) {
+        console.error('[CardContent] Error loading Markdown:', error)
+        previewType.value = 'text'
+        previewContent.value = '加载Markdown文件失败: ' + error.message
       }
     } else if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
       console.log('[CardContent] Loading HTML file:', card.name)
@@ -1977,27 +2166,69 @@ const getFileType = (fileName) => {
   }
 }
 
-// Load user card folders from file system
+// Load user workspace structure (folders and files)
 const loadCardFolders = async () => {
   try {
-    // 调用后端API获取真实的目录结构
-    const response = await terminalAPI.getCardsDirectory()
-    if (response && response.success && response.folders) {
-      cardFolders.value = response.folders
+    // 调用新的统一API获取完整的workspace结构
+    const response = await terminalAPI.getUserFolders()
+    if (response && response.success && response.data) {
+      // 处理新的数据结构
+      const { rootFiles = [], folders = [] } = response.data
+      
+      // 将根目录文件作为一个特殊的文件夹显示
+      if (rootFiles.length > 0) {
+        const rootFolder = {
+          id: 'root-files',
+          name: '根目录文件',
+          type: 'folder',
+          cards: rootFiles.map(file => ({
+            id: file.id,
+            name: file.name,
+            path: file.path,
+            type: file.fileType || 'file',
+            size: file.size,
+            modified: file.modified
+          }))
+        }
+        cardFolders.value = [rootFolder, ...folders.map(transformFolder)]
+      } else {
+        cardFolders.value = folders.map(transformFolder)
+      }
+      
       // Auto-expand first folder
       if (cardFolders.value.length > 0 && !expandedFolders.value.includes(cardFolders.value[0].id)) {
         expandedFolders.value.push(cardFolders.value[0].id)
       }
-      console.log('Loaded folders from backend:', cardFolders.value)
+      console.log('Loaded workspace structure from backend:', cardFolders.value)
       return
     }
   } catch (error) {
-    console.error('Failed to load folders from backend:', error)
+    console.error('Failed to load workspace structure from backend:', error)
   }
   
   // 如果API失败，至少显示空状态
   if (!cardFolders.value) {
     cardFolders.value = []
+  }
+}
+
+// 转换文件夹结构以适配前端显示
+const transformFolder = (folder) => {
+  return {
+    id: folder.id,
+    name: folder.name,
+    path: folder.path,
+    type: 'folder',
+    cards: folder.children ? folder.children.filter(item => item.type === 'file').map(file => ({
+      id: file.id,
+      name: file.name,
+      path: file.path,
+      type: file.fileType || 'file',
+      size: file.size,
+      modified: file.modified
+    })) : [],
+    // 递归处理子文件夹
+    subfolders: folder.children ? folder.children.filter(item => item.type === 'folder').map(transformFolder) : []
   }
 }
 
@@ -2483,6 +2714,13 @@ onMounted(async () => {
   console.log('[CardGenerator] mounted. device:', device.deviceType.value, 'mobile?', device.isMobile.value, 'tab:', currentMobileTab.value)
   console.log('[CardGenerator] Component mounted, showing initializer...')
   
+  // 更新当前用户名
+  const storedUsername = localStorage.getItem('username')
+  if (storedUsername) {
+    currentUsername.value = storedUsername
+    console.log('[CardGenerator] Current user:', storedUsername)
+  }
+  
   // 初始化界面会处理所有的初始化流程
   // 不再在这里直接初始化
   
@@ -2747,6 +2985,77 @@ const openLink = (which) => {
   flex-direction: column;
 }
 
+/* User Info Section */
+.user-info-section {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: #252525;
+  border-bottom: 1px solid #2d2d2d;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar-icon {
+  font-size: 20px;
+  filter: grayscale(0.2);
+}
+
+.user-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.username {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #999;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.logout-btn:hover {
+  background: #ff4444;
+  border-color: #ff4444;
+  color: white;
+}
+
+.logout-icon {
+  font-size: 14px;
+}
+
+.logout-text {
+  font-weight: 500;
+}
+
 .sidebar-header {
   display: flex;
   justify-content: space-between;
@@ -2856,6 +3165,19 @@ const openLink = (which) => {
 
 .folder-item.expanded {
   background: transparent;
+}
+
+/* Subfolder styling */
+.subfolder {
+  margin-left: 20px;
+}
+
+.subfolder-item {
+  font-size: 13px;
+}
+
+.subfolder-cards {
+  margin-left: 20px;
 }
 
 .folder-icon {
@@ -3293,6 +3615,18 @@ const openLink = (which) => {
   bottom: 0;
   width: 100%;
   height: 100%;
+}
+
+.markdown-viewer-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: #1e1e1e;
 }
 
 .terminal-content {

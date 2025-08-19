@@ -10,18 +10,26 @@ AI Terminal Backend 是一个功能强大的Web终端后端服务，支持AI卡�
 - 📁 文件系统管理与上传
 - 🔄 Server-Sent Events 实时推送
 - 🎨 动态模板系统
+- 📝 工作空间管理
+- ⚡ 简化的Claude命令执行接口
+
+**版本信息：**
+- **当前版本**: v3.10.3
+- **更新日期**: 2025-01-19
+- **API 版本**: v1.0
 
 ---
 
 ## 基础信息
 
 - **Base URL**: `http://localhost:6000`
-- **API 版本**: v3.381+
 - **数据格式**: JSON
-- **认证方式**: Token认证系统 (支持默认用户回退)
+- **认证方式**: JWT Token认证系统 (支持默认用户回退)
+- **字符编码**: UTF-8
 
 ### 通用响应格式
 
+#### 成功响应
 ```json
 {
   "code": 200,
@@ -31,35 +39,41 @@ AI Terminal Backend 是一个功能强大的Web终端后端服务，支持AI卡�
 }
 ```
 
+#### 错误响应
+```json
+{
+  "code": 400,
+  "success": false,
+  "error": "错误详情",
+  "message": "错误说明"
+}
+```
+
+### 认证方式
+
+大部分API需要在请求头中携带认证信息：
+```
+Authorization: Bearer <token>
+```
+
+部分API支持默认用户回退机制，无需认证即可使用。
+
 ---
 
 ## 1. 认证 API (`/api/auth`)
-
-### 🔐 Token认证系统说明
-
-**v3.381+** 版本实现了完整的基于token的用户认证系统：
-
-**用户类型：**
-- **default**: 默认用户 (无需认证，自动回退)
-- **alice**: 普通用户 
-- **bob**: 普通用户
-- **charlie**: 普通用户
-
-**认证模式：**
-- **严格认证**: 某些API要求必须提供有效token
-- **可选认证**: 生成类API支持无token时自动使用default用户
-- **开放接口**: 部分管理接口无需认证
 
 ### 1.1 用户登录
 ```
 POST /api/auth/login
 ```
 
+**描述：** 用户登录认证，获取访问令牌
+
 **请求体：**
 ```json
 {
-  "username": "alice",
-  "password": "alice123"
+  "username": "admin",
+  "password": "admin123"
 }
 ```
 
@@ -69,25 +83,11 @@ POST /api/auth/login
   "code": 200,
   "success": true,
   "data": {
-    "token": "alice-secure-token-abc123",
-    "user": {
-      "id": 1,
-      "username": "alice",
-      "displayName": "Alice Wang",
-      "email": "alice@example.com"
-    }
-  },
-  "message": "登录成功"
-}
-```
-
-**预设用户账号：**
-```json
-{
-  "default": { "password": "default123", "token": "default-user-token-2025" },
-  "alice": { "password": "alice123", "token": "alice-secure-token-abc123" },
-  "bob": { "password": "bob456", "token": "bob-secure-token-def456" },
-  "charlie": { "password": "charlie789", "token": "charlie-secure-token-ghi789" }
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "username": "admin",
+    "userId": "admin_001",
+    "expiresIn": 86400
+  }
 }
 ```
 
@@ -96,26 +96,11 @@ POST /api/auth/login
 GET /api/auth/verify
 ```
 
+**描述：** 验证当前Token是否有效
+
 **请求头：**
 ```
-Authorization: Bearer alice-secure-token-abc123
-```
-
-**响应：**
-```json
-{
-  "code": 200,
-  "success": true,
-  "data": {
-    "user": {
-      "id": 1,
-      "username": "alice",
-      "displayName": "Alice Wang",
-      "email": "alice@example.com"
-    }
-  },
-  "message": "Token有效"
-}
+Authorization: Bearer <token>
 ```
 
 ### 1.3 获取用户列表
@@ -123,33 +108,7 @@ Authorization: Bearer alice-secure-token-abc123
 GET /api/auth/users
 ```
 
-**说明**: 管理接口，无需认证
-
-**响应：**
-```json
-{
-  "code": 200,
-  "success": true,
-  "data": {
-    "users": [
-      {
-        "id": 0,
-        "username": "default",
-        "displayName": "Default User",
-        "email": "default@system.local",
-        "isDefault": true
-      },
-      {
-        "id": 1,
-        "username": "alice",
-        "displayName": "Alice Wang",
-        "email": "alice@example.com"
-      }
-    ]
-  },
-  "message": "获取用户列表成功"
-}
-```
+**描述：** 获取系统中所有用户信息（需要管理员权限）
 
 ---
 
@@ -160,129 +119,55 @@ GET /api/auth/users
 GET /api/terminal/sessions
 ```
 
-**响应：**
-```json
-{
-  "code": 200,
-  "data": [
-    {
-      "id": "term_123",
-      "created": "2024-01-01T00:00:00.000Z",
-      "lastActivity": "2024-01-01T01:00:00.000Z",
-      "cols": 80,
-      "rows": 24,
-      "pid": 12345,
-      "alive": true
-    }
-  ],
-  "message": "success"
-}
-```
+**描述：** 获取当前所有活跃的终端会话
 
-### 2.2 获取单个会话信息
+### 2.2 获取特定会话信息
 ```
 GET /api/terminal/sessions/:sessionId
 ```
+
+**描述：** 获取指定终端会话的详细信息
 
 ### 2.3 删除会话
 ```
 DELETE /api/terminal/sessions/:sessionId
 ```
 
-### 2.4 获取用户文件夹列表
-```
-GET /api/terminal/folders
-```
+**描述：** 终止并删除指定的终端会话
 
-**响应：**
-```json
-{
-  "code": 200,
-  "success": true,
-  "folders": [
-    {
-      "id": "default-folder",
-      "name": "默认文件夹",
-      "description": "默认卡片文件夹",
-      "cardCount": 15,
-      "color": "#0078d4",
-      "createdAt": "2024-01-01T00:00:00.000Z"
-    }
-  ]
-}
-```
-
-### 2.5 获取卡片目录结构
-```
-GET /api/terminal/cards-directory
-```
-
-**响应：**
-```json
-{
-  "code": 200,
-  "success": true,
-  "folders": [
-    {
-      "id": "AI技术",
-      "name": "AI技术",
-      "path": "/path/to/cards/AI技术",
-      "cards": [
-        {
-          "id": "AI技术-content",
-          "name": "content.json",
-          "path": "/path/to/cards/AI技术/content.json",
-          "type": "json"
-        }
-      ]
-    }
-  ]
-}
-```
-
-### 2.6 执行终端命令
+### 2.4 执行命令
 ```
 POST /api/terminal/execute
 ```
 
+**描述：** 在终端中执行命令
+
 **请求体：**
 ```json
 {
-  "command": "claude -p \"生成关于人工智能的卡片\"",
-  "type": "generate-card",
-  "topic": "人工智能"
+  "command": "ls -la",
+  "sessionId": "session_123"
 }
 ```
 
-### 2.7 获取公共模板列表
+### 2.5 获取用户文件夹
 ```
-GET /api/terminal/templates
-```
-
-**响应：**
-```json
-{
-  "code": 200,
-  "success": true,
-  "templates": [
-    {
-      "fileName": "daily-knowledge-card-template.md",
-      "displayName": "daily knowledge card template",
-      "type": "file"
-    },
-    {
-      "fileName": "cardplanet-Sandra",
-      "displayName": "cardplanet-Sandra",
-      "type": "folder"
-    }
-  ]
-}
+GET /api/terminal/folders
 ```
 
-### 2.8 健康检查
-```
-GET /api/terminal/health
-```
+**描述：** 获取用户的所有文件夹信息
+
+### 2.6 其他终端接口
+- `GET /api/terminal/folders/:folderId/cards` - 获取文件夹中的卡片
+- `GET /api/terminal/card/html/:folderId/:fileName` - 获取卡片HTML内容
+- `POST /api/terminal/save-html` - 保存HTML内容
+- `GET /api/terminal/templates` - 获取模板列表
+- `POST /api/terminal/save-card` - 保存卡片
+- `DELETE /api/terminal/card` - 删除卡片
+- `PUT /api/terminal/folder/rename` - 重命名文件夹
+- `PUT /api/terminal/card/rename` - 重命名卡片
+- `POST /api/terminal/cleanup` - 清理资源
+- `GET /api/terminal/health` - 健康检查
 
 ---
 
@@ -310,11 +195,6 @@ POST /api/commands/validate
 GET /api/commands/history?days=7
 ```
 
-**请求头：**
-```
-x-user-id: user123
-```
-
 ### 3.4 保存命令历史
 ```
 POST /api/commands/history
@@ -328,6 +208,8 @@ POST /api/commands/history
 ```
 POST /api/claude/execute
 ```
+
+**描述：** 执行Claude AI命令
 
 **请求体：**
 ```json
@@ -357,27 +239,12 @@ POST /api/claude/cleanup
 
 ## 5. 卡片生成 API (`/api/generate`)
 
-### 🎯 认证方式说明
-
-**支持默认用户的API (authenticateUserOrDefault)：**
-- `POST /api/generate/card` - 生成卡片
-- `POST /api/generate/card/stream` - 流式生成卡片  
-- `GET /api/generate/status/:topic` - 查询生成状态
-
-**认证行为：**
-- ✅ **有有效token**: 使用对应用户，数据保存到用户专属目录
-- 🔄 **无token或token无效**: 自动使用default用户
-- 📁 **数据隔离**: 每个用户的生成内容完全独立
-
 ### 5.1 生成卡片 (标准版)
 ```
 POST /api/generate/card
 ```
 
-**请求头（可选）：**
-```
-Authorization: Bearer alice-secure-token-abc123
-```
+**描述：** 使用AI生成知识卡片，支持动态参数生成
 
 **请求体：**
 ```json
@@ -387,9 +254,21 @@ Authorization: Bearer alice-secure-token-abc123
 }
 ```
 
-**用户数据路径：**
-- alice用户: `/app/data/users/alice/folders/default-folder/cards/人工智能发展史/`
-- default用户: `/app/data/users/default/folders/default-folder/cards/人工智能发展史/`
+**特殊模板参数生成（cardplanet-Sandra）：**
+当使用 `cardplanet-Sandra` 模板时，系统会自动通过前置提示词生成三个参数：
+- **style**: 根据主题类别自动选择合适风格
+- **language**: 根据主题判断语言类型
+- **reference**: 自动检索主题相关内容
+
+**内部处理流程：**
+1. 参数验证和主题清理
+2. 如果是 cardplanet-Sandra 模板，执行三个前置提示词：
+   - 风格生成：`根据"${topic}"类别按CLAUDE.md第五点选择合适风格`
+   - 语言判断：`根据"${topic}"判断语言（中文/英文/中英双语）`
+   - 参考生成：`自行检索"${topic}"获取更多内容，返回核心要点`
+3. 构建完整提示词并执行Claude命令
+4. 等待文件生成（最多7分钟）
+5. 返回生成结果
 
 **响应：**
 ```json
@@ -397,181 +276,139 @@ Authorization: Bearer alice-secure-token-abc123
   "code": 200,
   "success": true,
   "data": {
+    "content": "生成的卡片内容...",
     "topic": "人工智能发展史",
-    "sanitizedTopic": "人工智能发展史",
-    "templateName": "daily-knowledge-card-template.md",
-    "fileName": "content.json",
-    "filePath": "/path/to/generated/file",
-    "generationTime": 45000,
-    "content": {
-      "cards": [
-        {
-          "id": 1,
-          "title": "人工智能发展史",
-          "content": "人工智能的发展历程...",
-          "category": "技术",
-          "tags": ["AI", "历史", "技术发展"]
-        }
-      ]
-    },
-    "apiId": "card_1234567890_abcdef"
-  },
-  "message": "卡片生成成功"
+    "template": "daily-knowledge-card-template.md",
+    "generatedAt": "2025-01-19T10:00:00Z"
+  }
 }
 ```
 
-### 5.2 流式生成卡片 (支持 SSE)
+### 5.2 生成卡片 (流式版本)
 ```
 POST /api/generate/card/stream
 ```
 
-**请求头（可选）：**
-```
-Authorization: Bearer bob-secure-token-def456
-```
+**描述：** 使用流式传输生成卡片，支持实时显示生成过程
 
-**请求体：**
-```json
-{
-  "topic": "机器学习算法",
-  "templateName": "cardplanet-Sandra"
-}
-```
+**请求体：** 同5.1
 
-**响应类型：** `text/event-stream`
+**响应：** Server-Sent Events流
 
-**SSE 事件类型：**
-- `start` - 生成开始
-- `command` - 执行的命令
-- `session` - 会话信息
-- `output` - 实时输出
-- `success` - 生成成功
-- `error` - 生成失败
-- `cleanup` - 清理完成
-
-**示例事件：**
-```
-event: start
-data: {"topic":"人工智能","sanitizedTopic":"人工智能","templatePath":"/path/to/template"}
-
-event: output
-data: {"data":"正在生成卡片...","timestamp":1640995200000}
-
-event: success
-data: {"topic":"人工智能","fileName":"content.json","content":{...}}
-```
+**事件类型：**
+- `start`: 开始生成
+- `status`: 状态更新
+- `progress`: 进度更新
+- `success`: 生成成功
+- `error`: 生成失败
 
 ### 5.3 获取模板列表
 ```
 GET /api/generate/templates
 ```
 
-### 5.4 查询生成状态
+**描述：** 获取所有可用的生成模板
+
+### 5.4 获取生成状态
 ```
 GET /api/generate/status/:topic
 ```
 
-**请求头（可选）：**
+**描述：** 获取特定主题的卡片生成状态
+
+### 5.5 直接执行Claude命令 ⭐ 新增
 ```
-Authorization: Bearer charlie-secure-token-ghi789
+POST /api/generate/cc
 ```
 
-**示例请求：**
+**描述：** 简化的Claude命令执行接口，直接发送prompt获取AI响应，无需复杂的卡片生成流程
+
+**请求体：**
+```json
+{
+  "prompt": "什么是人工智能？用一句话回答。",
+  "timeout": 15000
+}
+```
+
+**参数说明：**
+- `prompt`: 要发送给Claude的提示词（必需）
+- `timeout`: 执行超时时间，单位毫秒（可选，默认30000，最大600000）
+
+**内部实现逻辑：**
+1. 创建临时终端会话（sessionId格式：`cc_时间戳_随机字符串`）
+2. 监听终端输出数据
+3. 执行命令：`claude --dangerously-skip-permissions -p "${prompt}"`
+4. 等待命令执行完成或超时
+5. 清理输出内容（移除ANSI转义序列、命令本身、提示符等）
+6. 销毁终端会话
+7. 返回清理后的输出
+
+**响应：**
+```json
+{
+  "code": 200,
+  "success": true,
+  "output": "人工智能是让计算机模拟人类智能行为的技术。",
+  "executionTime": 6711
+}
+```
+
+**错误响应：**
+```json
+{
+  "code": 408,
+  "success": false,
+  "message": "执行超时",
+  "timeout": 15000,
+  "partialOutput": "部分输出内容..."
+}
+```
+
+**使用场景：**
+- 快速获取AI回答，无需生成完整卡片
+- 简单的问答交互
+- 测试Claude连接和功能
+- 轻量级AI调用场景
+
+**示例调用：**
+```javascript
+// JavaScript
+const response = await fetch('http://localhost:6000/api/generate/cc', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompt: '解释什么是区块链技术',
+    timeout: 20000
+  })
+});
+const result = await response.json();
+console.log('Claude回复:', result.output);
+```
+
 ```bash
-# 使用charlie用户token查询
-curl -X GET "http://localhost:8084/api/generate/status/机器学习算法" \
-  -H "Authorization: Bearer charlie-secure-token-ghi789"
-
-# 无token时使用default用户查询  
-curl -X GET "http://localhost:8084/api/generate/status/机器学习算法"
-```
-
-**响应：**
-```json
-{
-  "code": 200,
-  "success": true,
-  "status": "completed",
-  "files": ["content.json"],
-  "message": "生成完成"
-}
-```
-
-### 5.5 获取模板列表 (无需认证)
-```
-GET /api/generate/templates
-```
-
-**说明**: 开放接口，返回所有可用的模板列表
-
-**响应：**
-```json
-{
-  "code": 200,
-  "success": true,
-  "templates": [
-    {
-      "fileName": "daily-knowledge-card-template.md",
-      "displayName": "daily knowledge card template",
-      "type": "file"
-    },
-    {
-      "fileName": "cardplanet-Sandra",
-      "displayName": "cardplanet-Sandra",
-      "type": "folder"
-    }
-  ],
-  "message": "success"
-}
+# cURL
+curl -X POST http://localhost:6000/api/generate/cc \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "什么是元宇宙？", "timeout": 10000}'
 ```
 
 ---
 
 ## 6. 文件上传 API (`/api/upload`)
 
-### 6.1 上传文件 (多文件)
+### 6.1 上传多个文件
 ```
 POST /api/upload/files
 ```
 
-**Content-Type:** `multipart/form-data`
+**描述：** 批量上传文件
 
-**表单字段：**
-- `files` - 文件数组
-- `folderPath` - 目标文件夹路径 (可选)
+**请求格式：** multipart/form-data
 
-**响应：**
-```json
-{
-  "success": true,
-  "data": {
-    "files": [
-      {
-        "filename": "template.md",
-        "originalName": "my-template.md",
-        "size": 1024,
-        "path": "/app/data/public_template/template.md",
-        "folderPath": ""
-      }
-    ],
-    "count": 1
-  },
-  "message": "成功上传 1 个文件"
-}
-```
-
-### 6.2 创建文本文件
+### 6.2 上传单个文件
 ```
 POST /api/upload/file
-```
-
-**请求体：**
-```json
-{
-  "filename": "new-template.md",
-  "content": "# 新模板\n\n这是一个新的模板文件...",
-  "folderPath": "templates"
-}
 ```
 
 ### 6.3 创建文件夹
@@ -579,37 +416,9 @@ POST /api/upload/file
 POST /api/upload/folder
 ```
 
-**请求体：**
-```json
-{
-  "folderName": "my-new-folder"
-}
-```
-
-### 6.4 获取目录结构
+### 6.4 获取文件结构
 ```
 GET /api/upload/structure
-```
-
-**响应：**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "type": "folder",
-      "name": "cardplanet-Sandra",
-      "children": [
-        {
-          "type": "file",
-          "name": "CLAUDE.md",
-          "size": 2048,
-          "modified": "2024-01-01T00:00:00.000Z"
-        }
-      ]
-    }
-  ]
-}
 ```
 
 ### 6.5 删除文件或文件夹
@@ -617,284 +426,365 @@ GET /api/upload/structure
 DELETE /api/upload/:type/:name
 ```
 
-**参数：**
-- `type` - `file` 或 `folder`
-- `name` - 文件/文件夹名称
-
 ---
 
-## 7. 预览 API (`/api/preview`)
+## 7. Server-Sent Events API (`/api/sse`)
 
-### 7.1 获取网页元数据
-```
-POST /api/preview/metadata
-```
-
-**请求体：**
-```json
-{
-  "url": "https://example.com"
-}
-```
-
-**响应：**
-```json
-{
-  "title": "网页标题",
-  "description": "网页描述",
-  "images": ["https://example.com/image.jpg"],
-  "siteName": "example.com",
-  "favicon": "https://example.com/favicon.ico",
-  "author": "作者",
-  "publishDate": "2024-01-01T00:00:00.000Z",
-  "keywords": "关键词1,关键词2"
-}
-```
-
-### 7.2 代理请求 (解决CORS)
-```
-POST /api/preview/proxy
-```
-
-**请求体：**
-```json
-{
-  "url": "https://example.com"
-}
-```
-
-**注意：** 内容提取和截图功能已禁用
-
----
-
-## 8. Server-Sent Events API (`/api/sse`)
-
-### 🔒 严格认证说明
-
-**需要有效token的API (authenticateUser)：**
-- `GET /api/sse/stream` - 建立SSE连接
-- `POST /api/sse/refresh` - 手动触发刷新
-- `GET /api/sse/status` - 获取连接状态
-
-**认证要求：** 必须提供有效的用户token，无token或token无效将返回401错误
-
-### 8.1 建立SSE连接
+### 7.1 建立SSE连接
 ```
 GET /api/sse/stream
 ```
 
-**请求头（必需）：**
-```
-Authorization: Bearer alice-secure-token-abc123
-```
+**描述：** 建立Server-Sent Events连接，接收实时推送
 
-**响应类型：** `text/event-stream`
-
-**事件类型：**
-- `connected` - 连接成功
-- `file:added` - 文件添加
-- `file:changed` - 文件修改
-- `file:deleted` - 文件删除
-- `folder:added` - 文件夹添加
-- `folder:deleted` - 文件夹删除
-- `refresh` - 刷新请求
-
-**示例事件：**
+**请求头：**
 ```
-event: file:added
-data: {"type":"file:added","data":{"path":"/path/to/file","action":"add"},"timestamp":"2024-01-01T00:00:00.000Z"}
+Authorization: Bearer <token>
+Accept: text/event-stream
 ```
 
-### 8.2 手动触发刷新
+### 7.2 刷新SSE连接
 ```
 POST /api/sse/refresh
 ```
 
-**请求头（必需）：**
-```
-Authorization: Bearer bob-secure-token-def456
-```
-
-### 8.3 获取连接状态
+### 7.3 获取SSE状态
 ```
 GET /api/sse/status
 ```
 
-**请求头（必需）：**
+---
+
+## 8. 预览 API (`/api/preview`)
+
+### 8.1 获取元数据
 ```
-Authorization: Bearer charlie-secure-token-ghi789
+POST /api/preview/metadata
 ```
 
-**响应：**
-```json
-{
-  "connected_clients": 2,
-  "watcher_active": true,
-  "watch_dir": "/app/data/users/charlie/folders/default-folder/cards"
-}
+### 8.2 获取内容
+```
+POST /api/preview/content
 ```
 
-**用户数据隔离：**
-- alice用户监控: `/app/data/users/alice/folders/default-folder/cards`
-- bob用户监控: `/app/data/users/bob/folders/default-folder/cards`  
-- charlie用户监控: `/app/data/users/charlie/folders/default-folder/cards`
-- default用户监控: `/app/data/users/default/folders/default-folder/cards`
+### 8.3 生成截图
+```
+POST /api/preview/screenshot
+```
+
+### 8.4 代理请求
+```
+POST /api/preview/proxy
+```
 
 ---
 
-## 9. WebSocket 终端 (Socket.IO)
+## 9. 工作空间 API (`/api/workspace`)
 
-### 连接地址
+### 9.1 获取用户工作空间信息
+```
+GET /api/workspace/:username
+```
+
+### 9.2 获取工作空间文件列表
+```
+GET /api/workspace/:username/files
+```
+
+### 9.3 创建工作空间文件
+```
+POST /api/workspace/:username/create
+```
+
+### 9.4 读取工作空间文件
+```
+GET /api/workspace/:username/file/*
+```
+
+### 9.5 更新工作空间文件
+```
+PUT /api/workspace/:username/file/*
+```
+
+### 9.6 删除工作空间文件
+```
+DELETE /api/workspace/:username/file/*
+```
+
+### 9.7 迁移工作空间
+```
+POST /api/workspace/:username/migrate
+```
+
+---
+
+## WebSocket 连接
+
+### 终端WebSocket
+```
+ws://localhost:6000/ws/terminal
+```
+
+**描述：** 实时终端交互WebSocket连接
+
+### Socket.IO连接
 ```
 ws://localhost:6000/socket.io
 ```
 
-### 事件类型
-
-**客户端发送：**
-- `terminal:create` - 创建终端
-- `terminal:input` - 发送输入
-- `terminal:resize` - 调整大小
-- `ping` - 心跳检测
-
-**服务端发送：**
-- `terminal:ready` - 终端就绪
-- `terminal:output` - 终端输出
-- `terminal:error` - 错误信息
-- `terminal:exit` - 终端退出
-- `pong` - 心跳响应
-
-**示例使用：**
-```javascript
-import { io } from 'socket.io-client'
-
-const socket = io('http://localhost:6000')
-
-// 创建终端
-socket.emit('terminal:create', { cols: 80, rows: 24 })
-
-// 监听输出
-socket.on('terminal:output', (data) => {
-  console.log('终端输出:', data)
-})
-
-// 发送命令
-socket.emit('terminal:input', 'ls -la\r')
-```
+**描述：** Socket.IO实时通信
 
 ---
 
-## 10. 错误处理
+## 核心服务说明
 
-### 错误响应格式
-```json
-{
-  "code": 500,
-  "success": false,
-  "message": "错误描述",
-  "error": "详细错误信息"
+### ApiTerminalService (v3.33+简化版)
+
+**位置：** `terminal-backend/src/utils/apiTerminalService.js`
+
+#### executeClaude() 方法
+```javascript
+async executeClaude(apiId, prompt) {
+  const terminal = await this.createTerminalSession(apiId)
+  
+  // 直接执行claude命令，使用-p参数传递prompt
+  const command = `claude --dangerously-skip-permissions -p "${prompt.replace(/"/g, '\\"')}"`
+  terminal.pty.write(command + '\r')
+  
+  return true
 }
 ```
 
-### 常见错误代码
-- `400` - 参数错误
-- `401` - 认证失败
-- `403` - 权限不足
-- `404` - 资源不存在
-- `409` - 资源冲突
-- `500` - 服务器内部错误
-- `501` - 功能未实现
+**优势：**
+- ✅ 无需复杂初始化流程
+- ✅ 响应速度更快
+- ✅ 代码更简洁
+- ✅ 错误率更低
+
+#### getLastOutput() 方法
+```javascript
+async getLastOutput(apiId) {
+  const outputBuffer = this.outputBuffers.get(apiId) || []
+  // 获取并清理最后的输出内容
+  return cleanedOutput
+}
+```
 
 ---
 
-## 11. 环境配置
+## 错误码说明
 
-### 环境变量
+| 错误码 | 说明 |
+|--------|------|
+| 200 | 成功 |
+| 400 | 请求参数错误 |
+| 401 | 未认证 |
+| 403 | 无权限 |
+| 404 | 资源不存在 |
+| 408 | 请求超时 |
+| 429 | 请求过于频繁 |
+| 500 | 服务器内部错误 |
+| 502 | 网关错误 |
+| 503 | 服务不可用 |
+
+---
+
+## 使用示例
+
+### 完整的卡片生成流程
+
+```javascript
+// 1. 登录获取Token（可选）
+const loginResponse = await fetch('http://localhost:6000/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: 'admin',
+    password: 'admin123'
+  })
+});
+const { data: { token } } = await loginResponse.json();
+
+// 2. 生成卡片
+const generateResponse = await fetch('http://localhost:6000/api/generate/card', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}` // 可选
+  },
+  body: JSON.stringify({
+    topic: '量子计算',
+    templateName: 'cardplanet-Sandra' // 将自动生成style、language、reference参数
+  })
+});
+
+// 3. 获取生成结果
+const result = await generateResponse.json();
+console.log('生成的卡片内容:', result.data.content);
+```
+
+### 使用CC接口快速执行Claude命令
+
+```javascript
+// 无需认证，直接调用
+const response = await fetch('http://localhost:6000/api/generate/cc', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompt: '用Python写一个快速排序算法',
+    timeout: 30000
+  })
+});
+
+const result = await response.json();
+if (result.success) {
+  console.log('Claude响应:', result.output);
+  console.log('执行时间:', result.executionTime, 'ms');
+} else {
+  console.error('执行失败:', result.message);
+}
+```
+
+### 流式生成示例
+
+```javascript
+const eventSource = new EventSource('/api/generate/card/stream', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ topic: 'AI发展史' })
+});
+
+eventSource.addEventListener('start', (e) => {
+  console.log('开始生成:', e.data);
+});
+
+eventSource.addEventListener('progress', (e) => {
+  console.log('生成进度:', e.data);
+});
+
+eventSource.addEventListener('success', (e) => {
+  console.log('生成成功:', e.data);
+  eventSource.close();
+});
+
+eventSource.addEventListener('error', (e) => {
+  console.error('生成失败:', e.data);
+  eventSource.close();
+});
+```
+
+---
+
+## 版本历史
+
+### v3.10.3 (2025-01-19)
+- ✨ 新增 `/api/generate/cc` 接口，支持直接执行Claude命令
+- ✨ 添加动态参数生成功能（style、language、referenceContent）
+- ✨ 新增工作空间管理API (`/api/workspace`)
+- 🔧 优化卡片生成流程，移除文件系统依赖
+- 🐛 修复终端会话管理问题
+- 📝 完善API文档
+
+### v3.33+ (历史版本)
+- ✨ 引入简化的 `executeClaude` 方法
+- ❌ 废弃复杂的 `initializeClaude` 流程
+- 🚀 提升Claude命令执行效率
+
+### v3.9.8 (2025-01-06)
+- 📱 移动端终端优化
+- 🔐 修复token失效时的登录重定向问题
+- ✨ 实现终端和预览窗口可拖动分隔栏功能
+
+---
+
+## 迁移指南
+
+### 从旧版本迁移到v3.33+
+
+#### 旧代码（已废弃）
+```javascript
+// 复杂的初始化流程
+await apiTerminalService.initializeClaude(apiId)
+await apiTerminalService.sendTextAndControl(apiId, prompt, '\r', 1000)
+```
+
+#### 新代码（推荐）
+```javascript
+// 直接执行，无需初始化
+await apiTerminalService.executeClaude(apiId, prompt)
+```
+
+### 废弃的方法
+
+以下方法在 v3.33+ 中已废弃：
+- ❌ `initializeClaude()` - 使用 `executeClaude()` 替代
+- ❌ `sendTextAndControl()` - 由 `executeClaude()` 内部处理
+- ❌ 复杂的Claude初始化流程
+- ❌ 主题选择处理
+- ❌ 权限确认处理
+
+---
+
+## 部署说明
+
+### Docker部署
+
 ```bash
+# 构建镜像
+docker build -f DockerfileProduct -t ai-terminal:v3.10.3 .
+
+# 运行容器
+docker run -d \
+  --name ai-terminal \
+  -p 6000:6000 \
+  -v $(pwd)/data:/app/data \
+  -e ANTHROPIC_AUTH_TOKEN="your_token" \
+  -e ANTHROPIC_BASE_URL="your_api_url" \
+  ai-terminal:v3.10.3
+```
+
+### 环境变量配置
+
+```env
 # 服务配置
 NODE_ENV=production
 PORT=6000
 HOST=0.0.0.0
 
+# 认证配置
+JWT_SECRET=your-secret-key
+JWT_EXPIRE_TIME=86400
+
+# Claude配置
+ANTHROPIC_AUTH_TOKEN=your_token_here
+ANTHROPIC_BASE_URL=http://your_relay_server:3000/api/
+
 # 数据路径
 DATA_PATH=/app/data
-STATIC_PATH=/app/static
-SERVE_STATIC=true
-
-# CORS配置
-ALLOWED_ORIGINS=http://localhost:5173,https://yourdomain.com
-
-# JWT配置
-JWT_SECRET=your_secret_key
-JWT_EXPIRE_TIME=24h
-
-# AI API配置
-ANTHROPIC_API_KEY=your_claude_api_key
-GEMINI_API_KEY=your_gemini_api_key
-
-# 会话配置
-MAX_TERMINAL_SESSIONS=10
-TERMINAL_TIMEOUT=600000
+LOG_PATH=/app/logs
 ```
 
-### Docker 支持
-- 自动检测Docker环境
-- 支持数据卷挂载
-- 环境变量优先级配置
+---
+
+## 注意事项
+
+1. **Prompt 转义**：`executeClaude` 方法会自动处理 prompt 中的引号转义
+2. **会话管理**：记得调用 `destroySession()` 清理会话资源
+3. **超时设置**：
+   - 卡片生成默认超时：7分钟 (420000ms)
+   - CC接口默认超时：30秒 (30000ms)
+   - CC接口最大超时：10分钟 (600000ms)
+4. **并发支持**：每个API请求使用独立的会话ID
+5. **输出清理**：CC接口会自动清理ANSI转义序列和终端提示符
 
 ---
 
-## 12. 性能优化
+## 联系方式
 
-### API 响应时间
-- 标准API: < 100ms
-- AI生成: 30-420秒 (取决于模板复杂度)
-- 文件上传: < 5秒
-- SSE连接: < 50ms
-
-### 并发支持
-- 最大终端会话: 10个 (可配置)
-- 文件上传限制: 100个文件/10MB
-- SSE并发连接: 无限制
-
-### 缓存策略
-- 静态文件: 长期缓存
-- API响应: 无缓存
-- 模板文件: 实时更新
+- **项目地址**: https://github.com/aixier/AI_Terminal
+- **问题反馈**: 请在GitHub Issues中提交
+- **技术支持**: 通过项目Wiki获取更多信息
 
 ---
 
-## 13. 安全特性
-
-### 文件安全
-- 路径遍历防护
-- 文件类型过滤
-- 大小限制
-- 危险字符清理
-
-### API安全
-- CORS配置
-- 请求大小限制
-- 错误信息脱敏
-- 认证中间件支持
-
----
-
-## 更新日志
-
-### v3.37 (2024-08-14)
-- ✅ 添加 Gemini CLI 支持
-- ✅ 优化流式API性能
-- ✅ 增强文件上传功能
-- ✅ 完善多用户会话管理
-
-### v3.33+ 
-- ✅ 简化Claude命令执行流程
-- ✅ 支持文件夹模板
-- ✅ 实时文件系统监控
-- ✅ Docker环境优化
-
----
-
-**技术支持：** 如有问题请提交 Issue 到项目仓库
-**更新频率：** 持续更新，跟随项目版本发布
+*本文档最后更新于 2025-01-19*

@@ -140,9 +140,14 @@
     <transition name="fade">
       <div v-if="isFullScreen" class="fullscreen-overlay">
         <div class="fullscreen-content">
-          <div class="fullscreen-header">
+          <!-- 移动端不显示头部标题，桌面端显示 -->
+          <div v-if="!isMobile" class="fullscreen-header">
             <h3>{{ fullScreenComponent || '全屏视图' }}</h3>
             <button class="fullscreen-close" @click="exitFullScreen">×</button>
+          </div>
+          <!-- 移动端只显示关闭按钮 -->
+          <div v-else class="fullscreen-header mobile-header">
+            <button class="fullscreen-close mobile-close" @click="exitFullScreen">×</button>
           </div>
           <div class="fullscreen-body">
             <slot name="fullscreen-content">
@@ -472,6 +477,12 @@ const onLayoutTransition = (el, done) => {
   background-color: var(--color-bg-default, #161b22);
 }
 
+.fullscreen-header.mobile-header {
+  padding: 8px 16px; /* 减少移动端头部高度 */
+  justify-content: flex-end; /* 关闭按钮右对齐 */
+  min-height: 44px; /* 确保触摸友好 */
+}
+
 .fullscreen-header h3 {
   margin: 0;
   color: var(--color-text-primary, #f0f6fc);
@@ -490,6 +501,22 @@ const onLayoutTransition = (el, done) => {
 
 .fullscreen-close:hover {
   color: var(--color-text-primary, #f0f6fc);
+}
+
+.fullscreen-close.mobile-close {
+  padding: 8px;
+  min-width: 44px; /* 确保触摸友好 */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  transition: background var(--duration-fast, 200ms);
+}
+
+.fullscreen-close.mobile-close:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .fullscreen-body {

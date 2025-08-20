@@ -632,7 +632,9 @@
             v-if="previewType === 'html-content' && previewContent"
             :html-content="previewContent"
             :scale-mode="iframeScaleMode"
+            :is-mobile="device.isMobile.value"
             @refresh="handleHtmlRefresh"
+            @copyLink="handleCopyHtmlLink"
             class="html-content-viewer-container"
           />
           <SmartUrlPreview 
@@ -3182,6 +3184,23 @@ const openLink = (which) => {
   console.log('[Preview] openLink', which, url)
   if (!url) { ElMessage.info('暂无该链接'); return }
   window.open(url, '_blank')
+}
+
+// 处理HtmlContentViewer的复制链接请求
+const handleCopyHtmlLink = async () => {
+  try {
+    // 优先复制分享链接，如果没有则复制原始链接
+    const linkToCopy = responseUrls.value.shareLink || responseUrls.value.originalUrl
+    if (linkToCopy) {
+      await navigator.clipboard.writeText(linkToCopy)
+      ElMessage.success('HTML链接已复制到剪贴板')
+    } else {
+      ElMessage.warning('暂无可复制的HTML链接')
+    }
+  } catch (e) {
+    console.error('[Copy] HTML link copy failed:', e)
+    ElMessage.error('复制失败，请稍后重试')
+  }
 }
 </script>
 

@@ -21,9 +21,9 @@
         </el-button>
         <el-button @click="handleCopy">
           <el-icon><CopyDocument /></el-icon>
-          复制
+          {{ props.isMobile ? '复制链接' : '复制源码' }}
         </el-button>
-        <el-button @click="handleFullscreen">
+        <el-button v-if="!props.isMobile" @click="handleFullscreen">
           <el-icon><FullScreen /></el-icon>
           全屏
         </el-button>
@@ -59,8 +59,8 @@
       </div>
     </div>
 
-    <!-- 缩放控制 -->
-    <div v-if="viewMode === 'render' && !error" class="scale-controls">
+    <!-- 缩放控制 - 移动端总是显示 -->
+    <div v-if="viewMode === 'render' && !error" class="scale-controls" :class="{ 'mobile': props.isMobile }">
       <el-slider
         v-model="scalePercent"
         :min="25"
@@ -70,9 +70,13 @@
         :format-tooltip="(val) => `${val}%`"
         @input="handleScaleChange"
       />
-      <div class="scale-buttons">
+      <!-- 移动端只保留一个适应按钮，桌面端保留两个按钮 -->
+      <div v-if="!props.isMobile" class="scale-buttons">
         <el-button size="small" @click="resetScale">重置</el-button>
         <el-button size="small" @click="fitToWidth">适应宽度</el-button>
+      </div>
+      <div v-else class="scale-buttons mobile-buttons">
+        <el-button size="small" @click="fitToWidth">适应</el-button>
       </div>
     </div>
   </div>
@@ -99,16 +103,20 @@ const props = defineProps({
   scaleMode: {
     type: String,
     default: 'fit' // 'fit' | 'fill'
+  },
+  isMobile: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['refresh', 'error'])
+const emit = defineEmits(['refresh', 'error', 'copyLink'])
 
 // 状态
 const viewMode = ref('render') // 'render' | 'code'
 const isLoading = ref(false)
 const error = ref('')
-const scalePercent = ref(100)
+const scalePercent = ref(props.isMobile ? 150 : 100) // 移动端默认150%，桌面端100%
 const htmlFrame = ref(null)
 const contentArea = ref(null)
 
@@ -259,6 +267,11 @@ const handleIframeLoad = () => {
     nextTick(() => {
       fitToWidth()
     })
+  } else if (props.isMobile) {
+    // 移动端即使不是fit模式，也自动应用适配缩放
+    nextTick(() => {
+      fitToWidth()
+    })
   }
 }
 
@@ -283,13 +296,19 @@ const handleRefresh = async () => {
   }
 }
 
-// 复制HTML内容
+// 复制HTML内容或链接
 const handleCopy = async () => {
-  try {
-    await navigator.clipboard.writeText(props.htmlContent)
-    ElMessage.success('HTML内容已复制到剪贴板')
-  } catch (e) {
-    ElMessage.error('复制失败: ' + e.message)
+  if (props.isMobile) {
+    // 移动端复制链接
+    emit('copyLink')
+  } else {
+    // 桌面端复制源码
+    try {
+      await navigator.clipboard.writeText(props.htmlContent)
+      ElMessage.success('HTML源码已复制到剪贴板')
+    } catch (e) {
+      ElMessage.error('复制失败: ' + e.message)
+    }
   }
 }
 
@@ -321,10 +340,18 @@ const fitToWidth = () => {
   if (!contentArea.value || !htmlFrame.value) return
   
   const containerWidth = contentArea.value.offsetWidth
-  const iframeWidth = 375 // 移动端基准宽度
   
-  const scale = Math.min((containerWidth / iframeWidth) * 0.95, 200)
-  scalePercent.value = Math.round(scale)
+  if (props.isMobile) {
+    // 移动端：更大的缩放比例，让内容更容易阅读
+    const iframeWidth = 320 // 减小基准宽度，增加缩放比例
+    const scale = Math.min((containerWidth / iframeWidth) * 1.2, 200) // 提高倍数到1.2
+    scalePercent.value = Math.round(scale)
+  } else {
+    // 桌面端：保持原有逻辑
+    const iframeWidth = 375
+    const scale = Math.min((containerWidth / iframeWidth) * 0.95, 200)
+    scalePercent.value = Math.round(scale)
+  }
 }
 
 // 监听内容变化
@@ -440,6 +467,17 @@ onUnmounted(() => {
   z-index: 100;
 }
 
+.scale-controls.mobile {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #444;
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
 .scale-controls .el-slider {
   width: 150px;
 }
@@ -449,17 +487,38 @@ onUnmounted(() => {
   gap: 5px;
 }
 
+.scale-buttons.mobile-buttons {
+  justify-content: center;
+}
+
+.scale-buttons.mobile-buttons .el-button {
+  padding: 4px 12px;
+  font-size: 11px;
+}
+
 /* 移动端适配 */
 @media (max-width: 768px) {
   .viewer-toolbar {
-    flex-direction: column;
-    gap: 10px;
+    padding: 8px 10px; /* 减少内边距 */
+    gap: 8px; /* 减少间距 */
+    /* 保持flex-direction: row，让按钮在一行显示 */
   }
   
-  .toolbar-left,
+  .toolbar-left {
+    flex: 1;
+    justify-content: flex-start;
+  }
+  
   .toolbar-right {
-    width: 100%;
-    justify-content: center;
+    flex: 1;
+    justify-content: flex-end;
+  }
+  
+  /* 移动端按钮样式优化 */
+  .toolbar-left .el-button,
+  .toolbar-right .el-button {
+    padding: 6px 12px;
+    font-size: 12px;
   }
   
   .scale-controls {

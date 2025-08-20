@@ -21,7 +21,7 @@
         </el-button>
         <el-button @click="handleCopy">
           <el-icon><CopyDocument /></el-icon>
-          {{ props.isMobile ? '复制链接' : '复制源码' }}
+          {{ props.isMobile ? '新窗口浏览' : '复制源码' }}
         </el-button>
         <el-button v-if="!props.isMobile" @click="handleFullscreen">
           <el-icon><FullScreen /></el-icon>
@@ -110,7 +110,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['refresh', 'error', 'copyLink'])
+const emit = defineEmits(['refresh', 'error', 'openLink'])
 
 // 状态
 const viewMode = ref('render') // 'render' | 'code'
@@ -296,11 +296,11 @@ const handleRefresh = async () => {
   }
 }
 
-// 复制HTML内容或链接
+// 复制HTML内容或打开新窗口
 const handleCopy = async () => {
   if (props.isMobile) {
-    // 移动端复制链接
-    emit('copyLink')
+    // 移动端打开新窗口浏览
+    emit('openLink')
   } else {
     // 桌面端复制源码
     try {

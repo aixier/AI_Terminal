@@ -634,7 +634,7 @@
             :scale-mode="iframeScaleMode"
             :is-mobile="device.isMobile.value"
             @refresh="handleHtmlRefresh"
-            @copyLink="handleCopyHtmlLink"
+            @openLink="handleOpenHtmlLink"
             class="html-content-viewer-container"
           />
           <SmartUrlPreview 
@@ -3186,20 +3186,20 @@ const openLink = (which) => {
   window.open(url, '_blank')
 }
 
-// 处理HtmlContentViewer的复制链接请求
-const handleCopyHtmlLink = async () => {
+// 处理HtmlContentViewer的打开新窗口请求
+const handleOpenHtmlLink = () => {
   try {
-    // 优先复制分享链接，如果没有则复制原始链接
-    const linkToCopy = responseUrls.value.shareLink || responseUrls.value.originalUrl
-    if (linkToCopy) {
-      await navigator.clipboard.writeText(linkToCopy)
-      ElMessage.success('HTML链接已复制到剪贴板')
+    // 优先打开分享链接，如果没有则打开原始链接
+    const linkToOpen = responseUrls.value.shareLink || responseUrls.value.originalUrl
+    if (linkToOpen) {
+      window.open(linkToOpen, '_blank')
+      ElMessage.success('已在新窗口打开HTML页面')
     } else {
-      ElMessage.warning('暂无可复制的HTML链接')
+      ElMessage.warning('暂无可打开的HTML链接')
     }
   } catch (e) {
-    console.error('[Copy] HTML link copy failed:', e)
-    ElMessage.error('复制失败，请稍后重试')
+    console.error('[Open] HTML link open failed:', e)
+    ElMessage.error('打开失败，请稍后重试')
   }
 }
 </script>

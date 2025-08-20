@@ -262,10 +262,16 @@ const handleIframeLoad = () => {
   console.log('[HtmlContentViewer] iframe loaded')
   error.value = ''
   
-  // 开始动画缩放效果
+  // 移动端延迟执行动画，确保渲染完成
   if (props.isMobile) {
-    // 移动端：从25%开始动画到目标缩放比例
-    animateToTargetScale()
+    // 先设置为25%
+    scalePercent.value = 25
+    
+    // 等待一段时间确保内容完全渲染后再开始动画
+    setTimeout(() => {
+      console.log('[HtmlContentViewer] Starting delayed animation after rendering')
+      animateToTargetScale()
+    }, 300) // 300ms延迟确保渲染完成
   } else {
     // 桌面端：直接适应
     if (props.scaleMode === 'fit') {
@@ -278,28 +284,24 @@ const handleIframeLoad = () => {
 
 // 动画缩放到目标比例
 const animateToTargetScale = () => {
-  // 先设置为25%作为起始点
-  scalePercent.value = 25
+  // 确保从25%开始
+  const currentScale = scalePercent.value
+  console.log('[HtmlContentViewer] Current scale before animation:', currentScale + '%')
   
-  // 计算目标缩放比例
-  let targetScale = 150 // 移动端默认150%
+  // 计算目标缩放比例 - 修改为100%
+  let targetScale = 100 // 移动端动画到100%
   
   if (props.scaleMode === 'fit') {
-    // 如果是适应模式，计算适应的缩放比例
-    if (contentArea.value && htmlFrame.value) {
-      const containerWidth = contentArea.value.offsetWidth
-      const iframeWidth = 320
-      targetScale = Math.min((containerWidth / iframeWidth) * 1.2, 200)
-      targetScale = Math.round(targetScale)
-    }
+    // 如果是适应模式，也设置为100%
+    targetScale = 100
   }
   
-  console.log('[HtmlContentViewer] Starting scale animation from 25% to', targetScale + '%')
+  console.log('[HtmlContentViewer] Starting scale animation from', currentScale + '% to', targetScale + '%')
   
-  // 动画参数
-  const startScale = 25
+  // 动画参数 - 修改为3秒
+  const startScale = currentScale
   const endScale = targetScale
-  const duration = 1500 // 1.5秒动画
+  const duration = 3000 // 3秒动画
   const startTime = performance.now()
   
   // 缓动函数 (easeOutCubic)
@@ -315,8 +317,8 @@ const animateToTargetScale = () => {
     const easedProgress = easeOutCubic(progress)
     
     // 计算当前缩放值
-    const currentScale = startScale + (endScale - startScale) * easedProgress
-    scalePercent.value = Math.round(currentScale)
+    const newScale = startScale + (endScale - startScale) * easedProgress
+    scalePercent.value = Math.round(newScale)
     
     // 继续动画或结束
     if (progress < 1) {

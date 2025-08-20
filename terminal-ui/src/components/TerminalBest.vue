@@ -110,6 +110,17 @@ const reinitializeTerminal = () => {
     const success = terminalService.reinitializeTerminal()
     if (success) {
       console.log('[TerminalBest] Terminal reinitialization successful')
+      
+      // 移动端额外执行光标恢复
+      if (isMobile.value) {
+        setTimeout(() => {
+          const cursorRestored = terminalService.restoreMobileCursor()
+          if (cursorRestored) {
+            console.log('[TerminalBest] Mobile cursor restored after reinit')
+          }
+        }, 300)
+      }
+      
       // 更新连接状态
       updateConnectionStatus()
     } else {
@@ -430,6 +441,30 @@ defineExpose({
     opacity: 1 !important;
     visibility: visible !important;
     display: block !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    animation: mobile-cursor-blink 1s infinite !important;
+  }
+  
+  /* 移动端光标闪烁动画 */
+  @keyframes mobile-cursor-blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+  }
+  
+  /* 确保光标层在最顶层 */
+  :deep(.xterm-cursor-layer) {
+    z-index: 10 !important;
+  }
+  
+  /* 移动端terminal容器可获得焦点 */
+  .terminal-container {
+    outline: none;
+  }
+  
+  .terminal-container:focus {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
   }
   
   /* 移动端字体大小调整 */

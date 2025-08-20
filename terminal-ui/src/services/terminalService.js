@@ -555,6 +555,54 @@ class TerminalService {
   }
 
   /**
+   * 移动端光标状态恢复（专用）
+   */
+  restoreMobileCursor() {
+    if (!this.terminal) {
+      console.warn('[TerminalService] Terminal not available for mobile cursor restore')
+      return false
+    }
+
+    try {
+      console.log('[TerminalService] Restoring mobile cursor state...')
+      
+      // 1. 强制启用光标显示
+      this.terminal.write('\x1b[?25h') // 显示光标
+      
+      // 2. 重新设置光标样式（确保可见）
+      this.terminal.options.cursorBlink = true
+      this.terminal.options.cursorStyle = 'block'
+      
+      // 3. 强制聚焦terminal
+      this.terminal.focus()
+      
+      // 4. 刷新整个terminal显示区域
+      this.terminal.refresh(0, this.terminal.rows - 1)
+      
+      // 5. 确保容器获得焦点
+      if (this.container) {
+        // 设置tabindex确保可以获得焦点
+        this.container.setAttribute('tabindex', '0')
+        this.container.focus()
+      }
+      
+      // 6. 发送一个空的回车来触发光标更新
+      setTimeout(() => {
+        if (this.terminal) {
+          // 清除当前行并重新显示提示符（如果有）
+          this.terminal.write('\r')
+          console.log('[TerminalService] Mobile cursor state restored successfully')
+        }
+      }, 100)
+      
+      return true
+    } catch (error) {
+      console.error('[TerminalService] Failed to restore mobile cursor:', error)
+      return false
+    }
+  }
+
+  /**
    * 聚焦终端
    */
   focus() {

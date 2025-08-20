@@ -201,12 +201,12 @@ const connectSSE = async () => {
   }
 }
 
-// 初始化Claude（参考后端成功的实现）
+// 初始化Claude（不再自动执行claude命令）
 const initClaude = async () => {
-  updateStep('claude', { status: 'running', message: '正在初始化Claude AI...' })
+  updateStep('claude', { status: 'running', message: '正在初始化终端环境...' })
   
   try {
-    // 创建临时终端用于Claude初始化
+    // 创建临时终端用于测试连接
     const tempTerminal = document.createElement('div')
     tempTerminal.style.display = 'none'
     document.body.appendChild(tempTerminal)
@@ -219,131 +219,16 @@ const initClaude = async () => {
       throw new Error('Terminal service not ready')
     }
     
-    console.log('[StartupInitializer] Starting Claude initialization...')
+    console.log('[StartupInitializer] Terminal environment initialized successfully')
     
-    // 使用终端服务的输出缓冲区
-    // 清空之前的缓冲区
-    if (terminalService.outputBuffer) {
-      terminalService.outputBuffer = []
-    }
+    // 清理临时终端
+    document.body.removeChild(tempTerminal)
     
-    // 步骤1: 发送claude命令
-    console.log('[Claude Init] Step 1: Sending claude command...')
-    terminalService.sendCommand('claude --dangerously-skip-permissions')
+    // 直接标记为成功，不执行claude命令
+    updateStep('claude', { status: 'completed', message: '终端环境就绪', progress: 100 })
     
-    // 等待响应
-    updateStep('claude', { message: '启动Claude...', progress: 20 })
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // 步骤2: 检查输出并根据情况处理
-    console.log('[Claude Init] Step 2: Checking output...')
-    
-    // 获取输出缓冲区内容
-    const getOutputBuffer = () => {
-      if (terminalService.outputBuffer && Array.isArray(terminalService.outputBuffer)) {
-        return terminalService.outputBuffer.map(item => item.data || '').join('')
-      }
-      return ''
-    }
-    
-    let outputBuffer = getOutputBuffer()
-    console.log('[Claude Init] Current buffer:', outputBuffer.substring(0, 500))
-    
-    // 处理主题选择（如果出现）
-    if (outputBuffer.includes('Choose the text style that looks best with your terminal')) {
-      console.log('[Claude Init] Theme selection detected')
-      updateStep('claude', { message: '选择界面主题...', progress: 40 })
-      terminalService.sendInput('1')  // 选择选项1
-      await new Promise(resolve => setTimeout(resolve, 500))
-      terminalService.sendInput('\r')
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // 更新缓冲区并检查是否有安全提示
-      outputBuffer = getOutputBuffer()
-      if (outputBuffer.includes('Press Enter to continue')) {
-        console.log('[Claude Init] Security notes detected')
-        updateStep('claude', { message: '确认安全提示...', progress: 60 })
-        terminalService.sendInput('\r')
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-      
-      // 更新缓冲区并检查权限模式确认
-      outputBuffer = getOutputBuffer()
-      if (outputBuffer.includes('Yes, I accept') || outputBuffer.includes('Bypass Permissions mode')) {
-        console.log('[Claude Init] Bypass permissions confirmation detected')
-        updateStep('claude', { message: '确认权限模式...', progress: 80 })
-        terminalService.sendInput('2')  // 选择 Yes, I accept
-        await new Promise(resolve => setTimeout(resolve, 500))
-        terminalService.sendInput('\r')
-        await new Promise(resolve => setTimeout(resolve, 2000))
-      }
-    } 
-    // 可能直接进入权限模式确认（没有主题选择）
-    else if (outputBuffer.includes('Yes, I accept') || outputBuffer.includes('Bypass Permissions mode')) {
-      console.log('[Claude Init] Direct bypass mode confirmation detected')
-      updateStep('claude', { message: '确认权限模式...', progress: 60 })
-      terminalService.sendInput('2')
-      await new Promise(resolve => setTimeout(resolve, 500))
-      terminalService.sendInput('\r')
-      await new Promise(resolve => setTimeout(resolve, 2000))
-    }
-    // Claude可能已经配置好了
-    else if (outputBuffer.includes('bypass permissions on') || 
-             outputBuffer.includes('Tips for getting started') ||
-             outputBuffer.includes('claude>') || 
-             outputBuffer.includes('╭─')) {
-      console.log('[Claude Init] Claude already configured')
-      updateStep('claude', { message: 'Claude已配置...', progress: 80 })
-    }
-    
-    // 步骤3: 等待Claude完全就绪
-    updateStep('claude', { message: '等待Claude就绪...', progress: 90 })
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    
-    // 步骤4: 最终验证
-    outputBuffer = getOutputBuffer()  // 获取最新的输出
-    console.log('[Claude Init] Final output buffer:', outputBuffer.substring(outputBuffer.length - 500))
-    
-    // 检查各种可能的就绪标志
-    const readyIndicators = [
-      'claude>',           // Claude提示符
-      '╭─',               // 另一种提示符格式
-      'bypass permissions on',  // 权限模式已开启
-      'Tips for getting started',  // 提示信息
-      'Human:',           // Claude对话模式
-      '▌'                // 光标
-    ]
-    
-    const isReady = readyIndicators.some(indicator => outputBuffer.includes(indicator))
-    
-    // 不要清理终端，保持连接以供主界面使用
-    // 移除临时DOM元素，但保持终端服务运行
-    const tempElement = document.querySelector('div[style*="display: none"]')
-    if (tempElement && tempElement.parentNode === document.body) {
-      document.body.removeChild(tempElement)
-    }
-    
-    if (isReady) {
-      console.log('[Claude Init] Claude is ready!')
-      updateStep('claude', { 
-        status: 'completed', 
-        message: 'Claude AI已就绪',
-        progress: 100
-      })
-      return true
-    } else {
-      // 如果没有明确的就绪标志，但也没有错误，假设成功
-      if (!outputBuffer.includes('error') && !outputBuffer.includes('Error')) {
-        console.log('[Claude Init] No explicit ready indicator, but no errors either')
-        updateStep('claude', { 
-          status: 'completed', 
-          message: 'Claude AI已启动',
-          progress: 100
-        })
-        return true
-      }
-      throw new Error('Claude initialization verification failed - no ready indicator found')
-    }
+    console.log('[StartupInitializer] Claude initialization completed (terminal ready for manual commands)')
+    return true
   } catch (error) {
     console.error('[Claude Init] Error:', error)
     updateStep('claude', { 

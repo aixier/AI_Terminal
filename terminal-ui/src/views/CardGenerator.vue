@@ -405,23 +405,29 @@
             </div>
 
 
-            <!-- 输入区域置底（紧贴底栏上方） -->
-            <div class="mobile-input-section sticky-bottom">
-              <div class="input-label">📝 输入主题</div>
-              <div class="input-row">
-                <input 
-                  v-model="currentTopic"
-                  type="text"
-                  class="mobile-topic-input"
-                  placeholder="请输入想要创建的卡片主题..."
-                />
-                <button 
-                  class="mobile-create-btn bordered"
-                  @click="generateCard"
-                  :disabled="!currentTopic.trim() || isGenerating"
-                >
-                  {{ isGenerating ? '生成中...' : '创建' }}
-                </button>
+            <!-- 移动端浮动输入区域 -->
+            <div class="mobile-floating-input">
+              <div class="floating-input-container">
+                <div class="floating-input-header">
+                  <span class="input-emoji">📝</span>
+                  <span class="input-title">输入主题</span>
+                </div>
+                <div class="floating-input-content">
+                  <textarea 
+                    v-model="currentTopic"
+                    class="mobile-topic-textarea"
+                    placeholder="请输入想要创建的卡片主题..."
+                    rows="2"
+                    @input="handleTextareaInput"
+                  ></textarea>
+                  <button 
+                    class="mobile-floating-create-btn"
+                    @click="generateCard"
+                    :disabled="!currentTopic.trim() || isGenerating"
+                  >
+                    {{ isGenerating ? '生成中...' : '创建' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1169,7 +1175,18 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-
+// 处理textarea输入，自动调整高度
+const handleTextareaInput = (event) => {
+  const textarea = event.target
+  // 重置高度以获得正确的scrollHeight
+  textarea.style.height = 'auto'
+  // 设置新高度，最小2行，最大4行
+  const lineHeight = 24
+  const minHeight = lineHeight * 2
+  const maxHeight = lineHeight * 4
+  const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight)
+  textarea.style.height = newHeight + 'px'
+}
 
 const generateCard = async () => {
   if (!currentTopic.value.trim() || isGenerating.value) return
@@ -2663,14 +2680,60 @@ const deleteCardFile = async (card, folder) => {
 }
 
 // Watch for mobile tab changes to initialize terminal when needed
-watch(() => layoutStore.activeMobileTab, async (newTab) => {
-  if (newTab === 'terminal' && device.isMobile.value && !terminalInitialized.value) {
-    console.log('[Terminal] Mobile user switched to terminal tab, initializing...')
+watch(() => layoutStore.activeMobileTab, async (newTab, oldTab) => {
+  console.log('[Terminal] Mobile tab changed:', { from: oldTab, to: newTab, isMobile: device.isMobile.value })
+  
+  if (newTab === 'terminal' && device.isMobile.value) {
+    console.log('[Terminal] Switching to terminal tab, ensuring proper state...')
+    
     try {
       await nextTick() // Wait for DOM update
-      await initializeXTerm()
+      
+      // 如果terminal未初始化，则初始化
+      if (!terminalInitialized.value) {
+        console.log('[Terminal] Terminal not initialized, initializing now...')
+        await initializeXTerm()
+      } else if (terminalService && terminalService.terminal) {
+        // Terminal已初始化，确保正确挂载和光标状态
+        console.log('[Terminal] Terminal already initialized, ensuring proper mounting and cursor state...')
+        
+        // 确保terminal挂载到正确的容器
+        if (terminalContainer.value && terminalService.terminal.element?.parentNode !== terminalContainer.value) {
+          console.log('[Terminal] Re-mounting terminal to container')
+          terminalService.terminal.open(terminalContainer.value)
+        }
+        
+        // 恢复terminal的可见性和大小
+        if (terminalService.fitAddon) {
+          setTimeout(() => {
+            terminalService.fitAddon.fit()
+            console.log('[Terminal] Terminal fitted after tab switch')
+          }, 100)
+        }
+        
+        // 确保光标可见并获得焦点
+        setTimeout(() => {
+          console.log('[Terminal] Restoring cursor focus after tab switch')
+          
+          if (device.isMobile.value) {
+            // 移动端使用专用的光标恢复方法
+            const success = terminalService.restoreMobileCursor()
+            if (success) {
+              console.log('[Terminal] Mobile cursor restored successfully')
+            } else {
+              console.error('[Terminal] Failed to restore mobile cursor')
+            }
+          } else {
+            // 桌面端简单聚焦即可
+            if (terminalService.terminal) {
+              terminalService.terminal.focus()
+              console.log('[Terminal] Desktop cursor focused')
+            }
+          }
+        }, 200)
+      }
     } catch (err) {
-      console.warn('[CardGenerator] Mobile terminal initialization failed:', err)
+      console.error('[CardGenerator] Mobile terminal state recovery failed:', err)
     }
   }
 }, { immediate: false })
@@ -4985,5 +5048,141 @@ const handleOpenHtmlLink = () => {
   flex: 1;
   width: 100%;
   height: 100%;
+}
+
+/* 移动端浮动输入区域 */
+.mobile-floating-input {
+  position: fixed;
+  bottom: 70px; /* 在底部导航栏上方 */
+  left: 12px;
+  right: 12px;
+  z-index: 1000;
+  pointer-events: none; /* 允许点击穿透到下方内容 */
+}
+
+.floating-input-container {
+  background: rgba(22, 27, 34, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  pointer-events: auto; /* 恢复容器内的点击事件 */
+  overflow: hidden;
+}
+
+.floating-input-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.input-emoji {
+  font-size: 16px;
+}
+
+.input-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #58a6ff;
+}
+
+.floating-input-content {
+  padding: 12px 16px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.mobile-topic-textarea {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #f0f6fc;
+  font-size: 15px;
+  line-height: 24px;
+  resize: none;
+  outline: none;
+  transition: all 0.2s ease;
+  min-height: 48px;
+  max-height: 96px;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+.mobile-topic-textarea::placeholder {
+  color: rgba(240, 246, 252, 0.5);
+}
+
+.mobile-topic-textarea:focus {
+  border-color: #58a6ff;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+}
+
+.mobile-floating-create-btn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #58a6ff 0%, #1f6feb 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.3);
+}
+
+.mobile-floating-create-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1f6feb 0%, #0969da 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4);
+}
+
+.mobile-floating-create-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.2);
+}
+
+/* 确保列表内容不被浮动输入框遮挡 */
+.mobile-tab-content.create-tab {
+  padding-bottom: 160px; /* 为浮动输入框预留空间 */
+}
+
+/* 移动端响应式调整 */
+@media (max-width: 400px) {
+  .mobile-floating-input {
+    left: 8px;
+    right: 8px;
+    bottom: 65px;
+  }
+  
+  .floating-input-container {
+    border-radius: 14px;
+  }
+  
+  .floating-input-content {
+    padding: 10px 12px 14px;
+    gap: 10px;
+  }
+  
+  .mobile-topic-textarea {
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+  
+  .mobile-floating-create-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
 }
 </style>

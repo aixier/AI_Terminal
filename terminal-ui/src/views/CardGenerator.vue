@@ -3190,7 +3190,37 @@ const openLink = (which) => {
 const handleOpenHtmlLink = () => {
   try {
     // 优先打开分享链接，如果没有则打开原始链接
-    const linkToOpen = responseUrls.value.shareLink || responseUrls.value.originalUrl
+    let linkToOpen = responseUrls.value.shareLink || responseUrls.value.originalUrl
+    
+    // 如果没有预设链接，为当前选中的HTML文件构建直接访问链接
+    if (!linkToOpen && selectedCard.value && selectedFolder.value) {
+      // 递归查找文件夹
+      const findFolderRecursive = (folders, targetId) => {
+        for (const folder of folders) {
+          if (folder.id === targetId) {
+            return folder
+          }
+          if (folder.subfolders && folder.subfolders.length > 0) {
+            const found = findFolderRecursive(folder.subfolders, targetId)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      
+      const folder = findFolderRecursive(cardFolders.value, selectedFolder.value)
+      const card = folder?.cards?.find(c => c.id === selectedCard.value)
+      
+      if (card && card.name.toLowerCase().endsWith('.html')) {
+        // 构建HTML文件的直接访问URL
+        // 格式: /api/terminal/card/html/:folderId/:fileName
+        // 需要提取folderId的相对路径部分
+        const folderPath = selectedFolder.value.replace(/^.*\/workspace\//, '') // 移除前缀，保留card/xxx部分
+        linkToOpen = `/api/terminal/card/html/${encodeURIComponent(folderPath)}/${encodeURIComponent(card.name)}`
+        console.log('[Open] Generated HTML link:', linkToOpen)
+      }
+    }
+    
     if (linkToOpen) {
       window.open(linkToOpen, '_blank')
       ElMessage.success('已在新窗口打开HTML页面')

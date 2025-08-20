@@ -76,7 +76,7 @@
         <el-button size="small" @click="fitToWidth">适应宽度</el-button>
       </div>
       <div v-else class="scale-buttons mobile-buttons">
-        <el-button size="small" @click="fitToWidth">适应</el-button>
+        <el-button size="small" @click="() => fitToWidth(true)">适应</el-button>
       </div>
     </div>
   </div>
@@ -262,17 +262,72 @@ const handleIframeLoad = () => {
   console.log('[HtmlContentViewer] iframe loaded')
   error.value = ''
   
-  // 自动适应内容
-  if (props.scaleMode === 'fit') {
-    nextTick(() => {
-      fitToWidth()
-    })
-  } else if (props.isMobile) {
-    // 移动端即使不是fit模式，也自动应用适配缩放
-    nextTick(() => {
-      fitToWidth()
-    })
+  // 开始动画缩放效果
+  if (props.isMobile) {
+    // 移动端：从25%开始动画到目标缩放比例
+    animateToTargetScale()
+  } else {
+    // 桌面端：直接适应
+    if (props.scaleMode === 'fit') {
+      nextTick(() => {
+        fitToWidth()
+      })
+    }
   }
+}
+
+// 动画缩放到目标比例
+const animateToTargetScale = () => {
+  // 先设置为25%作为起始点
+  scalePercent.value = 25
+  
+  // 计算目标缩放比例
+  let targetScale = 150 // 移动端默认150%
+  
+  if (props.scaleMode === 'fit') {
+    // 如果是适应模式，计算适应的缩放比例
+    if (contentArea.value && htmlFrame.value) {
+      const containerWidth = contentArea.value.offsetWidth
+      const iframeWidth = 320
+      targetScale = Math.min((containerWidth / iframeWidth) * 1.2, 200)
+      targetScale = Math.round(targetScale)
+    }
+  }
+  
+  console.log('[HtmlContentViewer] Starting scale animation from 25% to', targetScale + '%')
+  
+  // 动画参数
+  const startScale = 25
+  const endScale = targetScale
+  const duration = 1500 // 1.5秒动画
+  const startTime = performance.now()
+  
+  // 缓动函数 (easeOutCubic)
+  const easeOutCubic = (t) => {
+    return 1 - Math.pow(1 - t, 3)
+  }
+  
+  const animate = (currentTime) => {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    
+    // 应用缓动函数
+    const easedProgress = easeOutCubic(progress)
+    
+    // 计算当前缩放值
+    const currentScale = startScale + (endScale - startScale) * easedProgress
+    scalePercent.value = Math.round(currentScale)
+    
+    // 继续动画或结束
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    } else {
+      console.log('[HtmlContentViewer] Scale animation completed at', scalePercent.value + '%')
+    }
+  }
+  
+  // 开始动画
+  requestAnimationFrame(animate)
 }
 
 // 刷新
@@ -336,22 +391,65 @@ const resetScale = () => {
 }
 
 // 适应宽度
-const fitToWidth = () => {
+const fitToWidth = (animated = false) => {
   if (!contentArea.value || !htmlFrame.value) return
   
   const containerWidth = contentArea.value.offsetWidth
   
+  let targetScale
   if (props.isMobile) {
     // 移动端：更大的缩放比例，让内容更容易阅读
     const iframeWidth = 320 // 减小基准宽度，增加缩放比例
-    const scale = Math.min((containerWidth / iframeWidth) * 1.2, 200) // 提高倍数到1.2
-    scalePercent.value = Math.round(scale)
+    targetScale = Math.min((containerWidth / iframeWidth) * 1.2, 200) // 提高倍数到1.2
+    targetScale = Math.round(targetScale)
   } else {
     // 桌面端：保持原有逻辑
     const iframeWidth = 375
-    const scale = Math.min((containerWidth / iframeWidth) * 0.95, 200)
-    scalePercent.value = Math.round(scale)
+    targetScale = Math.min((containerWidth / iframeWidth) * 0.95, 200)
+    targetScale = Math.round(targetScale)
   }
+  
+  if (animated && props.isMobile) {
+    // 移动端使用动画
+    animateToScale(targetScale)
+  } else {
+    // 直接设置
+    scalePercent.value = targetScale
+  }
+}
+
+// 动画到指定缩放比例
+const animateToScale = (targetScale) => {
+  const startScale = scalePercent.value
+  const duration = 800 // 0.8秒动画
+  const startTime = performance.now()
+  
+  console.log('[HtmlContentViewer] Animating scale from', startScale + '% to', targetScale + '%')
+  
+  // 缓动函数 (easeOutQuart)
+  const easeOutQuart = (t) => {
+    return 1 - Math.pow(1 - t, 4)
+  }
+  
+  const animate = (currentTime) => {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    
+    // 应用缓动函数
+    const easedProgress = easeOutQuart(progress)
+    
+    // 计算当前缩放值
+    const currentScale = startScale + (targetScale - startScale) * easedProgress
+    scalePercent.value = Math.round(currentScale)
+    
+    // 继续动画或结束
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    }
+  }
+  
+  // 开始动画
+  requestAnimationFrame(animate)
 }
 
 // 监听内容变化

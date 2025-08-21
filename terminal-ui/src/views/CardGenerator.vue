@@ -11,13 +11,6 @@
     <template #desktop-layout>
       <div class="card-generator-layout">
     <!-- Connection Status Bar -->
-    <div v-if="!isConnected" class="connection-status-bar">
-      <span class="status-icon">⚠️</span>
-      <span class="status-text">{{ connectionStatusText }}</span>
-      <button v-if="!isReconnecting" @click="manualReconnect" class="reconnect-btn">
-        重新连接
-      </button>
-    </div>
     
     <!-- Left Sidebar - My Cards -->
     <div class="left-sidebar">
@@ -252,7 +245,6 @@
         direction="horizontal" 
         :min-size="200" 
         :max-size="800"
-        @resize="handleTerminalResize"
       />
 
       <!-- Bottom: Terminal Area (可折叠) -->
@@ -272,8 +264,27 @@
             <!-- AI CLI 初始化按钮 -->
           </div>
         </div>
-        <div class="terminal-content" ref="terminalContainer" v-show="showTerminal">
-          <!-- Terminal will be mounted here -->
+        <div class="terminal-content" v-show="showTerminal">
+          <!-- 终端操作栏 -->
+          <div class="terminal-toolbar">
+            <button class="terminal-action-btn" @click="openTerminalPage" title="在新页面打开终端">
+              🚀 新页面
+            </button>
+            <button class="terminal-action-btn" @click="refreshTerminal" title="刷新终端">
+              🔄 刷新
+            </button>
+          </div>
+          
+          <!-- 嵌入式终端 iframe -->
+          <div class="embedded-terminal">
+            <iframe 
+              ref="terminalIframe"
+              src="/terminal"
+              class="terminal-iframe"
+              frameborder="0"
+              title="Terminal"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -438,8 +449,6 @@
           <!-- Left Sidebar Content (My Cards) -->
           <div class="mobile-sidebar-header">
             <span class="sidebar-title">我的卡片</span>
-            <span v-if="isConnected" class="connection-indicator" title="已连接">🟢</span>
-            <span v-else class="connection-indicator" title="未连接">🔴</span>
             <button class="refresh-btn" @click="refreshCardFolders" title="刷新">🔄</button>
           </div>
           
@@ -580,20 +589,27 @@
           </div>
         </div>
         
-        <!-- Terminal Tab -->
+        <!-- Terminal Tab - Redirect to standalone terminal -->
         <div v-else-if="currentMobileTab === 'terminal'" class="mobile-tab-content terminal-tab">
-          <div class="mobile-terminal-header">
-            <span class="terminal-title">Terminal</span>
-            
-            <!-- 流式状态指示器 -->
-            <div v-if="streamingStatus.isStreaming" class="streaming-indicator">
-              <span class="streaming-dot"></span>
-              <span>接收中... ({{ Math.round(streamingStatus.bufferLength / 1024) }}KB)</span>
-            </div>
+          <!-- 移动端终端工具栏 -->
+          <div class="mobile-terminal-toolbar">
+            <button class="mobile-terminal-btn" @click="openTerminalPage" title="在新页面打开终端">
+              🚀 新页面
+            </button>
+            <button class="mobile-terminal-btn" @click="refreshMobileTerminal" title="刷新终端">
+              🔄 刷新
+            </button>
           </div>
           
-          <div class="mobile-terminal-content" ref="terminalContainer">
-            <!-- Terminal will be mounted here -->
+          <!-- 移动端嵌入式终端 -->
+          <div class="mobile-embedded-terminal">
+            <iframe 
+              ref="mobileTerminalIframe"
+              src="/terminal"
+              class="mobile-terminal-iframe"
+              frameborder="0"
+              title="Mobile Terminal"
+            />
           </div>
         </div>
       </div>
@@ -675,9 +691,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import 'xterm/css/xterm.css'
 import terminalAPI from '../api/terminal'
-import TerminalServiceFactory from '../services/terminalServiceFactory'
 import cardGeneratorAPI from '../api/cardGenerator'
 import sseService from '../services/sseService'
 import ValidatedJsonViewer from '../components/ValidatedJsonViewer.vue'
@@ -705,7 +719,7 @@ const isGenerating = ref(false)
 const selectedTemplate = ref(0)
 const selectedCard = ref(null)
 const selectedFolder = ref(null)
-const terminalContainer = ref(null)
+// Terminal相关refs已移除，现在使用独立终端页面
 const cardFolders = ref([])
 const templates = ref([])
 const expandedFolders = ref([])
@@ -723,13 +737,39 @@ const iframeScaleMode = ref('fit') // 'fit' or 'fill' - 默认适应模式，显
 const iframeSandbox = ref('allow-scripts allow-forms allow-popups allow-same-origin allow-storage-access-by-user-activation')
 const generatingHint = ref('主题正在处理中，请稍候...')
 
+// 打开独立终端页面
+const openTerminalPage = () => {
+  // 在新窗口中打开终端页面
+  window.open('/terminal', '_blank')
+}
+
+// 嵌入式终端相关
+const terminalIframe = ref(null)
+const mobileTerminalIframe = ref(null)
+
+// 刷新终端iframe
+const refreshTerminal = () => {
+  if (terminalIframe.value) {
+    terminalIframe.value.src = terminalIframe.value.src
+    console.log('[Terminal] Terminal iframe refreshed')
+  }
+}
+
+// 刷新移动端终端iframe
+const refreshMobileTerminal = () => {
+  if (mobileTerminalIframe.value) {
+    mobileTerminalIframe.value.src = mobileTerminalIframe.value.src
+    console.log('[Terminal] Mobile terminal iframe refreshed')
+  }
+}
+
 // 新增：用于存储两种URL
 const responseUrls = ref({
   shareLink: '',
   originalUrl: ''
 })
 const activePreviewTab = ref('shareLink') // 当前激活的tab
-const terminalHeight = ref(300) // 终端区域高度
+// 终端功能已移至独立页面
 
 // 上传相关状态  
 const fileInput = ref(null)
@@ -758,8 +798,7 @@ const stripAnsiCodes = (str) => {
 let sseUnsubscribe = null
 const isSSEConnected = ref(false)
 
-// Terminal Service
-let terminalService = null
+// Terminal连接状态
 let terminalInitialized = ref(false)
 
 // 设备和布局检测
@@ -768,9 +807,7 @@ const layoutStore = useLayoutStore()
 const currentMobileTab = computed(() => layoutStore.activeMobileTab)
 
 // WebSocket连接状态
-const isConnected = ref(false)
-const isReconnecting = ref(false)
-const connectionStatusText = ref('未连接到后端服务')
+// 连接状态逻辑已移除，终端现在通过iframe嵌入
 
 // 右键菜单状态
 const contextMenu = ref({
@@ -828,15 +865,9 @@ const closeContextMenu = () => {
   contextMenu.value.visible = false
 }
 
-// 处理终端区域大小调整
+// 处理终端区域大小调整 - 已重定向到独立页面
 const handleTerminalResize = (newHeight) => {
-  terminalHeight.value = newHeight
-  // 调整后需要触发终端重新调整大小
-  nextTick(() => {
-    if (window.terminalInstance && window.terminalInstance.fit) {
-      window.terminalInstance.fit()
-    }
-  })
+  console.log('[Terminal] Terminal functionality moved to standalone page')
 }
 
 const handleContextMenuClick = (item) => {
@@ -892,10 +923,8 @@ const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('username')
     
-    // 清理终端服务
-    if (terminalService) {
-      terminalService.cleanup()
-    }
+    // 终端服务已移至独立页面
+    console.log('[Terminal] Terminal functionality moved to standalone page')
     
     // 断开SSE连接
     if (sseUnsubscribe) {
@@ -1452,113 +1481,17 @@ const initializeTerminalWhenNeeded = async () => {
   return true
 }
 
-// Initialize XTerm
+// Initialize XTerm (现在已重定向到独立终端页面)
 const initializeXTerm = async () => {
-  if (!terminalContainer.value) {
-    console.log('[Terminal] Terminal container not available, skipping initialization')
-    return false
-  }
-  
-  if (terminalInitialized.value) {
-    console.log('[Terminal] Terminal already initialized')
-    return true
-  }
-  
-  try {
-    console.log('[Terminal] Starting terminal initialization...')
-    
-    // 获取终端服务实例
-    terminalService = TerminalServiceFactory.getService()
-    
-    // 设置连接状态回调
-    terminalService.onConnectionChange = (connected, reason) => {
-      isConnected.value = connected
-      isReconnecting.value = terminalService.isReconnecting
-      
-      if (connected) {
-        connectionStatusText.value = '已连接到后端服务'
-        ElMessage.success('终端连接已恢复')
-      } else {
-        if (reason === 'max_attempts_reached') {
-          connectionStatusText.value = '连接失败，请检查后端服务'
-        } else if (terminalService.isReconnecting) {
-          connectionStatusText.value = `正在重新连接... (${terminalService.reconnectAttempts}/${terminalService.maxReconnectAttempts})`
-        } else {
-          connectionStatusText.value = '连接已断开: ' + reason
-        }
-      }
-    }
-    
-    // 使用统一的terminalService初始化
-    await terminalService.init(terminalContainer.value, {
-      cols: 120,
-      rows: 30
-    })
-    
-    // 设置连接状态
-    isConnected.value = terminalService.isConnected
-    
-    // 在终端中显示欢迎信息
-    if (terminalService.terminal) {
-      terminalService.terminal.write('\x1b[36m╔══════════════════════════════════════╗\x1b[0m\r\n')
-      terminalService.terminal.write('\x1b[36m║     AI Terminal - Card Generator     ║\x1b[0m\r\n')
-      terminalService.terminal.write('\x1b[36m╚══════════════════════════════════════╝\x1b[0m\r\n')
-      terminalService.terminal.write('\r\n')
-      terminalService.terminal.write('\x1b[33m⚡ Terminal connected successfully\x1b[0m\r\n')
-      terminalService.terminal.write('\x1b[32m✓ Ready to initialize Claude...\x1b[0m\r\n')
-      terminalService.terminal.write('\r\n')
-    }
-    
-    terminalInitialized.value = true
-    console.log('[Terminal] Initialized successfully')
-  } catch (error) {
-    console.error('[Terminal] Failed to initialize:', error)
-    
-    // 设置连接状态
-    isConnected.value = false
-    connectionStatusText.value = '终端初始化失败: ' + error.message
-    
-    // 即使初始化失败，也尝试在容器中显示错误信息
-    if (terminalContainer.value) {
-      terminalContainer.value.innerHTML = `
-        <div style="color: #ff6b6b; padding: 20px; font-family: monospace;">
-          <h3>终端初始化失败</h3>
-          <p>错误: ${error.message}</p>
-          <p>请确保后端服务正在运行</p>
-        </div>
-      `
-    }
-    
-    ElMessage.error('终端初始化失败: ' + error.message)
-  }
+  console.log('[Terminal] Terminal functionality moved to standalone page')
+  terminalInitialized.value = true
+  return true
 }
 
-// 手动重新连接
+// 手动重新连接 (现在重定向到独立终端页面)
 const manualReconnect = async () => {
-  if (isReconnecting.value) return
-  
-  isReconnecting.value = true
-  connectionStatusText.value = '正在重新连接...'
-  
-  try {
-    // 首先检查后端健康状态
-    const isHealthy = await terminalService.checkConnection()
-    if (!isHealthy) {
-      throw new Error('后端服务不可用')
-    }
-    
-    // 重新初始化终端
-    await initializeXTerm()
-    
-    
-    ElMessage.success('重新连接成功')
-  } catch (error) {
-    console.error('[ManualReconnect] Failed:', error)
-    ElMessage.error('重新连接失败: ' + error.message)
-    connectionStatusText.value = '连接失败: ' + error.message
-  } finally {
-    isReconnecting.value = false
-  }
+  console.log('[Terminal] Redirecting to standalone terminal page')
+  openTerminalPage()
 }
 
 // Select template
@@ -2693,44 +2626,9 @@ watch(() => layoutStore.activeMobileTab, async (newTab, oldTab) => {
       if (!terminalInitialized.value) {
         console.log('[Terminal] Terminal not initialized, initializing now...')
         await initializeXTerm()
-      } else if (terminalService && terminalService.terminal) {
-        // Terminal已初始化，确保正确挂载和光标状态
-        console.log('[Terminal] Terminal already initialized, ensuring proper mounting and cursor state...')
-        
-        // 确保terminal挂载到正确的容器
-        if (terminalContainer.value && terminalService.terminal.element?.parentNode !== terminalContainer.value) {
-          console.log('[Terminal] Re-mounting terminal to container')
-          terminalService.terminal.open(terminalContainer.value)
-        }
-        
-        // 恢复terminal的可见性和大小
-        if (terminalService.fitAddon) {
-          setTimeout(() => {
-            terminalService.fitAddon.fit()
-            console.log('[Terminal] Terminal fitted after tab switch')
-          }, 100)
-        }
-        
-        // 确保光标可见并获得焦点
-        setTimeout(() => {
-          console.log('[Terminal] Restoring cursor focus after tab switch')
-          
-          if (device.isMobile.value) {
-            // 移动端使用专用的光标恢复方法
-            const success = terminalService.restoreMobileCursor()
-            if (success) {
-              console.log('[Terminal] Mobile cursor restored successfully')
-            } else {
-              console.error('[Terminal] Failed to restore mobile cursor')
-            }
-          } else {
-            // 桌面端简单聚焦即可
-            if (terminalService.terminal) {
-              terminalService.terminal.focus()
-              console.log('[Terminal] Desktop cursor focused')
-            }
-          }
-        }, 200)
+      } else {
+        // Terminal功能已移至独立页面
+        console.log('[Terminal] Terminal functionality moved to standalone page')
       }
     } catch (err) {
       console.error('[CardGenerator] Mobile terminal state recovery failed:', err)
@@ -2747,60 +2645,9 @@ const onInitializationComplete = async (result) => {
     // 隐藏初始化界面
     showInitializer.value = false
     
-    // 确保终端服务可用
-    if (!terminalService) {
-      terminalService = TerminalServiceFactory.getService()
-    }
-    
-    // 连接现有的终端到DOM（如果需要）
+    // 终端功能已移至独立页面，无需初始化
     await nextTick()
-    if (terminalContainer.value && !terminalInitialized.value) {
-      // 检查终端服务是否已经有终端实例
-      if (terminalService.terminal) {
-        console.log('[CardGenerator] Attaching existing terminal to DOM')
-        console.log('[CardGenerator] Terminal element:', terminalService.terminal.element)
-        console.log('[CardGenerator] Container element:', terminalContainer.value)
-        
-        // 将现有的终端实例附加到DOM元素
-        terminalService.terminal.open(terminalContainer.value)
-        
-        // 确保终端适应容器大小
-        if (terminalService.fitAddon) {
-          setTimeout(() => {
-            terminalService.fitAddon.fit()
-            console.log('[CardGenerator] Terminal fitted to container')
-          }, 100)
-        }
-        
-        terminalInitialized.value = true
-        
-        // 设置连接状态
-        isConnected.value = terminalService.isConnected
-        
-        // 设置连接状态回调
-        terminalService.onConnectionChange = (connected, reason) => {
-          isConnected.value = connected
-          isReconnecting.value = terminalService.isReconnecting
-          
-          if (connected) {
-            connectionStatusText.value = '已连接到后端服务'
-            ElMessage.success('终端连接已恢复')
-          } else {
-            if (reason === 'max_attempts_reached') {
-              connectionStatusText.value = '连接失败，请检查后端服务'
-            } else if (terminalService.isReconnecting) {
-              connectionStatusText.value = `正在重新连接... (${terminalService.reconnectAttempts}/${terminalService.maxReconnectAttempts})`
-            } else {
-              connectionStatusText.value = '未连接到后端服务'
-            }
-          }
-        }
-      } else {
-        // 如果没有终端实例，才初始化新的
-        console.log('[CardGenerator] No existing terminal, initializing new one')
-        await initializeXTerm()
-      }
-    }
+    terminalInitialized.value = true
     
     // 加载数据
     await loadCardFolders()
@@ -2906,7 +2753,7 @@ const terminalStyle = computed(() => {
     return { height: '48px' } // 只显示header
   }
   return { 
-    height: `${terminalHeight.value}px`,
+    height: '300px',
     'min-height': '200px',
     'max-height': '800px'
   }
@@ -3299,72 +3146,7 @@ const handleOpenHtmlLink = () => {
 
 <style scoped>
 /* Connection Status Bar */
-.connection-status-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(90deg, #ff6b6b 0%, #ff8787 100%);
-  color: white;
-  padding: 8px 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 1000;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-.status-icon {
-  font-size: 18px;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.status-text {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.reconnect-btn {
-  background: white;
-  color: #ff6b6b;
-  border: none;
-  padding: 6px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.reconnect-btn:hover {
-  background: #f0f0f0;
-  transform: translateY(-1px);
-}
-
-.connection-indicator {
-  font-size: 12px;
-  margin-left: 8px;
-}
+/* 连接状态相关CSS已移除，终端现在通过iframe嵌入 */
 .card-generator-layout {
   display: flex;
   height: 100vh;
@@ -4101,24 +3883,59 @@ const handleOpenHtmlLink = () => {
   text-align: left;
 }
 
-/* XTerm container styles */
-.terminal-content :deep(.xterm) {
-  padding: 10px;
+/* Terminal Engine container styles */
+.terminal-content {
+  background-color: #000000;
   height: 100%;
 }
 
-.terminal-content :deep(.xterm-viewport) {
-  background-color: #0c0c0c;
+/* Terminal redirect styles */
+.terminal-redirect {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 20px;
 }
 
-.terminal-content :deep(.xterm-screen) {
-  padding: 0;
-  margin: 0;
+.redirect-content {
+  text-align: center;
+  max-width: 300px;
 }
 
-.terminal-content :deep(.xterm-rows) {
-  text-align: left !important;
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+.redirect-content h3 {
+  color: #333;
+  margin-bottom: 16px;
+  font-size: 20px;
+}
+
+.redirect-content p {
+  color: #666;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.terminal-redirect-btn {
+  background: linear-gradient(135deg, #007ACC, #005999);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+}
+
+.terminal-redirect-btn:hover {
+  background: linear-gradient(135deg, #005999, #003d66);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 122, 204, 0.4);
+}
+
+.terminal-redirect-btn:active {
+  transform: translateY(0);
 }
 
 /* Right Sidebar */
@@ -5184,5 +5001,94 @@ const handleOpenHtmlLink = () => {
     padding: 10px 16px;
     font-size: 13px;
   }
+}
+
+/* 嵌入式终端样式 */
+.terminal-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.terminal-action-btn {
+  padding: 4px 12px;
+  background: #404040;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.terminal-action-btn:hover {
+  background: #505050;
+  border-color: #666;
+}
+
+.embedded-terminal {
+  flex: 1;
+  min-height: 200px;
+  background: #1e1e1e;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 终端iframe样式 */
+.terminal-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #1e1e1e;
+  min-height: 200px;
+}
+
+/* 移动端终端样式 */
+.mobile-terminal-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.mobile-terminal-btn {
+  padding: 6px 12px;
+  background: #404040;
+  border: 1px solid #555;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-terminal-btn:hover {
+  background: #505050;
+  border-color: #666;
+}
+
+.mobile-embedded-terminal {
+  flex: 1;
+  background: #1e1e1e;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-terminal-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #1e1e1e;
+  flex: 1;
+}
+
+/* 确保移动端终端标签页填满空间 */
+.terminal-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 </style>

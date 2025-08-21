@@ -4,6 +4,7 @@
  */
 
 import terminalManager from './terminalManager.js'
+import path from 'path'
 
 class ClaudeExecutorService {
   /**
@@ -321,14 +322,24 @@ class ClaudeExecutorService {
     }
     
     try {
+      // 构建模板路径
+      const isDocker = process.env.NODE_ENV === 'production' || process.env.DATA_PATH
+      const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+      const templatePath = isDocker 
+        ? path.join('/app/data/public_template', templateName)
+        : path.join(dataPath, 'public_template', templateName)
+      
+      const claudePath = path.join(templatePath, 'CLAUDE.md')
+      
       // 方案1：合并生成（一次调用生成所有参数）
       console.log(`[ClaudeExecutor] Using merged generation approach`)
+      console.log(`[ClaudeExecutor] Claude path: ${claudePath}`)
       
-      const mergedPrompt = `对于主题"${topic}"，请生成以下三个参数：
+      const mergedPrompt = `根据[${claudePath}]文档，针对主题"${topic}"，请生成以下三个参数：
 
-1. 风格：根据主题类别(心理/知识/创意等)按CLAUDE.md第五点（风格选择指南）自动匹配原则选择合适风格
+1. 风格：根据主题类别(心理/知识/创意等)按[${claudePath}]文档第五点（风格选择指南）自动匹配原则选择合适风格
 2. 语言：判断主题语言，如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"
-3. 参考：检索主题相关内容，返回核心要点（100字以内）
+3. 参考：如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索主题获取更多内容进行生成
 
 请以JSON格式返回，格式如下：
 {

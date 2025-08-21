@@ -38,12 +38,13 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import terminalService from '../services/terminalService'
+import { createSimpleTerminalEngine } from '../core/terminal-engine/simple-engine.js'
 
 const terminalContainer = ref(null)
 const isConnected = ref(false)
 const isReconnecting = ref(false)
 const isMobile = ref(false)
+const terminalEngine = ref(null)
 
 // 连接状态计算属性
 const connectionStatusClass = computed(() => ({
@@ -78,16 +79,21 @@ const emit = defineEmits(['connected', 'disconnected', 'error'])
 
 // 连接状态监听
 const updateConnectionStatus = () => {
-  const status = terminalService.getStatus()
-  isConnected.value = status.isConnected
-  isReconnecting.value = status.isReconnecting || false
+  if (terminalEngine.value && terminalEngine.value.websocket) {
+    isConnected.value = terminalEngine.value.websocket.readyState === WebSocket.OPEN
+  } else {
+    isConnected.value = false
+  }
 }
 
 // 重连方法
 const reconnect = async () => {
   try {
     isReconnecting.value = true
-    await terminalService.reconnect()
+    if (terminalEngine.value) {
+      terminalEngine.value.destroy()
+    }
+    await initializeTerminal()
     updateConnectionStatus()
   } catch (error) {
     console.error('Reconnection failed:', error)
@@ -98,34 +104,32 @@ const reconnect = async () => {
 
 // 刷新光标
 const refreshCursor = () => {
-  terminalService.refreshCursor()
-  terminalService.focus()
+  if (terminalEngine.value && terminalEngine.value.contentEl) {
+    terminalEngine.value.contentEl.focus()
+  }
 }
 
 // 重新初始化终端（移动端）
-const reinitializeTerminal = () => {
+const reinitializeTerminal = async () => {
   console.log('[TerminalBest] Mobile terminal reinitialization triggered')
   
   try {
-    const success = terminalService.reinitializeTerminal()
-    if (success) {
-      console.log('[TerminalBest] Terminal reinitialization successful')
-      
-      // 移动端额外执行光标恢复
-      if (isMobile.value) {
-        setTimeout(() => {
-          const cursorRestored = terminalService.restoreMobileCursor()
-          if (cursorRestored) {
-            console.log('[TerminalBest] Mobile cursor restored after reinit')
-          }
-        }, 300)
-      }
-      
-      // 更新连接状态
-      updateConnectionStatus()
-    } else {
-      console.error('[TerminalBest] Terminal reinitialization failed')
+    if (terminalEngine.value) {
+      terminalEngine.value.destroy()
     }
+    await initializeTerminal()
+    
+    // 移动端额外执行光标恢复
+    if (isMobile.value) {
+      setTimeout(() => {
+        refreshCursor()
+        console.log('[TerminalBest] Mobile cursor restored after reinit')
+      }, 300)
+    }
+    
+    // 更新连接状态
+    updateConnectionStatus()
+    console.log('[TerminalBest] Terminal reinitialization successful')
   } catch (error) {
     console.error('[TerminalBest] Terminal reinitialization error:', error)
   }
@@ -137,6 +141,52 @@ const isMobileDevice = () => {
          (navigator.maxTouchPoints && navigator.maxTouchPoints > 2)
 }
 
+// 初始化终端
+const initializeTerminal = async () => {
+  if (!terminalContainer.value) return
+  
+  const config = {
+    container: terminalContainer.value,
+    device: isMobile.value ? 'mobile' : 'desktop',
+    config: {
+      renderer: {
+        type: 'auto',
+        optimizeForTouch: isMobile.value
+      },
+      buffer: {
+        maxLines: 10000,
+        cols: 80,
+        rows: 24
+      },
+      theme: {
+        background: '#000000',
+        foreground: '#00ff00',
+        cursor: '#00ff00'
+      }
+    }
+  }
+  
+  terminalEngine.value = createSimpleTerminalEngine(config)
+  
+  // 设置WebSocket事件监听
+  if (terminalEngine.value.websocket) {
+    terminalEngine.value.websocket.onopen = () => {
+      isConnected.value = true
+      emit('connected')
+    }
+    
+    terminalEngine.value.websocket.onclose = () => {
+      isConnected.value = false
+      emit('disconnected')
+    }
+    
+    terminalEngine.value.websocket.onerror = (error) => {
+      console.error('[TerminalBest] WebSocket error:', error)
+      emit('error', error)
+    }
+  }
+}
+
 // 生命周期
 onMounted(async () => {
   try {
@@ -145,22 +195,10 @@ onMounted(async () => {
     console.log('[TerminalBest] Mobile device detected:', isMobile.value)
     
     // 初始化终端
-    await terminalService.init(terminalContainer.value, {
-      serverUrl: props.serverUrl,
-      terminal: {
-        fontSize: props.fontSize
-      }
-    })
-    
-    // 启用自动调整大小
-    terminalService.enableAutoResize()
+    await initializeTerminal()
     
     // 设置快捷键
     setupKeyboardShortcuts()
-    
-    // 监听连接状态变化
-    terminalService.onConnectionChange = updateConnectionStatus
-    updateConnectionStatus()
     
     // 定期检查连接状态
     setInterval(updateConnectionStatus, 2000)
@@ -173,7 +211,6 @@ onMounted(async () => {
       }, 500)
     }
     
-    emit('connected')
   } catch (error) {
     console.error('Failed to initialize terminal:', error)
     updateConnectionStatus()
@@ -183,7 +220,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   // 清理终端
-  terminalService.destroy()
+  if (terminalEngine.value) {
+    terminalEngine.value.destroy()
+  }
 })
 
 // 设置键盘快捷键
@@ -192,31 +231,22 @@ function setupKeyboardShortcuts() {
   if (!container) return
   
   container.addEventListener('keydown', (e) => {
-    // Ctrl+Shift+C: 复制
+    // Ctrl+Shift+C: 复制 (暂时禁用，因为需要实现复制功能)
     if (e.ctrlKey && e.shiftKey && e.key === 'C') {
       e.preventDefault()
-      terminalService.copyToClipboard()
+      // TODO: 实现复制功能
     }
     
-    // Ctrl+Shift+V: 粘贴
+    // Ctrl+Shift+V: 粘贴 (暂时禁用)
     if (e.ctrlKey && e.shiftKey && e.key === 'V') {
       e.preventDefault()
-      terminalService.pasteFromClipboard()
-    }
-    
-    // Ctrl+Shift+F: 搜索
-    if (e.ctrlKey && e.shiftKey && e.key === 'F') {
-      e.preventDefault()
-      const term = prompt('Search for:')
-      if (term) {
-        terminalService.search(term)
-      }
+      // TODO: 实现粘贴功能
     }
     
     // Ctrl+L: 清屏
     if (e.ctrlKey && e.key === 'l') {
       e.preventDefault()
-      terminalService.clear()
+      clear()
     }
     
     // Ctrl+Shift+R: 刷新光标
@@ -229,22 +259,31 @@ function setupKeyboardShortcuts() {
 
 // 公开的方法
 const sendCommand = (command) => {
-  terminalService.sendCommand(command)
+  if (terminalEngine.value) {
+    terminalEngine.value.sendInput(command + '\r')
+  }
 }
 
 const clear = () => {
-  terminalService.clear()
+  if (terminalEngine.value) {
+    terminalEngine.value.clear()
+  }
 }
 
 const getStatus = () => {
-  return terminalService.getStatus()
+  return {
+    isConnected: isConnected.value,
+    isReconnecting: isReconnecting.value
+  }
 }
 
 // 暴露给父组件
 defineExpose({
   sendCommand,
   clear,
-  getStatus
+  getStatus,
+  reconnect,
+  refreshCursor
 })
 </script>
 

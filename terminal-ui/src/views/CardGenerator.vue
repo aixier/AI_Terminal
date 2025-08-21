@@ -1468,12 +1468,12 @@ const generateCard = async () => {
 const initializeTerminalWhenNeeded = async () => {
   // 桌面端直接初始化
   if (device.isDesktop.value) {
-    return await initializeXTerm()
+    return await initializeTerminal()
   }
   
   // 移动端只在切换到Terminal Tab时初始化
   if (device.isMobile.value && layoutStore.activeMobileTab === 'terminal') {
-    return await initializeXTerm()
+    return await initializeTerminal()
   }
   
   // 其他情况延迟初始化
@@ -1481,8 +1481,8 @@ const initializeTerminalWhenNeeded = async () => {
   return true
 }
 
-// Initialize XTerm (现在已重定向到独立终端页面)
-const initializeXTerm = async () => {
+// Initialize Terminal (现在已重定向到独立终端页面)
+const initializeTerminal = async () => {
   console.log('[Terminal] Terminal functionality moved to standalone page')
   terminalInitialized.value = true
   return true
@@ -2625,7 +2625,7 @@ watch(() => layoutStore.activeMobileTab, async (newTab, oldTab) => {
       // 如果terminal未初始化，则初始化
       if (!terminalInitialized.value) {
         console.log('[Terminal] Terminal not initialized, initializing now...')
-        await initializeXTerm()
+        await initializeTerminal()
       } else {
         // Terminal功能已移至独立页面
         console.log('[Terminal] Terminal functionality moved to standalone page')

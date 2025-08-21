@@ -55,11 +55,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import TerminalServiceFactory from '../services/terminalServiceFactory'
 import sseService from '../services/sseService'
 
-// 获取终端服务实例
-const terminalService = TerminalServiceFactory.getService()
+// 终端服务现在使用SimpleTerminalEngine，不需要预初始化
 
 const emit = defineEmits(['initialization-complete'])
 const router = useRouter()
@@ -211,15 +209,8 @@ const initClaude = async () => {
     tempTerminal.style.display = 'none'
     document.body.appendChild(tempTerminal)
     
-    // 初始化终端服务
-    await terminalService.init(tempTerminal)
-    
-    if (!terminalService.isReady()) {
-      document.body.removeChild(tempTerminal)
-      throw new Error('Terminal service not ready')
-    }
-    
-    console.log('[StartupInitializer] Terminal environment initialized successfully')
+    // SimpleTerminalEngine不需要预初始化，在实际使用时才初始化
+    console.log('[StartupInitializer] Terminal environment ready (using SimpleTerminalEngine)')
     
     // 清理临时终端
     document.body.removeChild(tempTerminal)

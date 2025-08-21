@@ -178,13 +178,61 @@ export class SimpleTerminalEngine {
   write(data) {
     if (!this.contentEl) return
     
-    // 简单处理ANSI转义序列（保留基本颜色）
-    let processedData = data
-      .replace(/\x1b\[[0-9;]*m/g, '') // 移除颜色代码
-      .replace(/\r\n/g, '\n') // 规范化换行符
-      .replace(/\r/g, '\n') // 处理回车符
+    // 处理数据中的每个字符
+    for (let i = 0; i < data.length; i++) {
+      const char = data[i]
+      const charCode = char.charCodeAt(0)
+      
+      // 处理控制字符
+      if (charCode === 8) { // Backspace (\b)
+        // 删除最后一个字符
+        if (this.content.length > 0) {
+          this.content = this.content.slice(0, -1)
+        }
+      } else if (charCode === 13) { // Carriage Return (\r)
+        // 回车符：回到行首
+        const lines = this.content.split('\n')
+        if (lines.length > 0) {
+          lines[lines.length - 1] = ''
+          this.content = lines.join('\n')
+        }
+      } else if (charCode === 10) { // Line Feed (\n)
+        // 换行符：添加新行
+        this.content += '\n'
+      } else if (charCode === 9) { // Tab (\t)
+        // Tab字符：添加4个空格
+        this.content += '    '
+      } else if (charCode === 27) { // ESC - ANSI转义序列开始
+        // 查找ANSI转义序列的结束
+        let escapeSequence = char
+        let j = i + 1
+        while (j < data.length) {
+          const nextChar = data[j]
+          escapeSequence += nextChar
+          j++
+          // ANSI序列通常以字母结束
+          if (/[a-zA-Z]/.test(nextChar)) {
+            break
+          }
+        }
+        i = j - 1 // 跳过整个转义序列
+        
+        // 简单处理：忽略颜色控制序列
+        if (!/\[[0-9;]*m/.test(escapeSequence)) {
+          // 如果不是颜色序列，可能需要特殊处理
+          // 这里暂时忽略
+        }
+      } else if (charCode >= 32 && charCode <= 126) {
+        // 可打印ASCII字符
+        this.content += char
+      } else if (charCode > 127) {
+        // Unicode字符
+        this.content += char
+      }
+      // 其他控制字符暂时忽略
+    }
     
-    this.content += processedData
+    // 更新显示内容
     this.contentEl.textContent = this.content
     
     // 滚动到底部

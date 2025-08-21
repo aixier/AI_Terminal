@@ -688,7 +688,7 @@ defineExpose({
 }
 
 /* Dark theme adjustments */
-:deep(.xterm) {
+#terminal-content {
   padding: 8px;
 }
 

@@ -147,8 +147,11 @@ class ClaudeExecutorDirectService {
     console.log(`[ClaudeExecutorDirect] Topic: ${topic}`)
     console.log(`[ClaudeExecutorDirect] Template: ${templateName}`)
     
-    if (templateName !== 'cardplanet-Sandra') {
-      return { style: '', language: '', reference: '' }
+    // 支持两种模板：cardplanet-Sandra (3参数) 和 cardplanet-Sandra-cover (4参数)
+    if (templateName !== 'cardplanet-Sandra' && templateName !== 'cardplanet-Sandra-cover') {
+      return templateName === 'cardplanet-Sandra-cover' 
+        ? { cover: '', style: '', language: '', reference: '' }
+        : { style: '', language: '', reference: '' }
     }
     
     try {
@@ -160,13 +163,34 @@ class ClaudeExecutorDirectService {
         : path.join(dataPath, 'public_template', templateName)
       
       const claudePath = path.join(templatePath, 'CLAUDE.md')
+      const coverPath = path.join(templatePath, 'cover.md')
       
-      // 使用模板文档进行参数生成
-      const mergedPrompt = `根据[${claudePath}]文档，针对主题"${topic}"，请生成以下三个参数：
+      // 根据模板类型生成不同的提示词
+      let mergedPrompt
+      
+      if (templateName === 'cardplanet-Sandra-cover') {
+        // 四参数模板：封面、风格、语言、参考
+        mergedPrompt = `根据[${claudePath}]和[${coverPath}]文档，针对主题"${topic}"，请生成以下四个参数：
+
+1. 封面：根据主题特点判断使用"默认封面"还是"小红书封面"，参考[${coverPath}]文档中的触发条件和适用场景进行选择
+2. 风格：根据主题类别(心理/知识/创意等)按[${claudePath}]文档第五点（风格选择指南）自动匹配原则选择合适风格选择其中一种
+3. 语言：判断主题语言，如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"  
+4. 参考： 如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索"${topic}"获取更多内容进行生成
+
+请以JSON格式返回，格式如下：
+{
+  "cover": "默认封面或小红书封面", 
+  "style": "风格描述，明确的风格名称", 
+  "language": "语言类型",
+  "reference": "参考要点"
+}`
+      } else {
+        // 三参数模板：风格、语言、参考
+        mergedPrompt = `根据[${claudePath}]文档，针对主题"${topic}"，请生成以下三个参数：
 
 1. 风格：根据主题类别(心理/知识/创意等)按[${claudePath}]文档第五点（风格选择指南）自动匹配原则选择合适风格
 2. 语言：判断主题语言，如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"  
-3. 参考： 如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索主题获取更多内容进行生成
+3. 参考： 如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索"${topic}"获取更多内容进行生成
 
 请以JSON格式返回，格式如下：
 {
@@ -174,6 +198,7 @@ class ClaudeExecutorDirectService {
   "language": "语言类型",
   "reference": "参考要点"
 }`
+      }
 
       const result = await this.executePrompt(mergedPrompt, 60000, 'generate_card_params')
       
@@ -202,12 +227,45 @@ class ClaudeExecutorDirectService {
             }
           }
           
-          const params = JSON.parse(jsonString)
+          // 尝试解析 JSON，使用更宽容的方法
+          let params
+          try {
+            params = JSON.parse(jsonString)
+          } catch (parseError) {
+            console.log(`[ClaudeExecutorDirect] Standard JSON parse failed, trying JSON repair...`)
+            // 尝试修复常见的JSON格式问题
+            try {
+              // 替换常见的问题字符
+              let repairedJson = jsonString
+                .replace(/"/g, '"')  // 替换中文引号
+                .replace(/"/g, '"')  // 替换中文引号
+                .replace(/'/g, '"')  // 替换单引号为双引号
+                .replace(/，/g, ',') // 替换中文逗号
+                .replace(/：/g, ':') // 替换中文冒号
+              
+              params = JSON.parse(repairedJson)
+              console.log(`[ClaudeExecutorDirect] JSON repair successful`)
+            } catch (repairError) {
+              console.log(`[ClaudeExecutorDirect] JSON repair also failed:`, repairError.message)
+              throw parseError // 抛出原始错误
+            }
+          }
           console.log(`[ClaudeExecutorDirect] Parameters generated successfully:`, params)
-          return {
-            style: params.style || '根据主题理解其精神内核',
-            language: params.language || '根据主题的语言确定',
-            reference: params.reference || '检索主题相关内容'
+          
+          // 根据模板类型返回不同的参数结构
+          if (templateName === 'cardplanet-Sandra-cover') {
+            return {
+              cover: params.cover || '默认封面',
+              style: params.style || '根据主题理解其精神内核',
+              language: params.language || '根据主题的语言确定',
+              reference: params.reference || '检索主题相关内容'
+            }
+          } else {
+            return {
+              style: params.style || '根据主题理解其精神内核',
+              language: params.language || '根据主题的语言确定',
+              reference: params.reference || '检索主题相关内容'
+            }
           }
         } catch (e) {
           console.log(`[ClaudeExecutorDirect] JSON parse failed:`, e.message)
@@ -221,10 +279,19 @@ class ClaudeExecutorDirectService {
     }
     
     // 返回默认值
-    return {
-      style: '根据主题理解其精神内核，自动选择合适的风格',
-      language: '根据主题的语言确定语言类型',
-      reference: '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
+    if (templateName === 'cardplanet-Sandra-cover') {
+      return {
+        cover: '默认封面',
+        style: '根据主题理解其精神内核，自动选择合适的风格',
+        language: '根据主题的语言确定语言类型',
+        reference: '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
+      }
+    } else {
+      return {
+        style: '根据主题理解其精神内核，自动选择合适的风格',
+        language: '根据主题的语言确定语言类型',
+        reference: '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
+      }
     }
   }
 }

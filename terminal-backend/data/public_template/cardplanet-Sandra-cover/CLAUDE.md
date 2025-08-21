@@ -150,7 +150,7 @@
 **SVG简洁性**：简单图形（10-15行代码），不做任何动效或动画。我们做的是完全静态卡片。
 
 ## 四、Logo水印规范
-- **文件路径**：`/Users/sandra/Downloads/cursor/post/cardplanet_logo.svg`
+- **文件路径**：`/app/data/public_template/cardplanet-Sandra-cover/cardplanet_logo.svg`
 - **位置统一**：所有卡片底部中央
 - **实现方式**：
   ```css

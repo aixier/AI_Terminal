@@ -21,7 +21,6 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
     "@types/marked": "^5.0.2",
-    "@xterm/addon-search": "^0.15.0",
     "axios": "^1.11.0",
     "compression": "^1.7.4",
     "dompurify": "^3.2.6",
@@ -35,11 +34,7 @@
     "socket.io-client": "^4.8.1",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1",
-    "vue3-json-viewer": "^2.4.1",
-    "xterm": "^5.3.0",
-    "xterm-addon-fit": "^0.8.0",
-    "xterm-addon-search": "^0.13.0",
-    "xterm-addon-web-links": "^0.9.0"
+    "vue3-json-viewer": "^2.4.1"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",

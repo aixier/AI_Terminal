@@ -397,63 +397,36 @@ defineExpose({
   overflow: hidden;
 }
 
-/* XTerm.js 样式优化 */
-:deep(.xterm) {
+/* Terminal 样式优化 */
+#terminal-content {
   padding: 8px;
   height: 100%;
-}
-
-:deep(.xterm-viewport) {
   background-color: transparent;
   scrollbar-width: thin;
   scrollbar-color: #4a4a4a #1e1e1e;
 }
 
-:deep(.xterm-viewport::-webkit-scrollbar) {
+#terminal-content::-webkit-scrollbar {
   width: 10px;
   background-color: #1e1e1e;
 }
 
-:deep(.xterm-viewport::-webkit-scrollbar-track) {
+#terminal-content::-webkit-scrollbar-track {
   background-color: #1e1e1e;
 }
 
-:deep(.xterm-viewport::-webkit-scrollbar-thumb) {
+#terminal-content::-webkit-scrollbar-thumb {
   background-color: #4a4a4a;
   border-radius: 5px;
 }
 
-:deep(.xterm-viewport::-webkit-scrollbar-thumb:hover) {
+#terminal-content::-webkit-scrollbar-thumb:hover {
   background-color: #5a5a5a;
 }
 
-/* 光标样式 */
-:deep(.xterm-cursor-layer) {
-  z-index: 4;
-}
+/* 简化的终端样式 - 光标和选择等功能由SimpleTerminalEngine内部处理 */
 
-:deep(.xterm-screen) {
-  overflow: hidden;
-}
-
-/* 选择高亮 */
-:deep(.xterm-selection-layer) {
-  z-index: 3;
-}
-
-/* 链接样式 */
-:deep(.xterm-link-layer) {
-  z-index: 2;
-}
-
-:deep(.xterm-link) {
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-:deep(.xterm-link:hover) {
-  opacity: 0.8;
-}
+/* 链接样式由SimpleTerminalEngine内部处理 */
 
 /* 移动端优化 */
 @media (max-width: 768px) {
@@ -485,18 +458,7 @@ defineExpose({
     animation: mobile-cursor-blink 1s infinite !important;
   }
   
-  /* 移动端光标闪烁动画 */
-  @keyframes mobile-cursor-blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0.3; }
-  }
-  
-  /* 确保光标层在最顶层 */
-  :deep(.xterm-cursor-layer) {
-    z-index: 10 !important;
-  }
-  
-  /* 移动端terminal容器可获得焦点 */
+  /* 移动端光标和焦点样式 */
   .terminal-container {
     outline: none;
   }
@@ -507,7 +469,7 @@ defineExpose({
   }
   
   /* 移动端字体大小调整 */
-  :deep(.xterm) {
+  #terminal-content {
     font-size: 12px !important;
   }
 }

@@ -3,7 +3,6 @@ import path from 'path'
 import fs from 'fs/promises'
 import apiTerminalService from '../utils/apiTerminalService.js'
 import terminalManager from '../services/terminalManager.js'
-import claudeExecutor from '../services/claudeExecutor.js'
 import claudeExecutorDirect from '../services/claudeExecutorDirect.js'
 import { authenticateUser, authenticateUserOrDefault, ensureUserFolder } from '../middleware/userAuth.js'
 import userService from '../services/userService.js'
@@ -159,12 +158,24 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
     console.log(`[GenerateCard API] Template: ${templateName}`)
     
     // 使用直接执行服务生成参数（避免 PTY 兼容性问题）
-    const { style, language, reference: referenceContent } = await claudeExecutorDirect.generateCardParameters(topic, templateName)
+    const parameters = await claudeExecutorDirect.generateCardParameters(topic, templateName)
     
-    console.log(`[GenerateCard API] ========== PARAMETERS RECEIVED ==========`)
-    console.log(`[GenerateCard API] Style: ${style}`)
-    console.log(`[GenerateCard API] Language: ${language}`)
-    console.log(`[GenerateCard API] Reference: ${referenceContent.substring(0, 200)}${referenceContent.length > 200 ? '...' : ''}`)
+    // 根据模板类型解构参数
+    let cover, style, language, referenceContent
+    if (templateName === 'cardplanet-Sandra-cover') {
+      ({ cover, style, language, reference: referenceContent } = parameters)
+      console.log(`[GenerateCard API] ========== PARAMETERS RECEIVED (4-param) ==========`)
+      console.log(`[GenerateCard API] Cover: ${cover}`)
+      console.log(`[GenerateCard API] Style: ${style}`)
+      console.log(`[GenerateCard API] Language: ${language}`)
+      console.log(`[GenerateCard API] Reference: ${referenceContent.substring(0, 200)}${referenceContent.length > 200 ? '...' : ''}`)
+    } else {
+      ({ style, language, reference: referenceContent } = parameters)
+      console.log(`[GenerateCard API] ========== PARAMETERS RECEIVED (3-param) ==========`)
+      console.log(`[GenerateCard API] Style: ${style}`)
+      console.log(`[GenerateCard API] Language: ${language}`)
+      console.log(`[GenerateCard API] Reference: ${referenceContent.substring(0, 200)}${referenceContent.length > 200 ? '...' : ''}`)
+    }
     
     if (isFolder) {
       // 文件夹模式
@@ -188,7 +199,26 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
       
       // 构建文件夹模式的提示词
       const claudePath = path.join(templatePath, 'CLAUDE.md')
-      prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
+      
+      // 根据模板类型构建不同的提示词
+      if (templateName === 'cardplanet-Sandra-cover') {
+        prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
+
+创作重点：
+- 把每张卡片当作独立的艺术海报设计
+- 深挖主题的趣味性和视觉潜力
+- 用细节和创意打动人心
+
+封面：${cover}（如未指定则使用cover.md文档中的默认封面）
+风格：${style}（理解其精神内核，不只是表面元素）
+语言：${language}
+参考：${referenceContent}（如果没提供任何参考信息，请自行检索主题获取更多内容进行生成）（如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成）
+
+从${claudePath}文档开始，按其指引阅读全部6个文档获取创作框架。
+记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
+生成的json文档保存在[${userCardPath}]`
+      } else {
+        prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
 
 创作重点：
 - 把每张卡片当作独立的艺术海报设计
@@ -199,9 +229,10 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
 语言：${language}
 参考：${referenceContent}
 
-从${claudePath}文档开始，按其指引阅读全部4个文档获取创作框架。
+从${claudePath}文档开始，按其指引阅读全部5个文档获取创作框架。
 记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
 生成的json文档保存在[${userCardPath}]`
+      }
       
     } else {
       // 单文件模式（保持原有逻辑）
@@ -236,7 +267,10 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
     console.log('🎯 [FINAL-PROMPT] ============ COMPLETE ASSEMBLED PROMPT ============')
     console.log('📋 [FINAL-PROMPT] Template:', templateName)
     console.log('📝 [FINAL-PROMPT] Topic:', topic)
-    if (isFolder && templateName === 'cardplanet-Sandra') {
+    if (isFolder && (templateName === 'cardplanet-Sandra' || templateName === 'cardplanet-Sandra-cover')) {
+      if (templateName === 'cardplanet-Sandra-cover') {
+        console.log('📄 [FINAL-PROMPT] Cover:', cover)
+      }
       console.log('🎨 [FINAL-PROMPT] Style:', style)
       console.log('🌐 [FINAL-PROMPT] Language:', language)
       console.log('📚 [FINAL-PROMPT] Reference:', referenceContent ? referenceContent.substring(0, 100) + '...' : 'N/A')
@@ -665,21 +699,40 @@ router.post('/card/stream', authenticateUserOrDefault, ensureUserFolder, async (
       console.log(`[Stream API] Template: ${templateName}`)
       
       // 发送参数生成开始事件
-      if (templateName === 'cardplanet-Sandra') {
+      if (templateName === 'cardplanet-Sandra' || templateName === 'cardplanet-Sandra-cover') {
         sendSSE('parameter_progress', { param: 'all', status: 'generating' })
       }
       
       // 使用直接执行服务生成参数（避免 PTY 兼容性问题）
-      const { style, language, reference: referenceContent } = await claudeExecutorDirect.generateCardParameters(topic, templateName)
+      const parameters = await claudeExecutorDirect.generateCardParameters(topic, templateName)
       
-      console.log(`[Stream API] ========== PARAMETERS RECEIVED ==========`)
-      console.log(`[Stream API] Style: ${style}`)
-      console.log(`[Stream API] Language: ${language}`)
-      console.log(`[Stream API] Reference: ${referenceContent.substring(0, 200)}${referenceContent.length > 200 ? '...' : ''}`)
+      // 根据模板类型解构参数
+      let cover, style, language, referenceContent
+      if (templateName === 'cardplanet-Sandra-cover') {
+        ({ cover, style, language, reference: referenceContent } = parameters)
+        console.log(`[Stream API] ========== PARAMETERS RECEIVED (4-param) ==========`)
+        console.log(`[Stream API] Cover: ${cover}`)
+        console.log(`[Stream API] Style: ${style}`)
+        console.log(`[Stream API] Language: ${language}`)
+        console.log(`[Stream API] Reference: ${referenceContent.substring(0, 200)}${referenceContent.length > 200 ? '...' : ''}`)
+      } else {
+        ({ style, language, reference: referenceContent } = parameters)
+        console.log(`[Stream API] ========== PARAMETERS RECEIVED (3-param) ==========`)
+        console.log(`[Stream API] Style: ${style}`)
+        console.log(`[Stream API] Language: ${language}`)
+        console.log(`[Stream API] Reference: ${referenceContent.substring(0, 200)}${referenceContent.length > 200 ? '...' : ''}`)
+      }
       
       // 发送参数生成完成事件
       if (templateName === 'cardplanet-Sandra') {
         sendSSE('parameters', { 
+          style: style,
+          language: language,
+          reference: referenceContent.substring(0, 100) + (referenceContent.length > 100 ? '...' : '')
+        })
+      } else if (templateName === 'cardplanet-Sandra-cover') {
+        sendSSE('parameters', { 
+          cover: cover,
           style: style,
           language: language,
           reference: referenceContent.substring(0, 100) + (referenceContent.length > 100 ? '...' : '')
@@ -700,7 +753,26 @@ router.post('/card/stream', authenticateUserOrDefault, ensureUserFolder, async (
         
         // 构建文件夹模式的提示词
         const claudePath = path.join(templatePath, 'CLAUDE.md')
-        prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
+        
+        // 根据模板类型构建不同的提示词
+        if (templateName === 'cardplanet-Sandra-cover') {
+          prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
+
+创作重点：
+- 把每张卡片当作独立的艺术海报设计
+- 深挖主题的趣味性和视觉潜力
+- 用细节和创意打动人心
+
+封面：${cover}（如未指定则使用cover.md文档中的默认封面）
+风格：${style}（理解其精神内核，不只是表面元素）
+语言：${language}
+参考：${referenceContent}（如果没提供任何参考信息，请自行检索主题获取更多内容进行生成）（如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成）
+
+从${claudePath}文档开始，按其指引阅读全部4个文档获取创作框架。
+记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
+生成的json文档保存在[${userCardPath}]`
+        } else {
+          prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
 
 创作重点：
 - 把每张卡片当作独立的艺术海报设计
@@ -714,6 +786,7 @@ router.post('/card/stream', authenticateUserOrDefault, ensureUserFolder, async (
 从${claudePath}文档开始，按其指引阅读全部4个文档获取创作框架。
 记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
 生成的json文档保存在[${userCardPath}]`
+        }
         
       } else {
         // 单文件模式

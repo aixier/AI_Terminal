@@ -243,8 +243,9 @@
       <ResizableSplitter 
         v-if="showTerminal"
         direction="horizontal" 
-        :min-size="200" 
-        :max-size="800"
+        :min-size="120" 
+        :max-size="Infinity"
+        @resize="handleTerminalResize"
       />
 
       <!-- Bottom: Terminal Area (可折叠) -->
@@ -255,35 +256,20 @@
             terminal
           </span>
           <div class="terminal-actions" v-if="showTerminal">
-            <!-- 流式状态指示器 -->
-            <div v-if="streamingStatus.isStreaming" class="streaming-indicator">
+            <!-- 桌面端操作：新窗口 / 刷新 移到标题右侧 -->
+            <button class="terminal-action-btn" @click.stop="openTerminalPage" title="在新页面打开终端">🚀</button>
+            <button class="terminal-action-btn" @click.stop="refreshTerminalChat" title="刷新终端">🔄</button>
+            <!-- 原有流式状态指示器（保留条件显示） -->
+            <div v-if="streamingStatus.isStreaming" class="streaming-indicator" style="margin-left:8px;">
               <span class="streaming-dot"></span>
               <span>接收中... ({{ Math.round(streamingStatus.bufferLength / 1024) }}KB)</span>
             </div>
-            
-            <!-- AI CLI 初始化按钮 -->
           </div>
         </div>
         <div class="terminal-content" v-show="showTerminal">
-          <!-- 终端操作栏 -->
-          <div class="terminal-toolbar">
-            <button class="terminal-action-btn" @click="openTerminalPage" title="在新页面打开终端">
-              🚀 新页面
-            </button>
-            <button class="terminal-action-btn" @click="refreshTerminal" title="刷新终端">
-              🔄 刷新
-            </button>
-          </div>
-          
-          <!-- 嵌入式终端 iframe -->
+          <!-- 嵌入式终端 -->
           <div class="embedded-terminal">
-            <iframe 
-              ref="terminalIframe"
-              src="/terminal"
-              class="terminal-iframe"
-              frameborder="0"
-              title="Terminal"
-            />
+            <TerminalChat :key="terminalChatKey" />
           </div>
         </div>
       </div>
@@ -601,15 +587,9 @@
             </button>
           </div>
           
-          <!-- 移动端嵌入式终端 -->
+          <!-- 移动端聊天式终端 -->
           <div class="mobile-embedded-terminal">
-            <iframe 
-              ref="mobileTerminalIframe"
-              src="/terminal"
-              class="mobile-terminal-iframe"
-              frameborder="0"
-              title="Mobile Terminal"
-            />
+            <TerminalChat :key="terminalChatMobileKey" />
           </div>
         </div>
       </div>
@@ -707,6 +687,7 @@ import { useDevice } from '../composables/useDevice.js'
 import axios from 'axios'
 import { useLayoutStore, MOBILE_TABS } from '../store/layout.js'
 import { useRouter } from 'vue-router'
+import TerminalChat from '../components/mobile/TerminalChat.vue'
 
 // Router
 const router = useRouter()
@@ -736,6 +717,7 @@ const showTerminal = ref(true) // Terminal默认显示，方便查看初始化�
 const iframeScaleMode = ref('fit') // 'fit' or 'fill' - 默认适应模式，显示完整内容
 const iframeSandbox = ref('allow-scripts allow-forms allow-popups allow-same-origin allow-storage-access-by-user-activation')
 const generatingHint = ref('主题正在处理中，请稍候...')
+const terminalHeight = ref(300) // 桌面端终端区域高度（可拖拽）
 
 // 打开独立终端页面
 const openTerminalPage = () => {
@@ -744,23 +726,26 @@ const openTerminalPage = () => {
 }
 
 // 嵌入式终端相关
-const terminalIframe = ref(null)
-const mobileTerminalIframe = ref(null)
+const terminalIframe = ref(null) // 已不使用iframe，保留变量避免引用报错
+const mobileTerminalIframe = ref(null) // 同上
+const terminalChatKey = ref(0)
+const terminalChatMobileKey = ref(0)
 
 // 刷新终端iframe
 const refreshTerminal = () => {
-  if (terminalIframe.value) {
-    terminalIframe.value.src = terminalIframe.value.src
-    console.log('[Terminal] Terminal iframe refreshed')
-  }
+  // 兼容旧函数名，不再刷新iframe
+  refreshTerminalChat()
+}
+
+const refreshTerminalChat = () => {
+  terminalChatKey.value++
+  console.log('[Terminal] Terminal chat remounted')
 }
 
 // 刷新移动端终端iframe
 const refreshMobileTerminal = () => {
-  if (mobileTerminalIframe.value) {
-    mobileTerminalIframe.value.src = mobileTerminalIframe.value.src
-    console.log('[Terminal] Mobile terminal iframe refreshed')
-  }
+  terminalChatMobileKey.value++
+  console.log('[Terminal] Mobile terminal chat remounted')
 }
 
 // 新增：用于存储两种URL
@@ -867,7 +852,8 @@ const closeContextMenu = () => {
 
 // 处理终端区域大小调整 - 已重定向到独立页面
 const handleTerminalResize = (newHeight) => {
-  console.log('[Terminal] Terminal functionality moved to standalone page')
+  // 桌面端自由调整终端高度
+  terminalHeight.value = Math.max(120, Math.round(newHeight))
 }
 
 const handleContextMenuClick = (item) => {
@@ -2750,13 +2736,10 @@ const isMarkdownSelected = computed(() => {
 // 计算终端区域样式
 const terminalStyle = computed(() => {
   if (!showTerminal.value) {
-    return { height: '48px' } // 只显示header
+    return { height: '48px' }
   }
-  return { 
-    height: '300px',
-    'min-height': '200px',
-    'max-height': '800px'
-  }
+  // 桌面端按拖拽高度渲染；移动端不使用该区域
+  return { height: terminalHeight.value + 'px' }
 })
 
 // 预览状态日志函数
@@ -3622,11 +3605,12 @@ const handleOpenHtmlLink = () => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* 允许被压缩 */
 }
 
 .preview-area {
   flex: 1;
-  min-height: 200px; /* 确保预览区域有最小高度 */
+  min-height: 80px; /* 允许更小，但保底 */
   margin-bottom: 8px; /* 与splitter保持一点距离 */
 }
 
@@ -3641,6 +3625,7 @@ const handleOpenHtmlLink = () => {
 
 .terminal-area {
   flex-shrink: 0; /* 防止终端区域被压缩 */
+  min-height: 0;
 }
 
 .area-title {
@@ -4848,8 +4833,8 @@ const handleOpenHtmlLink = () => {
 .preview-body { 
   flex: 1; 
   position: relative; 
-  overflow: hidden;
-  width: 100%;
+  overflow: hidden; 
+  width: 100%; 
   height: 100%;
 }
 
@@ -5090,5 +5075,25 @@ const handleOpenHtmlLink = () => {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+/* New: make mobile slot root stretch to full height */
+.mobile-view-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* New: ensure each mobile tab content fills and is flex container */
+.mobile-tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Desktop: allow inner flex to scroll correctly */
+@media (min-width: 1024px) {
+  .terminal-content { display: flex; flex-direction: column; min-height: 0; }
+  .embedded-terminal { flex: 1; min-height: 0; position: relative; }
 }
 </style>

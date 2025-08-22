@@ -19,6 +19,9 @@ import router from './router'
 // Store
 import store from './store'
 
+// Debug: mobile layout colorization (safe for screenshots)
+import './styles/mobile-debug.css'
+
 const app = createApp(App)
 
 // 注册Element Plus图标

@@ -379,11 +379,16 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
                 console.error(`[GenerateCard API] Error reading JSON file:`, error)
               }
               
-              // 返回主文件信息（优先返回JSON）
-              const primaryFile = result.files.find(f => f.fileType === 'json') || result.files[0]
+              // 对于 cardplanet-Sandra-json，HTML 是主文件，JSON 用于 pageinfo
+              const htmlFile = result.files.find(f => f.fileType === 'html')
+              const jsonFile = result.files.find(f => f.fileType === 'json')
+              
               resolve({
-                ...result,
-                ...primaryFile,
+                success: true,
+                fileName: htmlFile ? htmlFile.fileName : result.files[0].fileName,
+                path: htmlFile ? htmlFile.path : result.files[0].path,
+                content: htmlFile ? htmlFile.content : result.files[0].content,
+                fileType: 'html',
                 allFiles: result.files
               })
             } else {
@@ -505,6 +510,15 @@ router.post('/card', authenticateUserOrDefault, ensureUserFolder, async (req, re
       // 如果有多文件，添加到响应中
       if (result.allFiles) {
         responseData.allFiles = result.allFiles
+        
+        // 对于 cardplanet-Sandra-json 模板，添加 pageinfo 字段返回 JSON 内容
+        if (templateName === 'cardplanet-Sandra-json') {
+          const jsonFile = result.allFiles.find(f => f.fileType === 'json')
+          if (jsonFile && jsonFile.content) {
+            responseData.pageinfo = jsonFile.content
+            console.log(`[GenerateCard API] Added pageinfo for cardplanet-Sandra-json template`)
+          }
+        }
       }
       
       res.json({

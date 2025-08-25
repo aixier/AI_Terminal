@@ -89,6 +89,7 @@ router.get('/verify', async (req, res) => {
       code: 200,
       success: true,
       data: {
+        valid: true,
         user: {
           id: user.id,
           username: user.username,

@@ -10,7 +10,13 @@ const routes = [
   },
   {
     path: '/',
-    redirect: '/terminal'
+    name: 'Home',
+    component: Home,
+    meta: { 
+      requiresAuth: false,
+      title: '终端能力友好化系统',
+      description: '通过友好的Web界面执行复杂的终端命令'
+    }
   },
   {
     path: '/terminal',

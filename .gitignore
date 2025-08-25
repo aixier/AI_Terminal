@@ -84,3 +84,4 @@ DockerfileProduct
 
 # Production Dockerfile with sensitive information
 DockerfileProduct
+terminal-backend/data/public_template/cardplanet-Sandra-json/

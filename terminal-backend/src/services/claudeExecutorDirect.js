@@ -147,9 +147,12 @@ class ClaudeExecutorDirectService {
     console.log(`[ClaudeExecutorDirect] Topic: ${topic}`)
     console.log(`[ClaudeExecutorDirect] Template: ${templateName}`)
     
-    // 支持两种模板：cardplanet-Sandra (3参数) 和 cardplanet-Sandra-cover (4参数)
-    if (templateName !== 'cardplanet-Sandra' && templateName !== 'cardplanet-Sandra-cover') {
-      return templateName === 'cardplanet-Sandra-cover' 
+    // 支持三种模板：cardplanet-Sandra (3参数), cardplanet-Sandra-cover (4参数), cardplanet-Sandra-json (4参数)
+    const supportedTemplates = ['cardplanet-Sandra', 'cardplanet-Sandra-cover', 'cardplanet-Sandra-json']
+    const fourParamTemplates = ['cardplanet-Sandra-cover', 'cardplanet-Sandra-json']
+    
+    if (!supportedTemplates.includes(templateName)) {
+      return fourParamTemplates.includes(templateName)
         ? { cover: '', style: '', language: '', reference: '' }
         : { style: '', language: '', reference: '' }
     }
@@ -168,7 +171,7 @@ class ClaudeExecutorDirectService {
       // 根据模板类型生成不同的提示词
       let mergedPrompt
       
-      if (templateName === 'cardplanet-Sandra-cover') {
+      if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
         // 四参数模板：封面、风格、语言、参考
         mergedPrompt = `根据[${claudePath}]和[${coverPath}]文档，针对主题"${topic}"，请生成以下四个参数：
 
@@ -253,7 +256,7 @@ class ClaudeExecutorDirectService {
           console.log(`[ClaudeExecutorDirect] Parameters generated successfully:`, params)
           
           // 根据模板类型返回不同的参数结构
-          if (templateName === 'cardplanet-Sandra-cover') {
+          if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
             return {
               cover: params.cover || '默认封面',
               style: params.style || '根据主题理解其精神内核',
@@ -279,7 +282,7 @@ class ClaudeExecutorDirectService {
     }
     
     // 返回默认值
-    if (templateName === 'cardplanet-Sandra-cover') {
+    if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
       return {
         cover: '默认封面',
         style: '根据主题理解其精神内核，自动选择合适的风格',

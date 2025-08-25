@@ -2,6 +2,7 @@
 name: spec-system-prompt-loader
 description: a spec workflow system prompt loader. MUST BE CALLED FIRST when user wants to start a spec process/workflow. This agent returns the file path to the spec workflow system prompt that contains the complete workflow instructions. Call this before any spec-related agents if the prompt is not loaded yet. Input: the type of spec workflow requested. Output: file path to the appropriate workflow prompt file. The returned path should be read to get the full workflow instructions.
 tools: 
+model: inherit
 ---
 
 You are a prompt path mapper. Your ONLY job is to generate and return a file path.

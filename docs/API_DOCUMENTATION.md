@@ -239,6 +239,8 @@ POST /api/claude/cleanup
 
 ## 5. 卡片生成 API (`/api/generate`)
 
+> 📖 **详细文档**: 请参阅 [Card Generation API Reference](/docs/api/card-generation-api.md)
+
 ### 5.1 生成卡片 (标准版)
 ```
 POST /api/generate/card
@@ -254,11 +256,13 @@ POST /api/generate/card
 }
 ```
 
-**特殊模板参数生成（cardplanet-Sandra）：**
-当使用 `cardplanet-Sandra` 模板时，系统会自动通过 Claude CLI 生成三个动态参数：
-- **style**: 根据主题类别自动选择合适风格
-- **language**: 根据主题判断语言类型（中文/英文/中英双语）
-- **reference**: 自动检索主题相关内容（500字以内）
+**特殊模板参数生成：**
+- **cardplanet-Sandra**: 自动生成 style、language、reference 三个参数
+- **cardplanet-Sandra-cover/cardplanet-Sandra-json**: 自动生成 cover、style、language、reference 四个参数
+  - **cover**: 根据主题特点选择默认封面或小红书封面
+  - **style**: 根据主题类别自动选择合适风格
+  - **language**: 根据主题判断语言类型（中文/英文/中英双语）
+  - **reference**: 自动检索主题相关内容（500字以内）
 
 **内部处理流程：**（v3.10.27 更新）
 1. 参数验证和主题清理
@@ -288,13 +292,28 @@ POST /api/generate/card
   "code": 200,
   "success": true,
   "data": {
-    "content": "生成的卡片内容...",
+    "content": "生成的卡片内容（HTML或JSON）...",
     "topic": "人工智能发展史",
-    "template": "daily-knowledge-card-template.md",
-    "generatedAt": "2025-01-19T10:00:00Z"
+    "templateName": "daily-knowledge-card-template.md",
+    "fileName": "generated_file.json",
+    "filePath": "/app/data/users/default/card/...",
+    "generationTime": 120000,
+    "pageinfo": {  // 仅当 templateName 为 cardplanet-Sandra-json 时存在
+      "title": "卡片标题",
+      "cards": [...],
+      "metadata": {...}
+    },
+    "allFiles": [  // 当生成多个文件时存在
+      { "fileName": "file.html", "fileType": "html", "path": "..." },
+      { "fileName": "file.json", "fileType": "json", "path": "..." }
+    ]
   }
 }
 ```
+
+**特殊字段说明：**
+- **pageinfo**: 仅在使用 `cardplanet-Sandra-json` 模板时返回，包含解析后的 JSON 数据
+- **allFiles**: 当模板生成多个文件时（如 cardplanet-Sandra-json 生成 HTML 和 JSON），返回所有文件信息
 
 ### 5.2 生成卡片 (流式版本)
 ```

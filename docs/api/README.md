@@ -563,6 +563,9 @@ AI Terminal 提供了一套完整的 REST API 接口，用于终端会话管理�
 ### 7. 卡片生成API (`/api/generate`)
 
 #### 7.1 生成卡片并返回JSON内容
+
+> 📖 **完整文档**: 请参阅 [Card Generation API Reference](/docs/api/card-generation-api.md)
+
 - **URL**: `/api/generate/card`
 - **方法**: `POST`
 - **描述**: 使用统一终端服务，通过Claude生成知识卡片JSON文件并返回完整内容
@@ -602,6 +605,15 @@ AI Terminal 提供了一套完整的 REST API 接口，用于终端会话管理�
     "filePath": "/app/data/users/default/folders/default-folder/cards/Docker容器技术详解/docker-container-basics.json",
     "generationTime": 108000,
     "apiId": "card_1754897698538_izm2mx5tf",
+    "pageinfo": {  // 仅当 templateName 为 cardplanet-Sandra-json 时存在
+      "title": "卡片标题",
+      "cards": ["...卡片数据..."],
+      "metadata": {"...元数据..."}
+    },
+    "allFiles": [  // 当生成多个文件时存在（如 cardplanet-Sandra-json）
+      { "fileName": "topic_style.html", "fileType": "html", "path": "..." },
+      { "fileName": "topic_data.json", "fileType": "json", "path": "..." }
+    ],
     "content": {
       "theme": {
         "name": "daily-tech-knowledge",

@@ -102,35 +102,177 @@
           </div>
         </div>
 
-        <!-- 主要内容区 -->
-        <div class="share-content-layout" :class="{ 'mobile-layout': props.isMobile }">
-          <!-- 左侧：卡片预览 -->
-          <div class="cards-preview-section">
-            <div class="section-header">
-              <h4>📸 生成的卡片</h4>
-              <el-tag type="success">{{ shareResult.extractedData.images?.length || 0 }} 张</el-tag>
+        <!-- 主要内容区 - 重新设计布局 -->
+        <div class="share-main-container" :class="{ 'mobile-layout': props.isMobile }">
+          
+          <!-- 主区域：编辑内容 -->
+          <div class="primary-content-area">
+            <div class="edit-card">
+              <!-- 标题编辑 -->
+              <div class="edit-section title-section">
+                <label class="section-label">
+                  <el-icon><EditPen /></el-icon>
+                  标题
+                </label>
+                <el-input 
+                  v-model="postTitle" 
+                  placeholder="输入小红书标题..."
+                  size="large"
+                  maxlength="20"
+                  show-word-limit
+                />
+              </div>
+              
+              <!-- 内容编辑 -->
+              <div class="edit-section content-section">
+                <label class="section-label">
+                  <el-icon><Document /></el-icon>
+                  推文内容
+                </label>
+                <el-input 
+                  v-model="postContent" 
+                  placeholder="分享你的精彩内容..."
+                  :rows="6"
+                  type="textarea"
+                  maxlength="1000"
+                  show-word-limit
+                  resize="vertical"
+                />
+              </div>
+              
+              <!-- 标签编辑 -->
+              <div class="edit-section tags-section">
+                <label class="section-label">
+                  <el-icon><PriceTag /></el-icon>
+                  话题标签
+                </label>
+                <div class="tags-editor">
+                  <div class="current-tags">
+                    <el-tag 
+                      v-for="(tag, index) in postHashtags" 
+                      :key="index"
+                      closable
+                      @close="removeHashtag(index)"
+                      size="large"
+                      type="danger"
+                      effect="plain"
+                    >
+                      #{{ tag }}
+                    </el-tag>
+                    <el-input
+                      v-if="showHashtagInput"
+                      v-model="newHashtag"
+                      size="default"
+                      style="width: 140px"
+                      @keyup.enter="addHashtag"
+                      @blur="addHashtag"
+                      placeholder="输入标签"
+                    />
+                    <el-button 
+                      v-else
+                      size="default" 
+                      @click="showHashtagInput = true"
+                      icon="Plus"
+                      circle
+                    />
+                  </div>
+                  <div class="suggested-tags">
+                    <span class="suggest-label">热门：</span>
+                    <span 
+                      v-for="tag in suggestedHashtags" 
+                      :key="tag"
+                      @click="addSuggestedTag(tag)"
+                      class="tag-chip"
+                    >
+                      #{{ tag }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 操作按钮 -->
+              <div class="action-area">
+                <el-button type="danger" size="large" @click="copyPostContent">
+                  <el-icon><CopyDocument /></el-icon>
+                  复制发布内容
+                </el-button>
+                <el-button size="large" @click="openInNewWindow(shareResult.shareLink)">
+                  <el-icon><Position /></el-icon>
+                  在小红书打开
+                </el-button>
+              </div>
             </div>
-            <div class="cards-grid">
+          </div>
+          
+          <!-- 侧边栏：缩略图和链接 -->
+          <div class="sidebar-area">
+            <!-- 卡片缩略图 - 移动端可折叠 -->
+            <div class="thumbnail-section" :class="{ 'collapsed': props.isMobile && !showThumbnails }">
               <div 
-                v-for="(image, index) in (shareResult.extractedData.images || []).slice(0, 9)"
-                :key="index"
-                class="card-thumbnail"
-                @click="openInNewWindow(image.src)"
+                class="section-title" 
+                @click="props.isMobile ? showThumbnails = !showThumbnails : null"
+                :style="{ cursor: props.isMobile ? 'pointer' : 'default' }"
               >
-                <img :src="image.src" :alt="`卡片 ${index + 1}`" />
-                <div class="card-overlay">
-                  <span class="card-number">{{ index + 1 }}</span>
-                  <el-icon class="expand-icon"><ZoomIn /></el-icon>
+                <span>生成的卡片 ({{ shareResult.extractedData.images?.length || 0 }})</span>
+                <el-icon v-if="props.isMobile" class="toggle-icon">
+                  <ArrowDown v-if="!showThumbnails" />
+                  <ArrowUp v-else />
+                </el-icon>
+              </div>
+              <div v-show="!props.isMobile || showThumbnails" class="thumbnail-content">
+                <div class="thumbnail-grid">
+                  <div 
+                    v-for="(image, index) in (shareResult.extractedData.images || []).slice(0, 6)"
+                    :key="index"
+                    class="mini-thumbnail"
+                    @click="openInNewWindow(image.src)"
+                    :title="`查看卡片 ${index + 1}`"
+                  >
+                    <img :src="image.src" :alt="`${index + 1}`" />
+                    <span class="thumb-number">{{ index + 1 }}</span>
+                  </div>
+                </div>
+                <div v-if="shareResult.extractedData.images?.length > 6" class="more-hint">
+                  +{{ shareResult.extractedData.images.length - 6 }} 更多
                 </div>
               </div>
             </div>
-            <div v-if="shareResult.extractedData.images?.length > 9" class="more-cards-hint">
-              还有 {{ shareResult.extractedData.images.length - 9 }} 张卡片...
+            
+            <!-- 分享链接 -->
+            <div class="links-section">
+              <div class="section-title">快速分享</div>
+              <div class="link-item">
+                <span class="link-label">短链接</span>
+                <div class="link-group">
+                  <el-input 
+                    v-model="shareResult.data.shortUrl" 
+                    readonly
+                    size="small"
+                  />
+                  <el-button size="small" @click="copyShareLink(shareResult.data.shortUrl)" icon="CopyDocument" />
+                </div>
+              </div>
+              
+              <!-- 二维码 -->
+              <div class="qr-section">
+                <img 
+                  :src="shareResult.data.qrCodeUrl" 
+                  alt="QR"
+                  class="qr-image"
+                />
+                <el-button size="small" text @click="downloadQRCode(shareResult.data.qrCodeUrl)">
+                  下载二维码
+                </el-button>
+              </div>
             </div>
           </div>
+        </div>
 
-          <!-- 右侧：分享操作 -->
-          <div class="share-actions-section">
+        <!-- 保留原来的右侧分享操作区域结构，但隐藏 -->
+        <div style="display: none;">
+          <div class="share-content-layout" :class="{ 'mobile-layout': props.isMobile }">
+            <div class="cards-preview-section"></div>
+            <div class="share-actions-section">
             <!-- 快速分享 -->
             <div class="quick-share-panel">
               <h4>🚀 快速分享</h4>
@@ -223,6 +365,7 @@
             </div>
           </div>
         </div>
+        </div>
 
         <!-- 底部信息 -->
         <div class="share-footer-info">
@@ -264,7 +407,11 @@ import {
   CircleCheckFilled,
   ZoomIn,
   Download,
-  Position
+  Position,
+  EditPen,
+  PriceTag,
+  ArrowDown,
+  ArrowUp
 } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -294,6 +441,19 @@ const contentArea = ref(null)
 const isSharing = ref(false) // 分享状态
 const shareDialogVisible = ref(false) // 分享结果对话框
 const shareResult = ref(null) // 分享结果数据
+
+// 小红书发布内容
+const postTitle = ref('')
+const postContent = ref('')
+const postHashtags = ref([])
+const showHashtagInput = ref(false)
+const newHashtag = ref('')
+
+// 推荐标签
+const suggestedHashtags = ['小红书', '分享', '卡片设计', '创意', '艺术', '生活记录', '日常', '打卡']
+
+// 缩略图展示状态（移动端默认折叠）
+const showThumbnails = ref(false)
 
 // 处理后的HTML（添加基础样式和viewport）
 const processedHtml = computed(() => {
@@ -592,6 +752,11 @@ const handleShareToXHS = async () => {
     // 保存分享结果
     shareResult.value = result
     
+    // 初始化发布内容（从API响应中提取，如果为空则使用默认值）
+    postTitle.value = result.extractedData?.title || ''
+    postContent.value = result.extractedData?.content || ''
+    postHashtags.value = result.extractedData?.hashtags || []
+    
     // 显示分享结果对话框
     shareDialogVisible.value = true
     
@@ -626,6 +791,52 @@ const downloadQRCode = (url) => {
 // 在新窗口打开
 const openInNewWindow = (url) => {
   window.open(url, '_blank')
+}
+
+// 添加标签
+const addHashtag = () => {
+  if (newHashtag.value.trim() && !postHashtags.value.includes(newHashtag.value.trim())) {
+    postHashtags.value.push(newHashtag.value.trim())
+    newHashtag.value = ''
+    showHashtagInput.value = false
+  }
+}
+
+// 添加推荐标签
+const addSuggestedTag = (tag) => {
+  if (!postHashtags.value.includes(tag)) {
+    postHashtags.value.push(tag)
+  }
+}
+
+// 移除标签
+const removeHashtag = (index) => {
+  postHashtags.value.splice(index, 1)
+}
+
+// 复制发布内容
+const copyPostContent = async () => {
+  // 组装完整的发布内容
+  let fullContent = ''
+  
+  if (postTitle.value) {
+    fullContent += `【${postTitle.value}】\n\n`
+  }
+  
+  if (postContent.value) {
+    fullContent += postContent.value + '\n\n'
+  }
+  
+  if (postHashtags.value.length > 0) {
+    fullContent += postHashtags.value.map(tag => `#${tag}`).join(' ')
+  }
+  
+  try {
+    await navigator.clipboard.writeText(fullContent)
+    ElMessage.success('发布内容已复制到剪贴板')
+  } catch (e) {
+    ElMessage.error('复制失败: ' + e.message)
+  }
 }
 
 // 缩放控制
@@ -893,6 +1104,474 @@ onUnmounted(() => {
 
 .share-result-container {
   background: #f8f9fa;
+}
+
+/* 新的主容器布局 */
+.share-main-container {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  padding: 24px;
+  
+  &.mobile-layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
+
+/* 主编辑区域 */
+.primary-content-area {
+  .edit-card {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    
+    .edit-section {
+      margin-bottom: 28px;
+      
+      &.title-section {
+        .el-input__inner {
+          font-size: 18px;
+          font-weight: 600;
+        }
+      }
+      
+      &.content-section {
+        .el-textarea__inner {
+          font-size: 15px;
+          line-height: 1.8;
+        }
+      }
+      
+      .section-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 12px;
+        
+        .el-icon {
+          color: #ff2442;
+          font-size: 18px;
+        }
+      }
+    }
+    
+    .tags-editor {
+      .current-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 12px;
+        
+        .el-tag {
+          font-size: 14px;
+          padding: 8px 12px;
+          border-color: #ff2442;
+          color: #ff2442;
+          
+          &:hover {
+            background-color: #fff1f3;
+          }
+        }
+      }
+      
+      .suggested-tags {
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        
+        .suggest-label {
+          font-size: 13px;
+          color: #909399;
+          margin-right: 8px;
+        }
+        
+        .tag-chip {
+          display: inline-block;
+          margin: 4px;
+          padding: 6px 12px;
+          background: white;
+          border: 1px solid #e4e7ed;
+          border-radius: 16px;
+          font-size: 13px;
+          color: #606266;
+          cursor: pointer;
+          transition: all 0.3s;
+          
+          &:hover {
+            background: #ff2442;
+            color: white;
+            border-color: #ff2442;
+            transform: translateY(-1px);
+          }
+        }
+      }
+    }
+    
+    .action-area {
+      display: flex;
+      gap: 12px;
+      padding-top: 24px;
+      border-top: 1px solid #e4e7ed;
+      
+      .el-button {
+        flex: 1;
+        height: 48px;
+        font-size: 16px;
+      }
+    }
+  }
+}
+
+/* 侧边栏区域 */
+.sidebar-area {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  
+  .thumbnail-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin-bottom: 12px;
+    }
+    
+    .thumbnail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      
+      .mini-thumbnail {
+        position: relative;
+        aspect-ratio: 3/4;
+        border-radius: 6px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.2s;
+        background: #f5f5f5;
+        
+        &:hover {
+          transform: scale(1.05);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          z-index: 10;
+          
+          .thumb-number {
+            opacity: 1;
+          }
+        }
+        
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        
+        .thumb-number {
+          position: absolute;
+          bottom: 4px;
+          right: 4px;
+          background: rgba(0, 0, 0, 0.7);
+          color: white;
+          width: 20px;
+          height: 20px;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          opacity: 0.8;
+          transition: opacity 0.2s;
+        }
+      }
+    }
+    
+    .more-hint {
+      text-align: center;
+      color: #909399;
+      font-size: 12px;
+      margin-top: 8px;
+      padding: 6px;
+      background: #f5f7fa;
+      border-radius: 4px;
+    }
+  }
+  
+  .links-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin-bottom: 12px;
+    }
+    
+    .link-item {
+      margin-bottom: 12px;
+      
+      .link-label {
+        display: block;
+        font-size: 12px;
+        color: #909399;
+        margin-bottom: 6px;
+      }
+      
+      .link-group {
+        display: flex;
+        gap: 4px;
+        
+        .el-input {
+          flex: 1;
+        }
+      }
+    }
+    
+    .qr-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid #e4e7ed;
+      margin-top: 12px;
+      
+      .qr-image {
+        width: 120px;
+        height: 120px;
+        border: 1px solid #e4e7ed;
+        border-radius: 8px;
+        padding: 8px;
+        background: white;
+        margin-bottom: 8px;
+      }
+    }
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .share-main-container {
+    &.mobile-layout {
+      gap: 16px;
+      
+      .primary-content-area {
+        order: 1;
+        
+        .edit-card {
+          padding: 16px;
+          border-radius: 8px;
+          
+          .edit-section {
+            margin-bottom: 20px;
+            
+            &.title-section {
+              .el-input__inner {
+                font-size: 16px;
+              }
+            }
+            
+            &.content-section {
+              .el-textarea__inner {
+                font-size: 14px;
+                min-height: 120px !important;
+              }
+            }
+            
+            .section-label {
+              font-size: 14px;
+              margin-bottom: 8px;
+              
+              .el-icon {
+                font-size: 16px;
+              }
+            }
+          }
+          
+          .tags-editor {
+            .current-tags {
+              gap: 6px;
+              
+              .el-tag {
+                font-size: 13px;
+                padding: 6px 10px;
+              }
+            }
+            
+            .suggested-tags {
+              padding: 8px;
+              
+              .tag-chip {
+                margin: 2px;
+                padding: 4px 10px;
+                font-size: 12px;
+              }
+            }
+          }
+          
+          .action-area {
+            flex-direction: column;
+            padding-top: 16px;
+            gap: 10px;
+            
+            .el-button {
+              width: 100%;
+              height: 44px;
+              font-size: 15px;
+            }
+          }
+        }
+      }
+      
+      .sidebar-area {
+        order: 2;
+        
+        /* 移动端将侧边栏改为横向滚动 */
+        .thumbnail-section {
+          padding: 12px;
+          
+          .section-title {
+            font-size: 13px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            
+            .toggle-icon {
+              font-size: 16px;
+              color: #909399;
+            }
+          }
+          
+          &.collapsed {
+            .thumbnail-content {
+              display: none;
+            }
+          }
+          
+          .thumbnail-grid {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+            
+            &::-webkit-scrollbar {
+              height: 4px;
+            }
+            
+            &::-webkit-scrollbar-track {
+              background: #f1f1f1;
+              border-radius: 2px;
+            }
+            
+            &::-webkit-scrollbar-thumb {
+              background: #888;
+              border-radius: 2px;
+            }
+            
+            .mini-thumbnail {
+              flex: 0 0 80px;
+              height: 106px;
+              
+              .thumb-number {
+                width: 18px;
+                height: 18px;
+                font-size: 10px;
+              }
+            }
+          }
+          
+          .more-hint {
+            font-size: 11px;
+            padding: 4px;
+          }
+        }
+        
+        .links-section {
+          padding: 12px;
+          
+          .section-title {
+            font-size: 13px;
+            margin-bottom: 8px;
+          }
+          
+          .link-item {
+            margin-bottom: 8px;
+            
+            .link-label {
+              font-size: 11px;
+            }
+            
+            .link-group {
+              .el-button {
+                padding: 8px;
+              }
+            }
+          }
+          
+          .qr-section {
+            padding-top: 8px;
+            margin-top: 8px;
+            
+            .qr-image {
+              width: 100px;
+              height: 100px;
+              padding: 6px;
+            }
+            
+            .el-button {
+              font-size: 12px;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  /* 移动端优化：减少不必要的内边距 */
+  .share-result-container {
+    .share-success-banner {
+      padding: 16px;
+      
+      .success-icon {
+        font-size: 36px;
+      }
+      
+      .success-text {
+        h3 {
+          font-size: 18px;
+        }
+        
+        p {
+          font-size: 13px;
+        }
+      }
+    }
+  }
+  
+  /* 移动端全屏对话框调整 */
+  .share-dialog {
+    .el-dialog__header {
+      padding: 12px 16px;
+    }
+    
+    .el-dialog__footer {
+      padding: 12px 16px;
+    }
+  }
 }
 
 /* 成功提示横幅 */

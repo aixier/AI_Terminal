@@ -19,6 +19,10 @@
           <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
+        <el-button @click="handleShareToXHS" :loading="isSharing" type="danger">
+          <el-icon><Share /></el-icon>
+          分享小红书
+        </el-button>
         <el-button @click="handleCopy">
           <el-icon><CopyDocument /></el-icon>
           {{ props.isMobile ? '新窗口浏览' : '复制源码' }}
@@ -79,6 +83,169 @@
         <el-button size="small" @click="() => fitToWidth(true)">适应</el-button>
       </div>
     </div>
+    
+    <!-- 分享结果对话框 - 产品化设计 -->
+    <el-dialog
+      v-model="shareDialogVisible"
+      :title="props.isMobile ? '分享成功' : '分享到小红书'"
+      :width="props.isMobile ? '95%' : '900px'"
+      :fullscreen="props.isMobile"
+      class="share-dialog"
+    >
+      <div v-if="shareResult" class="share-result-container">
+        <!-- 顶部成功提示 -->
+        <div class="share-success-banner">
+          <el-icon class="success-icon"><CircleCheckFilled /></el-icon>
+          <div class="success-text">
+            <h3>内容已成功生成！</h3>
+            <p>已生成 {{ shareResult.data.cardCount || 0 }} 张精美卡片，可直接分享到小红书</p>
+          </div>
+        </div>
+
+        <!-- 主要内容区 -->
+        <div class="share-content-layout" :class="{ 'mobile-layout': props.isMobile }">
+          <!-- 左侧：卡片预览 -->
+          <div class="cards-preview-section">
+            <div class="section-header">
+              <h4>📸 生成的卡片</h4>
+              <el-tag type="success">{{ shareResult.extractedData.images?.length || 0 }} 张</el-tag>
+            </div>
+            <div class="cards-grid">
+              <div 
+                v-for="(image, index) in (shareResult.extractedData.images || []).slice(0, 9)"
+                :key="index"
+                class="card-thumbnail"
+                @click="openInNewWindow(image.src)"
+              >
+                <img :src="image.src" :alt="`卡片 ${index + 1}`" />
+                <div class="card-overlay">
+                  <span class="card-number">{{ index + 1 }}</span>
+                  <el-icon class="expand-icon"><ZoomIn /></el-icon>
+                </div>
+              </div>
+            </div>
+            <div v-if="shareResult.extractedData.images?.length > 9" class="more-cards-hint">
+              还有 {{ shareResult.extractedData.images.length - 9 }} 张卡片...
+            </div>
+          </div>
+
+          <!-- 右侧：分享操作 -->
+          <div class="share-actions-section">
+            <!-- 快速分享 -->
+            <div class="quick-share-panel">
+              <h4>🚀 快速分享</h4>
+              
+              <!-- 分享链接 -->
+              <div class="share-link-card">
+                <label>分享链接</label>
+                <div class="link-input-group">
+                  <el-input 
+                    v-model="shareResult.shareLink" 
+                    readonly
+                    placeholder="分享链接"
+                  />
+                  <el-button type="primary" @click="copyShareLink(shareResult.shareLink)">
+                    <el-icon><CopyDocument /></el-icon>
+                    复制
+                  </el-button>
+                </div>
+              </div>
+
+              <!-- 短链接 -->
+              <div class="share-link-card">
+                <label>短链接</label>
+                <div class="link-input-group">
+                  <el-input 
+                    v-model="shareResult.data.shortUrl" 
+                    readonly
+                    placeholder="短链接"
+                  />
+                  <el-button @click="copyShareLink(shareResult.data.shortUrl)">
+                    <el-icon><CopyDocument /></el-icon>
+                    复制
+                  </el-button>
+                </div>
+              </div>
+
+              <!-- 二维码 -->
+              <div class="qr-code-section">
+                <label>扫码访问</label>
+                <div class="qr-code-wrapper">
+                  <img 
+                    :src="shareResult.data.qrCodeUrl" 
+                    alt="QR Code"
+                    class="qr-code-image"
+                  />
+                  <el-button 
+                    size="small" 
+                    @click="downloadQRCode(shareResult.data.qrCodeUrl)"
+                    class="download-qr-btn"
+                  >
+                    <el-icon><Download /></el-icon>
+                    下载二维码
+                  </el-button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 操作按钮组 -->
+            <div class="action-buttons">
+              <el-button 
+                type="danger" 
+                size="large"
+                @click="openInNewWindow(shareResult.shareLink)"
+                class="primary-action-btn"
+              >
+                <el-icon><Position /></el-icon>
+                在小红书中打开
+              </el-button>
+              
+              <el-button 
+                type="primary" 
+                size="large"
+                @click="openInNewWindow(shareResult.data.originalUrl)"
+                plain
+              >
+                <el-icon><View /></el-icon>
+                查看原始页面
+              </el-button>
+            </div>
+
+            <!-- 使用提示 -->
+            <div class="usage-tips">
+              <h5>💡 使用提示</h5>
+              <ul>
+                <li>点击卡片可查看大图</li>
+                <li>长按卡片图片可保存到相册</li>
+                <li>复制链接后可直接粘贴分享</li>
+                <li>扫描二维码可在手机上查看</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部信息 -->
+        <div class="share-footer-info">
+          <el-descriptions :column="props.isMobile ? 1 : 3" size="small">
+            <el-descriptions-item label="文件ID">
+              {{ shareResult.fileId }}
+            </el-descriptions-item>
+            <el-descriptions-item label="文件大小">
+              {{ (shareResult.fileSize / 1024).toFixed(2) }} KB
+            </el-descriptions-item>
+            <el-descriptions-item label="生成时间">
+              {{ new Date().toLocaleString() }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </div>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="shareDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -92,7 +259,12 @@ import {
   CopyDocument, 
   FullScreen, 
   Loading,
-  CircleCloseFilled 
+  CircleCloseFilled,
+  Share,
+  CircleCheckFilled,
+  ZoomIn,
+  Download,
+  Position
 } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -119,6 +291,9 @@ const error = ref('')
 const scalePercent = ref(props.isMobile ? 150 : 100) // 移动端默认150%，桌面端100%
 const htmlFrame = ref(null)
 const contentArea = ref(null)
+const isSharing = ref(false) // 分享状态
+const shareDialogVisible = ref(false) // 分享结果对话框
+const shareResult = ref(null) // 分享结果数据
 
 // 处理后的HTML（添加基础样式和viewport）
 const processedHtml = computed(() => {
@@ -382,6 +557,77 @@ const handleFullscreen = () => {
   }
 }
 
+// 分享到小红书
+const handleShareToXHS = async () => {
+  if (!props.htmlContent) {
+    ElMessage.warning('没有可分享的内容')
+    return
+  }
+
+  isSharing.value = true
+  shareResult.value = null
+
+  try {
+    // 调用 Engagia API
+    const response = await fetch('http://engagia-s3.paitongai.net/api/process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        html: props.htmlContent
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.message || '处理失败')
+    }
+
+    // 保存分享结果
+    shareResult.value = result
+    
+    // 显示分享结果对话框
+    shareDialogVisible.value = true
+    
+    ElMessage.success('生成分享内容成功！')
+    
+  } catch (error) {
+    console.error('分享失败:', error)
+    ElMessage.error('分享失败: ' + error.message)
+  } finally {
+    isSharing.value = false
+  }
+}
+
+// 复制分享链接
+const copyShareLink = async (url) => {
+  try {
+    await navigator.clipboard.writeText(url)
+    ElMessage.success('链接已复制到剪贴板')
+  } catch (e) {
+    ElMessage.error('复制失败: ' + e.message)
+  }
+}
+
+// 下载二维码
+const downloadQRCode = (url) => {
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'share-qrcode.png'
+  link.click()
+}
+
+// 在新窗口打开
+const openInNewWindow = (url) => {
+  window.open(url, '_blank')
+}
+
 // 缩放控制
 const handleScaleChange = (value) => {
   scalePercent.value = value
@@ -635,6 +881,305 @@ onUnmounted(() => {
   .scale-buttons {
     width: 100%;
     justify-content: space-between;
+  }
+}
+
+/* 分享对话框样式 - 产品化设计 */
+.share-dialog {
+  .el-dialog__body {
+    padding: 0;
+  }
+}
+
+.share-result-container {
+  background: #f8f9fa;
+}
+
+/* 成功提示横幅 */
+.share-success-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  
+  .success-icon {
+    font-size: 48px;
+    color: #4ade80;
+  }
+  
+  .success-text {
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    
+    p {
+      margin: 0;
+      opacity: 0.95;
+      font-size: 14px;
+    }
+  }
+}
+
+/* 主内容布局 */
+.share-content-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  padding: 24px;
+  
+  &.mobile-layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
+
+/* 卡片预览区 */
+.cards-preview-section {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    
+    h4 {
+      margin: 0;
+      font-size: 16px;
+      color: #303133;
+    }
+  }
+  
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  .card-thumbnail {
+    position: relative;
+    aspect-ratio: 3/4;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    background: #f5f5f5;
+    
+    &:hover {
+      transform: scale(1.05);
+      
+      .card-overlay {
+        opacity: 1;
+      }
+    }
+    
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 8px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      
+      .card-number {
+        color: white;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      
+      .expand-icon {
+        color: white;
+        font-size: 20px;
+        margin-top: 4px;
+      }
+    }
+  }
+  
+  .more-cards-hint {
+    text-align: center;
+    color: #909399;
+    font-size: 14px;
+    margin-top: 12px;
+    padding: 8px;
+    background: #f5f7fa;
+    border-radius: 6px;
+  }
+}
+
+/* 分享操作区 */
+.share-actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.quick-share-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  
+  h4 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    color: #303133;
+  }
+  
+  .share-link-card {
+    margin-bottom: 16px;
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #606266;
+      font-weight: 500;
+    }
+    
+    .link-input-group {
+      display: flex;
+      gap: 8px;
+      
+      .el-input {
+        flex: 1;
+      }
+    }
+  }
+  
+  .qr-code-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e4e7ed;
+    
+    label {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #606266;
+      font-weight: 500;
+    }
+    
+    .qr-code-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      
+      .qr-code-image {
+        width: 150px;
+        height: 150px;
+        border: 1px solid #e4e7ed;
+        border-radius: 8px;
+        padding: 8px;
+        background: white;
+      }
+      
+      .download-qr-btn {
+        width: 100%;
+        max-width: 150px;
+      }
+    }
+  }
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  
+  .el-button {
+    width: 100%;
+    height: 44px;
+    font-size: 15px;
+    
+    &.primary-action-btn {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ff3838 100%);
+      border-color: #ff3838;
+      
+      &:hover {
+        background: linear-gradient(135deg, #ff5252 0%, #ff1f1f 100%);
+        border-color: #ff1f1f;
+      }
+    }
+  }
+}
+
+.usage-tips {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 16px;
+  
+  h5 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #92400e;
+  }
+  
+  ul {
+    margin: 0;
+    padding-left: 20px;
+    
+    li {
+      color: #78350f;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+  }
+}
+
+.share-footer-info {
+  background: white;
+  padding: 16px 24px;
+  border-top: 1px solid #e4e7ed;
+  
+  .el-descriptions {
+    margin: 0;
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .share-content-layout {
+    .cards-preview-section {
+      .cards-grid {
+        gap: 8px;
+      }
+    }
+    
+    .share-actions-section {
+      .quick-share-panel {
+        .qr-code-section {
+          .qr-code-wrapper {
+            .qr-code-image {
+              width: 120px;
+              height: 120px;
+            }
+          }
+        }
+      }
+    }
   }
 }
 </style>

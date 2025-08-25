@@ -684,7 +684,7 @@ import TabNavigation from '../components/mobile/TabNavigation.vue'
 import StartupInitializer from '../components/StartupInitializer.vue'
 import ContextMenu from '../components/ContextMenu.vue'
 import { useDevice } from '../composables/useDevice.js'
-import axios from 'axios'
+import axios from '../api/config.js'
 import { useLayoutStore, MOBILE_TABS } from '../store/layout.js'
 import { useRouter } from 'vue-router'
 import TerminalChat from '../components/mobile/TerminalChat.vue'
@@ -1265,11 +1265,17 @@ const generateCard = async () => {
     generatingHint.value = '正在连接服务...'
     
     // 使用 fetch API 处理 SSE 流
+    const token = localStorage.getItem('token')
+    const headers = {
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
     const response = await fetch('/api/generate/card/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         topic: currentTopic.value.trim(),
         templateName
@@ -2242,50 +2248,83 @@ const refreshCardFolders = async () => {
 // Load templates from public_template directory
 const loadTemplates = async () => {
   try {
-    console.log('[debug0.0.1] Loading templates from public_template directory...')
-    const response = await axios.get('/api/upload/structure')
-    console.log('[debug0.0.1] templates structure response:', response)
+    console.log('[Templates] 🔄 Loading templates from public_template directory...')
+    console.log('[Templates] Request URL: /upload/structure')
     
-    if (response.data.success && response.data.data) {
-      console.log('[debug0.0.1] templates data:', response.data.data)
+    const response = await axios.get('/upload/structure')
+    console.log('[Templates] ✅ API Response received:', {
+      success: response.success,
+      hasData: !!response.data,
+      dataLength: response.data?.length,
+      message: response.message
+    })
+    console.log('[Templates] 📋 Full response:', response)
+    
+    // 🔍 Debug: Let's see what axios is actually returning
+    console.log('[Templates] 🔍 DEBUG response structure:', Object.keys(response))
+    console.log('[Templates] 🔍 DEBUG response.success:', response.success)
+    console.log('[Templates] 🔍 DEBUG response.data type:', typeof response.data)
+    console.log('[Templates] 🔍 DEBUG response.data Array?:', Array.isArray(response.data))
+    
+    if (response.success && response.data) {
+      console.log('[Templates] 📄 Raw template data:', response.data)
       
       // 将文件和文件夹转换为模板格式
       const convertToTemplates = (items, baseName = '') => {
         const templates = []
+        console.log(`[Templates] 🔄 Converting ${items.length} items to templates...`)
+        
         for (const item of items) {
           const fullName = baseName ? `${baseName}/${item.name}` : item.name
           
           if (item.type === 'folder') {
-            // 文件夹作为模板
-            templates.push({
+            const template = {
               fileName: fullName,
               name: fullName,
               description: `文件夹模板 (${item.children?.length || 0}个文件)`,
               type: 'folder'
-            })
+            }
+            templates.push(template)
+            console.log(`[Templates] 📁 Added folder template: ${fullName}`)
             
-            // 不递归处理子文件夹和文件，只显示第一级
           } else if (item.type === 'file') {
-            // 文件作为模板
-            templates.push({
+            const template = {
               fileName: fullName,
               name: item.name,
               description: `文件模板 (${formatFileSize(item.size)})`,
               type: 'file'
-            })
+            }
+            templates.push(template)
+            console.log(`[Templates] 📄 Added file template: ${item.name}`)
           }
         }
         return templates
       }
       
-      templates.value = convertToTemplates(response.data.data)
-      console.log('[debug0.0.1] Processed templates for display:', templates.value)
+      const processedTemplates = convertToTemplates(response.data)
+      templates.value = processedTemplates
+      
+      console.log(`[Templates] ✅ Successfully loaded ${processedTemplates.length} templates:`)
+      processedTemplates.forEach((template, index) => {
+        console.log(`[Templates]   ${index + 1}. ${template.name} (${template.type})`)
+      })
+      
     } else {
       templates.value = []
-      console.warn('[debug0.0.1] No templates found in public_template directory')
+      console.warn('[Templates] ⚠️ No templates found - response structure:', {
+        success: response.success,
+        hasData: !!response.data,
+        responseKeys: Object.keys(response || {})
+      })
     }
   } catch (error) {
-    console.error('[debug0.0.1] Failed to load templates:', error)
+    console.error('[Templates] ❌ Failed to load templates:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      responseData: error.response?.data,
+      url: error.config?.url
+    })
     templates.value = []
   }
 }
@@ -2684,9 +2723,8 @@ onUnmounted(() => {
   stopFallbackRefresh()
   
   // 清理终端
-  if (terminalService) {
-    terminalService.cleanup()
-  }
+  // terminalService cleanup moved to terminal API
+  console.log('[CardGenerator] Component unmounted and cleaned up')
 })
 
 watch(currentMobileTab, (to, from) => {

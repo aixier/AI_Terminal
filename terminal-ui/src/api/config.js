@@ -54,7 +54,9 @@ service.interceptors.response.use(
       
       return Promise.reject(new Error(res.message || '请求失败'))
     } else {
-      // 返回完整的响应数据，而不是只返回res
+      // ⚠️ 注意：这里返回res(即response.data)而不是完整的response对象
+      // 这意味着调用axios.get()时，返回的response实际是原始的response.data
+      // 所以前端代码应该直接使用response.success而不是response.data.success
       return res
     }
   },

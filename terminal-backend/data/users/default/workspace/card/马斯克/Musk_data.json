@@ -1,0 +1,321 @@
+{
+  "meta": {
+    "title": "马斯克",
+    "subtitle": "未来科技的引领者 · 从电动汽车到火星移民的商业帝国",
+    "theme": "马斯克",
+    "style": "沙丘科幻美学",
+    "cover_template": "default",
+    "cover_template_selection": {
+      "user_input_analysis": "用户未指定小红书封面",
+      "selected_template": "default",
+      "selection_reason": "默认选择模板1"
+    },
+    "card_count": 8,
+    "total_content_lines": 85,
+    "created_date": "2024-08-26T10:30:00Z",
+    "file_names": {
+      "html": "Musk_style.html",
+      "json": "Musk_data.json"
+    }
+  },
+  "style_info": {
+    "selected_style": "沙丘科幻美学",
+    "auto_matched": true,
+    "match_reason": "科技创新和太空探索主题自动匹配沙丘科幻美学",
+    "color_system": ["#1a1a2e", "#16213e", "#d4af37", "#ffd700", "#ff6b35", "#cd853f"],
+    "design_philosophy": "史诗科幻美学，融合沙丘的神秘主义与未来科技的宏大叙事"
+  },
+  "cards": [
+    {
+      "card_id": 1,
+      "type": "cover",
+      "template": "default",
+      "title": {
+        "text": "马斯克\n未来科技引领者",
+        "density_level": "medium",
+        "font_size": "24px",
+        "character_count": 12
+      },
+      "subtitle": "SpaceX·特斯拉·Neuralink",
+      "content": ["从PayPal到火星移民的商业传奇"],
+      "svg_description": "发光的火箭图案，周围环绕星星，体现太空探索主题",
+      "density_analysis": {
+        "total_lines": 7,
+        "density_level": "low",
+        "svg_height": "120px",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "封面内容在安全区域",
+          "recommendations": []
+        }
+      }
+    },
+    {
+      "card_id": 2,
+      "type": "content",
+      "title": "SpaceX：太空帝国的崛起",
+      "content": [
+        "$3500亿",
+        "估值创历史新高",
+        "• 全球最大私人航天公司",
+        "• 星链卫星超过5000颗在轨",
+        "• 猎鹰9号火箭成功回收重复使用",
+        "• 星舰项目瞄准火星移民",
+        "22年来从零起步到太空霸主，革命性地降低了发射成本"
+      ],
+      "visual_elements": [
+        {
+          "type": "svg",
+          "description": "旋转的轨道环和中心金钱符号，象征太空商业帝国",
+          "height": "90px"
+        }
+      ],
+      "density_analysis": {
+        "total_lines": 10,
+        "density_level": "medium",
+        "svg_height": "90px",
+        "margin_spacing": "1.2rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "内容合理分布，在安全范围内",
+          "recommendations": []
+        }
+      }
+    },
+    {
+      "card_id": 3,
+      "type": "content", 
+      "title": "火星移民：人类的下一步",
+      "content": [
+        "2026年：机器人登陆火星",
+        "• 星舰完成轨道试飞测试",
+        "• 无人货运任务建立基础设施", 
+        "• 验证着陆技术和生存系统",
+        "2029年：首批人类抵达火星",
+        "• 载人任务正式启动",
+        "• 建立永久性火星基地",
+        "• 开启人类多行星时代"
+      ],
+      "visual_elements": [
+        {
+          "type": "svg",
+          "description": "地球到火星的轨道路径图，展示太空航行",
+          "height": "90px"
+        }
+      ],
+      "density_analysis": {
+        "total_lines": 11,
+        "density_level": "medium",
+        "svg_height": "90px",
+        "margin_spacing": "1rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "通过高亮框合理组织内容",
+          "recommendations": []
+        }
+      }
+    },
+    {
+      "card_id": 4,
+      "type": "content",
+      "title": "特斯拉：从挫折到突破", 
+      "content": [
+        "2024年销量首降：",
+        "178.9万辆",
+        "同比下降0.7%",
+        "挑战与机遇：",
+        "• 中国市场竞争激烈",
+        "• 全球电动车市场增长放缓",
+        "• 价格战压缩利润空间",
+        "2025年Model Q：3万美元以下",
+        "普及型电动车将重新定义市场格局"
+      ],
+      "visual_elements": [
+        {
+          "type": "svg", 
+          "description": "电动汽车图案配合上升趋势箭头",
+          "height": "90px"
+        }
+      ],
+      "density_analysis": {
+        "total_lines": 12,
+        "density_level": "high",
+        "svg_height": "90px",
+        "margin_spacing": "0.8rem",
+        "risk_assessment": {
+          "level": "medium",
+          "reason": "达到12行上限，已采用紧凑布局",
+          "recommendations": ["使用高密度布局确保内容完整显示"]
+        }
+      }
+    },
+    {
+      "card_id": 5,
+      "type": "content",
+      "title": "Neuralink：脑机接口的商业化",
+      "content": [
+        "技术突破：",
+        "• 首位人类患者成功植入芯片",
+        "• 实现思维控制电脑操作", 
+        "• 治疗瘫痪取得重大进展",
+        "• 脑机接口技术日趋成熟",
+        "2025-2026年商业化预期",
+        "应用前景：",
+        "• 脊髓损伤治疗",
+        "• 抑郁症和焦虑症干预",
+        "• 增强人类认知能力"
+      ],
+      "visual_elements": [
+        {
+          "type": "svg",
+          "description": "大脑轮廓配合闪烁的神经连接点和信号传输线",
+          "height": "90px"
+        }
+      ],
+      "density_analysis": {
+        "total_lines": 11,
+        "density_level": "medium",
+        "svg_height": "90px", 
+        "margin_spacing": "1rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "内容结构清晰，布局合理",
+          "recommendations": []
+        }
+      }
+    },
+    {
+      "card_id": 6,
+      "type": "content",
+      "title": "3840亿美元背后的逻辑",
+      "content": [
+        "$3840亿",
+        "全球首富身家",
+        "财富构成：",
+        "• 特斯拉股票：约2800亿美元",
+        "• SpaceX估值：约800亿美元", 
+        "• xAI和其他投资：约240亿美元",
+        "增长逻辑：",
+        "• 押注未来科技趋势",
+        "• 多元化产业布局",
+        "• 革命性技术创新",
+        "• 长期主义思维"
+      ],
+      "visual_elements": [
+        {
+          "type": "svg",
+          "description": "金色的金库建筑配合财富增长图表",
+          "height": "90px"
+        }
+      ],
+      "density_analysis": {
+        "total_lines": 12,
+        "density_level": "high",
+        "svg_height": "90px",
+        "margin_spacing": "0.8rem",
+        "risk_assessment": {
+          "level": "medium",
+          "reason": "内容达到上限，采用紧凑布局",
+          "recommendations": ["保持当前密度分级布局"]
+        }
+      }
+    },
+    {
+      "card_id": 7,
+      "type": "content",
+      "title": "政商策略：专注商业本质",
+      "content": [
+        "政府关系变迁：",
+        "• 曾短暂参与特朗普政府顾问团队",
+        "• 后因政策分歧退出",
+        "• 与政府合作保持适度距离",
+        "• 专注技术创新而非政治",
+        "当前策略：",
+        "• 回归商业核心竞争力",
+        "• 专注长期技术突破", 
+        "• 减少政治话题争议",
+        "• 全球化布局规避风险",
+        "商业成功源于专注，而非政治投机"
+      ],
+      "visual_elements": [
+        {
+          "type": "svg",
+          "description": "政府和商业两个圆圈，箭头指向商业的战略转移图",
+          "height": "90px"
+        }
+      ],
+      "density_analysis": {
+        "total_lines": 12,
+        "density_level": "high", 
+        "svg_height": "90px",
+        "margin_spacing": "0.8rem",
+        "risk_assessment": {
+          "level": "medium",
+          "reason": "内容丰富，已采用高密度布局",
+          "recommendations": ["维持紧凑排版确保内容完整"]
+        }
+      }
+    },
+    {
+      "card_id": 8,
+      "type": "content",
+      "title": "马斯克式创新的启示",
+      "content": [
+        "• 敢于挑战不可能",
+        "• 长期主义思维",
+        "• 技术驱动变革",
+        "未来已来，只是分布不均"
+      ],
+      "visual_elements": [
+        {
+          "type": "svg",
+          "description": "金色渐变的五角星，象征卓越和启发",
+          "height": "45px"
+        }
+      ],
+      "density_analysis": {
+        "total_lines": 7,
+        "density_level": "low",
+        "svg_height": "45px",
+        "margin_spacing": "1rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "最后卡片严格按照特殊规范，行数在10行以内",
+          "recommendations": ["符合最后卡片的强制模板要求"]
+        }
+      }
+    }
+  ],
+  "social_content": {
+    "post_title": "马斯克的商业帝国：从3840亿身家看未来科技布局",
+    "post_content": "SpaceX估值飙升至3500亿美元，2026年机器人将登陆火星，2029年人类将踏上红色星球。特斯拉虽然2024年销量首次下滑，但即将推出的3万美元以下Model Q将重新定义电动车市场。Neuralink脑机接口技术突破，预计2025-2026年实现商业化。\n\n马斯克3840亿美元的身家并非偶然，而是长期主义思维的结果。从PayPal到SpaceX，从特斯拉到Neuralink，每一步都瞄准未来十年甚至几十年的技术趋势。他曾短暂参与政府事务，但最终选择专注商业创新，这或许是明智之举。\n\n真正的创新者不是预测未来，而是创造未来。马斯克用22年时间将SpaceX从零打造成太空霸主，用革命性思维重新定义了电动汽车，现在又在脑机接口领域开疆拓土。未来已来，只是分布不均。",
+    "hashtags": ["#马斯克", "#SpaceX", "#特斯拉", "#火星移民", "#脑机接口", "#科技创新", "#商业传奇", "#未来科技", "#长期主义", "#创业精神"],
+    "content_stats": {
+      "title_length": 25,
+      "content_length": 312,
+      "hashtag_count": 10
+    }
+  },
+  "layout_safety": {
+    "bottom_margin_check": true,
+    "content_overflow_risk": "low",
+    "cards_in_danger_zone": [4, 6, 7],
+    "optimization_applied": [
+      "第8张卡片严格按照特殊规范设计，SVG高度45px",
+      "高密度卡片采用紧凑布局，确保内容完整显示",
+      "所有卡片预留底部安全边距20px"
+    ],
+    "average_lines_per_card": 10.6
+  },
+  "watermark_info": {
+    "logo_file_path": "/Users/sandra/Downloads/cursor/post/cardplanet_logo.svg",
+    "position": "bottom_center",
+    "size": "30x30px",
+    "opacity": 0.3,
+    "color_adaptation": {
+      "style_matched": true,
+      "gradient_colors": ["#d4af37", "#cd853f"],
+      "integration_method": "沙丘科幻美学渐变融合"
+    }
+  }
+}

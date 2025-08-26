@@ -8,11 +8,42 @@ import path from 'path'
 
 class ClaudeExecutorDirectService {
   /**
-   * 直接执行 Claude 命令（不通过 PTY）
+   * 直接执行 Claude 命令（不通过 PTY）- 带重试机制
    */
-  async executePrompt(prompt, timeout = 30000, purpose = 'general') {
+  async executePrompt(prompt, timeout = 60000, purpose = 'general', maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`\n🔄 [RETRY-${attempt}/${maxRetries}] Starting Claude execution attempt ${attempt}`)
+      
+      try {
+        const result = await this._executeSinglePrompt(prompt, timeout, purpose, attempt)
+        if (result.success) {
+          console.log(`✅ [RETRY-SUCCESS] Attempt ${attempt} succeeded`)
+          return result
+        }
+        
+        // 如果失败且不是最后一次重试，等待后重试
+        if (attempt < maxRetries) {
+          const waitTime = Math.min(5000 * attempt, 15000) // 递增等待时间，最多15秒
+          console.log(`⏳ [RETRY-WAIT] Attempt ${attempt} failed, waiting ${waitTime/1000}s before retry...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime))
+        }
+      } catch (error) {
+        console.error(`❌ [RETRY-ERROR] Attempt ${attempt} error:`, error.message)
+        if (attempt === maxRetries) {
+          throw error
+        }
+      }
+    }
+    
+    throw new Error(`All ${maxRetries} retry attempts failed`)
+  }
+
+  /**
+   * 单次执行尝试
+   */
+  async _executeSinglePrompt(prompt, timeout = 60000, purpose = 'general', attempt = 1) {
     const startTime = Date.now()
-    const sessionId = `${purpose}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    const sessionId = `${purpose}_A${attempt}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
     
     console.log(`\n🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥`)
     console.log(`🚀 [PROMPT-SEND-${sessionId}] ========== SENDING PROMPT TO CLAUDE ==========`)
@@ -30,16 +61,13 @@ class ClaudeExecutorDirectService {
       let errorOutput = ''
       let processExited = false
       
-      // 使用经过测试验证的 echo pipe 方法
-      // 测试证明这种方式在容器中 100% 成功
-      const escapedPrompt = prompt.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')
-      const command = `echo "${escapedPrompt}" | claude --dangerously-skip-permissions`
-      
-      console.log(`🚀 [CLAUDE-EXEC-${sessionId}] Using echo pipe method`)
-      console.log(`📌 [CLAUDE-EXEC-${sessionId}] Full Command: sh -c "${command}"`)
+      // 使用直接 stdin 管道方法 - 避免临时文件的复杂性
+      console.log(`🚀 [CLAUDE-EXEC-${sessionId}] Using direct stdin pipe method`)
+      console.log(`📌 [CLAUDE-EXEC-${sessionId}] Command: claude --dangerously-skip-permissions`)
       console.log(`🔑 [CLAUDE-EXEC-${sessionId}] Auth token present:`, !!process.env.ANTHROPIC_AUTH_TOKEN)
+      console.log(`📝 [CLAUDE-EXEC-${sessionId}] Prompt will be sent via stdin`)
       
-      const child = spawn('sh', ['-c', command], {
+      const child = spawn('claude', ['--dangerously-skip-permissions'], {
         env: {
           ...process.env,
           ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN,
@@ -50,6 +78,10 @@ class ClaudeExecutorDirectService {
         stdio: ['pipe', 'pipe', 'pipe'],
         cwd: process.cwd()
       })
+      
+      // 直接写入提示词到 stdin
+      child.stdin.write(prompt)
+      child.stdin.end()
       
       console.log(`🔧 [CLAUDE-EXEC-${sessionId}] Process spawned with PID:`, child.pid)
       
@@ -203,7 +235,7 @@ class ClaudeExecutorDirectService {
 }`
       }
 
-      const result = await this.executePrompt(mergedPrompt, 60000, 'generate_card_params')
+      const result = await this.executePrompt(mergedPrompt, 120000, 'generate_card_params')
       
       if (result.success && result.output) {
         try {

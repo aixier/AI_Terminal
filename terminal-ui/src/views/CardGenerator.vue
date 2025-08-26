@@ -199,6 +199,8 @@
             v-else-if="previewType === 'html-content' && previewContent"
             :html-content="previewContent"
             :scale-mode="iframeScaleMode"
+            :folder-name="currentGeneratedFolder"
+            :template-name="currentTemplateName"
             @refresh="handleHtmlRefresh"
             class="html-content-viewer-container"
           />
@@ -241,15 +243,15 @@
 
       <!-- Resizable Splitter -->
       <ResizableSplitter 
-        v-if="showTerminal"
+        v-if="shouldShowTerminal && showTerminal"
         direction="horizontal" 
         :min-size="120" 
         :max-size="Infinity"
         @resize="handleTerminalResize"
       />
 
-      <!-- Bottom: Terminal Area (可折叠) -->
-      <div class="terminal-area" :class="{ collapsed: !showTerminal }" :style="terminalStyle">
+      <!-- Bottom: Terminal Area (可折叠) - 仅default用户可见 -->
+      <div v-if="shouldShowTerminal" class="terminal-area" :class="{ collapsed: !showTerminal }" :style="terminalStyle">
         <div class="terminal-header" @click="showTerminal = !showTerminal">
           <span class="terminal-title">
             <span class="terminal-toggle">{{ showTerminal ? '▼' : '▶' }}</span>
@@ -294,11 +296,11 @@
         </div>
       </div>
 
-      <!-- Upload Section -->
+      <!-- Upload Section - 临时隐藏模板管理功能 -->
+      <!-- 
       <div class="upload-section">
         <div class="upload-header">模板管理</div>
         <div class="upload-actions">
-          <!-- 上传文件夹按钮 -->
           <button 
             class="upload-btn folder-btn"
             @click="uploadFolder"
@@ -308,7 +310,6 @@
             {{ isUploading ? '📤 上传中...' : '📁 上传文件夹' }}
           </button>
           
-          <!-- 上传文件按钮 -->
           <button 
             class="upload-btn file-btn"
             @click="uploadFiles"
@@ -318,7 +319,6 @@
             {{ isUploading ? '📤 上传中...' : '📄 上传文件' }}
           </button>
           
-          <!-- 隐藏的文件选择器 -->
           <input 
             ref="fileInput" 
             type="file" 
@@ -334,15 +334,15 @@
             @change="handleFolderUpload"
           />
         </div>
-
       </div>
+      -->
 
-      <!-- Stream Messages Display -->
+      <!-- Stream Messages Display - 简化为字符计数 -->
       <div v-if="streamMessages.length > 0" class="stream-messages">
-        <div class="stream-header">生成日志</div>
+        <div class="stream-header">生成日志 ({{ totalMessageChars }}字符)</div>
         <div class="stream-content">
-          <div v-for="(msg, index) in streamMessages" :key="index" class="stream-message">
-            {{ msg }}
+          <div class="stream-summary">
+            共 {{ streamMessages.length }} 条消息，总计 {{ totalMessageChars }} 个字符
           </div>
         </div>
       </div>
@@ -575,8 +575,8 @@
           </div>
         </div>
         
-        <!-- Terminal Tab - Redirect to standalone terminal -->
-        <div v-else-if="currentMobileTab === 'terminal'" class="mobile-tab-content terminal-tab">
+        <!-- Terminal Tab - 仅default用户可见 -->
+        <div v-else-if="currentMobileTab === 'terminal' && shouldShowTerminal" class="mobile-tab-content terminal-tab">
           <!-- 移动端终端工具栏 -->
           <div class="mobile-terminal-toolbar">
             <button class="mobile-terminal-btn" @click="openTerminalPage" title="在新页面打开终端">
@@ -635,6 +635,8 @@
             :html-content="previewContent"
             :scale-mode="iframeScaleMode"
             :is-mobile="device.isMobile.value"
+            :folder-name="currentGeneratedFolder"
+            :template-name="currentTemplateName"
             @refresh="handleHtmlRefresh"
             @openLink="handleOpenHtmlLink"
             class="html-content-viewer-container"
@@ -653,7 +655,7 @@
     
     <!-- Mobile Navigation -->
     <template #mobile-navigation>
-      <TabNavigation />
+      <TabNavigation :customTabs="filteredMobileTabs" />
     </template>
   </ResponsiveLayout>
 
@@ -700,6 +702,9 @@ const isGenerating = ref(false)
 const selectedTemplate = ref(0)
 const selectedCard = ref(null)
 const selectedFolder = ref(null)
+// 当前生成的文件夹名称和模板名称（用于传递给 HtmlContentViewer）
+const currentGeneratedFolder = ref('')
+const currentTemplateName = ref('')
 // Terminal相关refs已移除，现在使用独立终端页面
 const cardFolders = ref([])
 const templates = ref([])
@@ -713,7 +718,7 @@ const previewType = ref('')
 const isGeneratingHtml = ref({})
 const isLoadingPreview = ref(false) // 预览内容加载状态
 const previewLoadingProgress = ref(0) // 预览加载进度
-const showTerminal = ref(true) // Terminal默认显示，方便查看初始化过程
+const showTerminal = ref(false) // Terminal默认折叠，点击标题可展开
 const iframeScaleMode = ref('fit') // 'fit' or 'fill' - 默认适应模式，显示完整内容
 const iframeSandbox = ref('allow-scripts allow-forms allow-popups allow-same-origin allow-storage-access-by-user-activation')
 const generatingHint = ref('主题正在处理中，请稍候...')
@@ -764,6 +769,44 @@ const isUploading = ref(false)
 // Stream messages state
 const streamMessages = ref([]) // 存储最近的流消息
 const MAX_STREAM_MESSAGES = 5 // 最多显示5条消息
+
+// 计算总字符数
+const totalMessageChars = computed(() => {
+  return streamMessages.value.reduce((total, msg) => total + (msg?.length || 0), 0)
+})
+
+// 判断是否显示terminal面板（仅default用户可见）
+const shouldShowTerminal = computed(() => {
+  return currentUsername.value === 'default'
+})
+
+// 过滤移动端tabs（非default用户不显示terminal tab）
+const filteredMobileTabs = computed(() => {
+  if (currentUsername.value === 'default') {
+    return [] // 返回空数组使用默认的所有tabs
+  }
+  
+  // 非default用户过滤掉terminal tab，返回完整的tab配置对象
+  const tabConfigs = [
+    {
+      key: MOBILE_TABS.CREATE,
+      label: '创建卡片',
+      icon: '📝',
+      description: '模板选择和卡片创建',
+      badge: 0
+    },
+    {
+      key: MOBILE_TABS.FILES,
+      label: '文件',
+      icon: '📁',
+      description: '卡片文件管理',
+      badge: 0
+    }
+    // 不包含MOBILE_TABS.TERMINAL
+  ]
+  
+  return tabConfigs
+})
 
 // 过滤ANSI转义序列的函数
 const stripAnsiCodes = (str) => {
@@ -1206,13 +1249,20 @@ const handleTextareaInput = (event) => {
 const generateCard = async () => {
   if (!currentTopic.value.trim() || isGenerating.value) return
   
+  // 获取模板信息
+  const templateObj = templates.value[selectedTemplate.value] || {}
+  const templateName = templateObj.fileName || 'daily-knowledge-card-template.md'
+  
+  // 保存当前模板名称
+  currentTemplateName.value = templateName
+  // 清理主题名称用作文件夹名
+  currentGeneratedFolder.value = currentTopic.value.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+  
   // 移动端：通过 HTTP API 创建卡片
   if (device.isMobile.value) {
     isGenerating.value = true
     let fallbackToTerminal = false
     try {
-      const templateObj = templates.value[selectedTemplate.value] || {}
-      const templateName = templateObj.fileName || 'daily-knowledge-card-template.md'
       const resp = await axios.post('/api/generate/card', {
         topic: currentTopic.value.trim(),
         templateName
@@ -1398,6 +1448,14 @@ const generateCard = async () => {
               streamMessages.value.push('✅ 卡片生成成功')
               if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
                 streamMessages.value.shift()
+              }
+              
+              // 保存文件夹名称和模板名称
+              if (data.sanitizedTopic) {
+                currentGeneratedFolder.value = data.sanitizedTopic
+              }
+              if (data.templateName) {
+                currentTemplateName.value = data.templateName
               }
               
               // 根据文件类型处理内容
@@ -2161,22 +2219,27 @@ const loadCardFolders = async () => {
       // 处理新的数据结构
       const { rootFiles = [], folders = [] } = response.data
       
-      // 将根目录文件作为一个特殊的文件夹显示
+      // 将根目录文件作为一个特殊的文件夹显示（过滤掉.json文件）
       if (rootFiles.length > 0) {
-        const rootFolder = {
-          id: 'root-files',
-          name: '根目录文件',
-          type: 'folder',
-          cards: rootFiles.map(file => ({
-            id: file.id,
-            name: file.name,
-            path: file.path,
-            type: file.fileType || 'file',
-            size: file.size,
-            modified: file.modified
-          }))
+        const filteredRootFiles = rootFiles.filter(file => !file.name.endsWith('.json'))
+        if (filteredRootFiles.length > 0) {
+          const rootFolder = {
+            id: 'root-files',
+            name: '根目录文件',
+            type: 'folder',
+            cards: filteredRootFiles.map(file => ({
+              id: file.id,
+              name: file.name,
+              path: file.path,
+              type: file.fileType || 'file',
+              size: file.size,
+              modified: file.modified
+            }))
+          }
+          cardFolders.value = [rootFolder, ...folders.map(transformFolder)]
+        } else {
+          cardFolders.value = folders.map(transformFolder)
         }
-        cardFolders.value = [rootFolder, ...folders.map(transformFolder)]
       } else {
         cardFolders.value = folders.map(transformFolder)
       }
@@ -2205,14 +2268,16 @@ const transformFolder = (folder) => {
     name: folder.name,
     path: folder.path,
     type: 'folder',
-    cards: folder.children ? folder.children.filter(item => item.type === 'file').map(file => ({
-      id: file.path, // 使用完整路径作为文件ID: card/2019的人工智能/2019_ai_dune_style.html
-      name: file.name,
-      path: file.path,
-      type: file.fileType || 'file',
-      size: file.size,
-      modified: file.modified
-    })) : [],
+    cards: folder.children ? folder.children
+      .filter(item => item.type === 'file' && !item.name.endsWith('.json')) // 过滤掉.json文件
+      .map(file => ({
+        id: file.path, // 使用完整路径作为文件ID: card/2019的人工智能/2019_ai_dune_style.html
+        name: file.name,
+        path: file.path,
+        type: file.fileType || 'file',
+        size: file.size,
+        modified: file.modified
+      })) : [],
     // 递归处理子文件夹
     subfolders: folder.children ? folder.children.filter(item => item.type === 'folder').map(transformFolder) : []
   }
@@ -2288,14 +2353,19 @@ const loadTemplates = async () => {
             console.log(`[Templates] 📁 Added folder template: ${fullName}`)
             
           } else if (item.type === 'file') {
+            // 过滤掉.md后缀用于显示，但保留完整文件名用于API调用
+            const displayName = item.name.endsWith('.md') 
+              ? item.name.slice(0, -3)  // 移除.md后缀
+              : item.name
+            
             const template = {
               fileName: fullName,
-              name: item.name,
+              name: displayName,
               description: `文件模板 (${formatFileSize(item.size)})`,
               type: 'file'
             }
             templates.push(template)
-            console.log(`[Templates] 📄 Added file template: ${item.name}`)
+            console.log(`[Templates] 📄 Added file template: ${displayName} (原文件: ${item.name})`)
           }
         }
         return templates

@@ -14,7 +14,7 @@ import commandsRoutes from './routes/commands.js'
 import claudeRoutes from './routes/claude.js'
 import sseRoutes from './routes/sse.js'
 import previewRoutes from './routes/preview.js'
-import generateRoutes from './routes/generate.js'
+import generateRoutes from './routes/generate/index.js'
 import uploadRoutes from './routes/upload.js'
 import workspaceRoutes from './routes/workspace.js'
 import { setupSocketHandlers } from './services/socketService.js'
@@ -128,6 +128,19 @@ console.log('✅ Socket.IO server created')
 // ========================================
 console.log('📦 REGISTERING MIDDLEWARE:')
 
+// 1. 预处理中间件 - 处理静态资源的特殊情况
+console.log('  0️⃣ Registering pre-processing middleware...')
+app.use((req, res, next) => {
+  // 为所有静态资源请求设置CORS头
+  if (req.path.startsWith('/assets/') || req.path.endsWith('.js') || req.path.endsWith('.css') || req.path.endsWith('.ico')) {
+    res.header('Access-Control-Allow-Origin', '*')
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  }
+  next()
+})
+console.log('     ✓ Pre-processing middleware registered')
+
 // 1. CORS中间件
 console.log('  1️⃣ Registering CORS middleware...')
 app.use(cors({
@@ -135,9 +148,11 @@ app.use(cors({
     // 记录所有 CORS 请求
     if (origin) {
       logger.debug(`CORS check for origin: ${origin}`)
+    } else {
+      logger.debug(`CORS check for direct access (no origin)`)
     }
     
-    // 允许所有配置的源以及常见的本地地址
+    // 允许所有配置的源以及常见的本地地址，同时允许无origin的直接访问（静态资源）
     if (!origin || 
         config.cors.origins.includes(origin) ||
         origin?.startsWith('http://127.0.0.1:') ||
@@ -152,7 +167,8 @@ app.use(cors({
         origin === 'http://card.paitongai.com' ||    // 域名支持
         origin === 'https://card.paitongai.com' ||  // HTTPS域名支持
         origin === 'http://aicard.paitongai.com' ||  // 新域名支持
-        origin === 'https://aicard.paitongai.com') { // 新域名HTTPS支持
+        origin === 'https://aicard.paitongai.com' || // 新域名HTTPS支持
+        origin?.startsWith('http://8.130.13.226')) { // 新部署服务器IP
       callback(null, true)
     } else {
       logger.warn(`CORS rejected origin: ${origin}`)

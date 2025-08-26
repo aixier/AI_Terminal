@@ -1,5 +1,21 @@
 <template>
   <div class="mobile-tab-navigation" :class="navigationClasses">
+    <!-- 用户信息栏 -->
+    <div class="user-profile-bar" v-if="userInfo || username">
+      <div class="user-info">
+        <div class="user-avatar">
+          <span class="avatar-text">{{ userInitials }}</span>
+        </div>
+        <div class="user-details">
+          <div class="username">{{ displayUsername }}</div>
+          <div class="user-status">在线</div>
+        </div>
+      </div>
+      <button class="logout-button" @click="handleLogout" title="退出登录">
+        <span class="logout-icon">🚪</span>
+      </button>
+    </div>
+
     <!-- 调试信息 -->
     <div class="debug-tab-info">
       <p>[TabNavigation] 组件渲染</p>
@@ -56,9 +72,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLayoutStore, MOBILE_TABS } from '../../store/layout.js'
 import { useDevice } from '../../composables/useDevice.js'
 import { touchMixin } from '../../mixins/responsive.js'
+import { useTerminalStore } from '../../store/terminal.js'
 
 // Props
 const props = defineProps({
@@ -90,6 +108,8 @@ const emits = defineEmits([
 const layout = useLayoutStore()
 const device = useDevice()
 const touch = touchMixin.setup()
+const router = useRouter()
+const terminalStore = useTerminalStore()
 
 console.log('[TabNavigation] 组件初始化:', {
   layout: !!layout,
@@ -137,6 +157,26 @@ const tabs = computed(() => {
 
 // 当前活跃Tab（注意：返回字符串值，而不是ref本身）
 const activeTab = computed(() => layout.activeMobileTab.value)
+
+// 用户信息相关
+const userInfo = computed(() => terminalStore.userInfo)
+const username = computed(() => {
+  return userInfo.value?.username || localStorage.getItem('username') || ''
+})
+const displayUsername = computed(() => {
+  return userInfo.value?.displayName || username.value || '未知用户'
+})
+const userInitials = computed(() => {
+  const name = displayUsername.value
+  if (name.length === 0) return '?'
+  if (name.length === 1) return name.toUpperCase()
+  // 中文用户名取最后一个字，英文取首字母
+  if (/[\u4e00-\u9fa5]/.test(name)) {
+    return name.slice(-1)
+  } else {
+    return name.charAt(0).toUpperCase()
+  }
+})
 
 // 导航样式类
 const navigationClasses = computed(() => [
@@ -266,6 +306,19 @@ const handleSwipeGesture = (direction) => {
   }
 }
 
+// 退出登录处理
+const handleLogout = () => {
+  // 清除本地存储
+  localStorage.removeItem('token')
+  localStorage.removeItem('username')
+  
+  // 清除store中的用户信息
+  terminalStore.clearSession()
+  
+  // 跳转到登录页
+  router.push('/login')
+}
+
 // 键盘导航支持
 const handleKeydown = (event) => {
   const currentIndex = getActiveTabIndex()
@@ -312,6 +365,113 @@ onUnmounted(() => {
 
 .debug-tab-info {
   display: none;
+}
+
+/* ===========================
+   用户信息栏样式
+   =========================== */
+
+.user-profile-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background-color: var(--color-bg-secondary, #21262d);
+  border-bottom: 1px solid var(--color-border-default, #30363d);
+  min-height: 56px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-brand-primary, #58a6ff) 0%, var(--color-brand-secondary, #7c3aed) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar-text {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.username {
+  color: var(--color-text-primary, #f0f6fc);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-status {
+  color: var(--color-success, #3fb950);
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.user-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-success, #3fb950);
+  display: inline-block;
+}
+
+.logout-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--color-bg-tertiary, #30363d);
+  color: var(--color-text-secondary, #8b949e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--duration-fast, 200ms) ease-out;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.logout-button:hover {
+  background-color: var(--color-danger-subtle, #f851491a);
+  color: var(--color-danger, #f85149);
+}
+
+.logout-button:active {
+  transform: scale(0.95);
+  background-color: var(--color-danger-subtle, #f851491a);
+}
+
+.logout-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .mobile-tab-navigation {
@@ -536,6 +696,15 @@ onUnmounted(() => {
   .icon-emoji { font-size: 16px; }
   .tab-badge { min-width: 14px; height: 14px; top: -5px; right: -5px; }
   .badge-count { font-size: 9px; }
+  
+  /* 用户信息栏在小屏幕上的适配 */
+  .user-profile-bar { padding: 6px 12px; min-height: 48px; }
+  .user-avatar { width: 32px; height: 32px; }
+  .avatar-text { font-size: 14px; }
+  .username { font-size: 13px; }
+  .user-status { font-size: 11px; }
+  .logout-button { width: 36px; height: 36px; }
+  .logout-icon { font-size: 16px; }
 }
 
 /* 横屏优化 */

@@ -2,7 +2,7 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h1>终端控制台</h1>
+        <h1 class="logo-title">cardplanet</h1>
         <p>请登录以继续</p>
       </div>
       
@@ -49,10 +49,7 @@
           </el-button>
         </el-form-item>
       </el-form>
-      
-      <div class="login-footer">
-        <p>默认账号：admin / admin123</p>
-      </div>
+  
     </div>
   </div>
 </template>
@@ -164,15 +161,12 @@ if (savedUsername) {
   width: 100%;
 }
 
-.login-footer {
-  padding: 20px 40px;
-  text-align: center;
-  background: #f5f7fa;
-  color: #909399;
-  font-size: 14px;
-}
-
-.login-footer p {
-  margin: 0;
+.logo-title {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
+  letter-spacing: 1px;
 }
 </style>

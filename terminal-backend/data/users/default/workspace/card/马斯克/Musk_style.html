@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>马斯克 - 未来科技引领者</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 沙丘科幻美学配色系统 */
+            --deep-space: #1a1a2e;
+            --space-blue: #16213e;
+            --empire-gold: #d4af37;
+            --bright-gold: #ffd700;
+            --spice-orange: #ff6b35;
+            --copper: #cd853f;
+            --silver: #9ca3af;
+            --dune-stone: #8b7355;
+            --sand-light: #f5f2e8;
+            --text-primary: #f5f2e8;
+            --text-secondary: #9ca3af;
+            --accent-color: #d4af37;
+            --primary-color: #ff6b35;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--deep-space) 0%, var(--space-blue) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .tutorial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tutorial-card {
+            aspect-ratio: 3/4;
+            overflow: hidden;
+            border-radius: 12px;
+            position: relative;
+            background: linear-gradient(135deg, var(--space-blue), var(--deep-space));
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(212, 175, 55, 0.2);
+        }
+
+        .tutorial-card-content {
+            padding: 20px 20px 30px 20px;
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 2;
+        }
+
+        .cover-card .tutorial-card-content {
+            padding: 20px 20px 30px 20px;
+            justify-content: flex-start;
+        }
+
+        .tutorial-card-content > *:last-child {
+            margin-bottom: 20px;
+        }
+
+        .cover-title {
+            font-size: 24px;
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            text-align: center;
+            color: var(--empire-gold);
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 16px;
+            color: var(--empire-gold);
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        .card-content {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            flex-grow: 1;
+        }
+
+        .card-content p {
+            margin-bottom: 12px;
+        }
+
+        .card-content ul {
+            padding-left: 0;
+            margin-bottom: 12px;
+        }
+
+        .card-content li {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .card-content li::before {
+            content: "◆";
+            color: var(--spice-orange);
+            font-size: 10px;
+            position: absolute;
+            left: 0;
+            top: 4px;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(212, 175, 55, 0.1));
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            text-align: center;
+            font-weight: 500;
+            color: var(--bright-gold);
+        }
+
+        .data-point {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--spice-orange);
+            text-align: center;
+            margin: 8px 0;
+            text-shadow: 0 0 15px rgba(255, 107, 53, 0.5);
+        }
+
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-watermark {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            opacity: 0.3;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .page-header {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.9), rgba(22, 33, 62, 0.9));
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--empire-gold);
+            margin-bottom: 1rem;
+            text-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+        }
+
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .social-section {
+            background: #ffffff;
+            margin-top: 4rem;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .social-title {
+            color: #333333;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .social-item {
+            background: #fafafa;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .social-item h3 {
+            color: #333333;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .social-item p {
+            color: #666666;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .copy-btn:hover {
+            background: #0056CC;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            background: #e8f4ff;
+            color: #0066cc;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* 发光效果 */
+        .glow {
+            filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.3));
+        }
+
+        /* 金属质感渐变 */
+        .metal-gradient {
+            background: linear-gradient(135deg, var(--empire-gold), var(--copper));
+        }
+
+        /* 数据流效果 */
+        .data-stream::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--spice-orange), transparent);
+            animation: flow 2s linear infinite;
+        }
+
+        @keyframes flow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <h1 class="page-title">马斯克</h1>
+        <p class="page-subtitle">未来科技的引领者 · 从电动汽车到火星移民的商业帝国</p>
+    </div>
+
+    <!-- 卡片网格 -->
+    <div class="tutorial-grid">
+        
+        <!-- 卡片1: 封面 -->
+        <div class="tutorial-card cover-card">
+            <div class="tutorial-card-content">
+                <div class="svg-container">
+                    <svg width="120" height="120" viewBox="0 0 120 120" class="glow">
+                        <defs>
+                            <radialGradient id="rocketGlow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#ffd700" stop-opacity="0.8"/>
+                                <stop offset="70%" stop-color="#ff6b35" stop-opacity="0.4"/>
+                                <stop offset="100%" stop-color="#1a1a2e" stop-opacity="0.1"/>
+                            </radialGradient>
+                            <linearGradient id="rocketBody" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#d4af37"/>
+                                <stop offset="100%" stop-color="#cd853f"/>
+                            </linearGradient>
+                        </defs>
+                        <circle cx="60" cy="60" r="55" fill="url(#rocketGlow)" opacity="0.3"/>
+                        <polygon points="60,15 45,55 75,55" fill="url(#rocketBody)" stroke="#ffd700" stroke-width="2"/>
+                        <rect x="52" y="55" width="16" height="30" fill="url(#rocketBody)" stroke="#ffd700" stroke-width="1"/>
+                        <polygon points="45,85 52,95 52,85" fill="#ff6b35"/>
+                        <polygon points="75,85 68,95 68,85" fill="#ff6b35"/>
+                        <polygon points="57,85 63,95 60,85" fill="#ff6b35"/>
+                        <circle cx="40" cy="30" r="3" fill="#ffd700" opacity="0.8">
+                            <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="80" cy="25" r="2" fill="#ff6b35" opacity="0.6">
+                            <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="85" cy="45" r="1.5" fill="#d4af37" opacity="0.7">
+                            <animate attributeName="opacity" values="0.7;0.3;0.7" dur="2.5s" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>
+                </div>
+                
+                <h2 class="cover-title">马斯克<br>未来科技引领者</h2>
+                <div class="highlight-box">
+                    SpaceX·特斯拉·Neuralink
+                </div>
+                <p class="text-center text-sm text-gray-300">从PayPal到火星移民的商业传奇</p>
+            </div>
+            
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#cd853f;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad1)" stroke-width="2"/>
+                    <text x="20" y="25" text-anchor="middle" fill="url(#logoGrad1)" font-size="12" font-weight="bold">CP</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片2: SpaceX帝国版图 -->
+        <div class="tutorial-card">
+            <div class="tutorial-card-content">
+                <h3 class="card-title">SpaceX：太空帝国的崛起</h3>
+                
+                <div class="svg-container">
+                    <svg width="90" height="90" viewBox="0 0 90 90">
+                        <defs>
+                            <linearGradient id="spaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ffd700"/>
+                                <stop offset="100%" stop-color="#ff6b35"/>
+                            </linearGradient>
+                        </defs>
+                        <circle cx="45" cy="45" r="35" fill="none" stroke="url(#spaceGrad)" stroke-width="3" stroke-dasharray="5,5">
+                            <animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 45 45" to="360 45 45" dur="20s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="45" cy="45" r="8" fill="#ffd700"/>
+                        <text x="45" y="50" text-anchor="middle" fill="#1a1a2e" font-size="8" font-weight="bold">$</text>
+                        <circle cx="45" cy="15" r="4" fill="#ff6b35"/>
+                        <circle cx="15" cy="45" r="3" fill="#d4af37"/>
+                        <circle cx="75" cy="45" r="3" fill="#cd853f"/>
+                        <circle cx="45" cy="75" r="2" fill="#ff6b35"/>
+                    </svg>
+                </div>
+
+                <div class="card-content">
+                    <div class="data-point">$3500亿</div>
+                    <p class="text-center mb-3 text-orange-300">估值创历史新高</p>
+                    
+                    <ul>
+                        <li>全球最大私人航天公司</li>
+                        <li>星链卫星超过5000颗在轨</li>
+                        <li>猎鹰9号火箭成功回收重复使用</li>
+                        <li>星舰项目瞄准火星移民</li>
+                    </ul>
+                    
+                    <p class="text-xs text-gray-300 mt-3">22年来从零起步到太空霸主，革命性地降低了发射成本</p>
+                </div>
+            </div>
+            
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#cd853f;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad2)" stroke-width="2"/>
+                    <text x="20" y="25" text-anchor="middle" fill="url(#logoGrad2)" font-size="12" font-weight="bold">CP</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片3: 火星计划时间线 -->
+        <div class="tutorial-card">
+            <div class="tutorial-card-content">
+                <h3 class="card-title">火星移民：人类的下一步</h3>
+                
+                <div class="svg-container">
+                    <svg width="90" height="90" viewBox="0 0 90 90">
+                        <defs>
+                            <linearGradient id="marsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ff6b35"/>
+                                <stop offset="100%" stop-color="#cd853f"/>
+                            </linearGradient>
+                        </defs>
+                        <circle cx="60" cy="30" r="15" fill="url(#marsGrad)" opacity="0.8"/>
+                        <text x="60" y="35" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">火星</text>
+                        <circle cx="30" cy="60" r="10" fill="#4682b4" opacity="0.7"/>
+                        <text x="30" y="65" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">地球</text>
+                        <path d="M30,60 Q45,20 60,30" stroke="#ffd700" stroke-width="2" fill="none" stroke-dasharray="3,2">
+                            <animate attributeName="stroke-dashoffset" values="0;10" dur="2s" repeatCount="indefinite"/>
+                        </path>
+                        <polygon points="58,28 62,32 58,30" fill="#ffd700"/>
+                    </svg>
+                </div>
+
+                <div class="card-content">
+                    <div class="highlight-box">
+                        2026年：机器人登陆火星
+                    </div>
+                    
+                    <ul>
+                        <li>星舰完成轨道试飞测试</li>
+                        <li>无人货运任务建立基础设施</li>
+                        <li>验证着陆技术和生存系统</li>
+                    </ul>
+
+                    <div class="highlight-box mt-3">
+                        2029年：首批人类抵达火星
+                    </div>
+                    
+                    <ul>
+                        <li>载人任务正式启动</li>
+                        <li>建立永久性火星基地</li>
+                        <li>开启人类多行星时代</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#cd853f;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad3)" stroke-width="2"/>
+                    <text x="20" y="25" text-anchor="middle" fill="url(#logoGrad3)" font-size="12" font-weight="bold">CP</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片4: 特斯拉转型挑战 -->
+        <div class="tutorial-card">
+            <div class="tutorial-card-content">
+                <h3 class="card-title">特斯拉：从挫折到突破</h3>
+                
+                <div class="svg-container">
+                    <svg width="90" height="90" viewBox="0 0 90 90">
+                        <defs>
+                            <linearGradient id="teslaGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#ff6b35"/>
+                                <stop offset="50%" stop-color="#ffd700"/>
+                                <stop offset="100%" stop-color="#d4af37"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="25" y="40" width="40" height="25" rx="5" fill="url(#teslaGrad)" opacity="0.8"/>
+                        <circle cx="30" cy="70" r="6" fill="#333" opacity="0.7"/>
+                        <circle cx="60" cy="70" r="6" fill="#333" opacity="0.7"/>
+                        <path d="M20,20 Q45,10 70,20" stroke="#ffd700" stroke-width="3" fill="none"/>
+                        <text x="45" y="55" text-anchor="middle" fill="#1a1a2e" font-size="8" font-weight="bold">T</text>
+                        <polygon points="75,25 85,15 85,35" fill="#ff6b35" opacity="0.6"/>
+                    </svg>
+                </div>
+
+                <div class="card-content">
+                    <p><strong>2024年销量首降：</strong></p>
+                    <div class="data-point text-lg">178.9万辆</div>
+                    <p class="text-center text-sm text-gray-300 mb-3">同比下降0.7%</p>
+                    
+                    <p><strong>挑战与机遇：</strong></p>
+                    <ul>
+                        <li>中国市场竞争激烈</li>
+                        <li>全球电动车市场增长放缓</li>
+                        <li>价格战压缩利润空间</li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        2025年Model Q：3万美元以下
+                    </div>
+                    <p class="text-xs text-gray-300">普及型电动车将重新定义市场格局</p>
+                </div>
+            </div>
+            
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad4" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#cd853f;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad4)" stroke-width="2"/>
+                    <text x="20" y="25" text-anchor="middle" fill="url(#logoGrad4)" font-size="12" font-weight="bold">CP</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片5: Neuralink突破 -->
+        <div class="tutorial-card">
+            <div class="tutorial-card-content">
+                <h3 class="card-title">Neuralink：脑机接口的商业化</h3>
+                
+                <div class="svg-container">
+                    <svg width="90" height="90" viewBox="0 0 90 90">
+                        <defs>
+                            <linearGradient id="brainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ffd700"/>
+                                <stop offset="50%" stop-color="#ff6b35"/>
+                                <stop offset="100%" stop-color="#d4af37"/>
+                            </linearGradient>
+                        </defs>
+                        <ellipse cx="45" cy="40" rx="25" ry="20" fill="url(#brainGrad)" opacity="0.3"/>
+                        <path d="M30,35 Q40,25 50,35 Q55,40 50,45 Q40,50 35,40 Q32,37 30,35" fill="url(#brainGrad)" opacity="0.6"/>
+                        <circle cx="38" cy="38" r="2" fill="#ffd700">
+                            <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="52" cy="42" r="1.5" fill="#ff6b35">
+                            <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+                        </circle>
+                        <path d="M45,55 L35,70 M45,55 L55,70 M45,55 L45,75" stroke="#d4af37" stroke-width="2" opacity="0.7"/>
+                        <circle cx="35" cy="70" r="3" fill="#ff6b35" opacity="0.8"/>
+                        <circle cx="55" cy="70" r="3" fill="#ffd700" opacity="0.8"/>
+                        <circle cx="45" cy="75" r="3" fill="#d4af37" opacity="0.8"/>
+                    </svg>
+                </div>
+
+                <div class="card-content">
+                    <p><strong>技术突破：</strong></p>
+                    <ul>
+                        <li>首位人类患者成功植入芯片</li>
+                        <li>实现思维控制电脑操作</li>
+                        <li>治疗瘫痪取得重大进展</li>
+                        <li>脑机接口技术日趋成熟</li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        2025-2026年商业化预期
+                    </div>
+
+                    <p><strong>应用前景：</strong></p>
+                    <ul>
+                        <li>脊髓损伤治疗</li>
+                        <li>抑郁症和焦虑症干预</li>
+                        <li>增强人类认知能力</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad5" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#cd853f;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad5)" stroke-width="2"/>
+                    <text x="20" y="25" text-anchor="middle" fill="url(#logoGrad5)" font-size="12" font-weight="bold">CP</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片6: 财富传奇 -->
+        <div class="tutorial-card">
+            <div class="tutorial-card-content">
+                <h3 class="card-title">3840亿美元背后的逻辑</h3>
+                
+                <div class="svg-container">
+                    <svg width="90" height="90" viewBox="0 0 90 90">
+                        <defs>
+                            <linearGradient id="wealthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ffd700"/>
+                                <stop offset="100%" stop-color="#cd853f"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="30" y="20" width="30" height="40" rx="5" fill="url(#wealthGrad)" opacity="0.8"/>
+                        <text x="45" y="45" text-anchor="middle" fill="#1a1a2e" font-size="14" font-weight="bold">$</text>
+                        <polygon points="15,65 30,50 30,65" fill="#ff6b35" opacity="0.7"/>
+                        <polygon points="60,65 75,50 75,65" fill="#ff6b35" opacity="0.7"/>
+                        <polygon points="30,75 45,60 60,75" fill="#d4af37" opacity="0.7"/>
+                        <circle cx="20" cy="25" r="3" fill="#ffd700" opacity="0.6"/>
+                        <circle cx="70" cy="30" r="2" fill="#ff6b35" opacity="0.6"/>
+                        <circle cx="65" cy="15" r="2" fill="#d4af37" opacity="0.6"/>
+                    </svg>
+                </div>
+
+                <div class="card-content">
+                    <div class="data-point">$3840亿</div>
+                    <p class="text-center text-sm text-orange-300 mb-3">全球首富身家</p>
+                    
+                    <p><strong>财富构成：</strong></p>
+                    <ul>
+                        <li>特斯拉股票：约2800亿美元</li>
+                        <li>SpaceX估值：约800亿美元</li>
+                        <li>xAI和其他投资：约240亿美元</li>
+                    </ul>
+
+                    <p><strong>增长逻辑：</strong></p>
+                    <ul>
+                        <li>押注未来科技趋势</li>
+                        <li>多元化产业布局</li>
+                        <li>革命性技术创新</li>
+                        <li>长期主义思维</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad6" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#cd853f;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad6)" stroke-width="2"/>
+                    <text x="20" y="25" text-anchor="middle" fill="url(#logoGrad6)" font-size="12" font-weight="bold">CP</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片7: 政商关系转变 -->
+        <div class="tutorial-card">
+            <div class="tutorial-card-content">
+                <h3 class="card-title">政商策略：专注商业本质</h3>
+                
+                <div class="svg-container">
+                    <svg width="90" height="90" viewBox="0 0 90 90">
+                        <defs>
+                            <linearGradient id="strategyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#d4af37"/>
+                                <stop offset="100%" stop-color="#ff6b35"/>
+                            </linearGradient>
+                        </defs>
+                        <circle cx="30" cy="30" r="15" fill="url(#strategyGrad)" opacity="0.3"/>
+                        <text x="30" y="35" text-anchor="middle" fill="#ffd700" font-size="8">政府</text>
+                        <circle cx="60" cy="60" r="18" fill="url(#strategyGrad)" opacity="0.6"/>
+                        <text x="60" y="65" text-anchor="middle" fill="#1a1a2e" font-size="8" font-weight="bold">商业</text>
+                        <path d="M30,45 Q45,30 60,42" stroke="#ffd700" stroke-width="3" fill="none" stroke-dasharray="5,3"/>
+                        <polygon points="58,40 62,44 58,42" fill="#ffd700"/>
+                    </svg>
+                </div>
+
+                <div class="card-content">
+                    <p><strong>政府关系变迁：</strong></p>
+                    <ul>
+                        <li>曾短暂参与特朗普政府顾问团队</li>
+                        <li>后因政策分歧退出</li>
+                        <li>与政府合作保持适度距离</li>
+                        <li>专注技术创新而非政治</li>
+                    </ul>
+
+                    <p><strong>当前策略：</strong></p>
+                    <ul>
+                        <li>回归商业核心竞争力</li>
+                        <li>专注长期技术突破</li>
+                        <li>减少政治话题争议</li>
+                        <li>全球化布局规避风险</li>
+                    </ul>
+
+                    <p class="text-xs text-gray-300 mt-2">商业成功源于专注，而非政治投机</p>
+                </div>
+            </div>
+            
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad7" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#cd853f;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad7)" stroke-width="2"/>
+                    <text x="20" y="25" text-anchor="middle" fill="url(#logoGrad7)" font-size="12" font-weight="bold">CP</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 卡片8: 总结与启示 -->
+        <div class="tutorial-card">
+            <div class="tutorial-card-content">
+                <h3 class="card-title">马斯克式创新的启示</h3>
+                
+                <div class="svg-container">
+                    <svg width="45" height="45" viewBox="0 0 45 45">
+                        <defs>
+                            <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#ffd700"/>
+                                <stop offset="100%" stop-color="#ff6b35"/>
+                            </radialGradient>
+                        </defs>
+                        <polygon points="22.5,5 27,17 40,17 30,25 35,37 22.5,29 10,37 15,25 5,17 18,17" fill="url(#starGlow)"/>
+                    </svg>
+                </div>
+
+                <div class="card-content">
+                    <ul>
+                        <li>敢于挑战不可能</li>
+                        <li>长期主义思维</li>
+                        <li>技术驱动变革</li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        未来已来，只是分布不均
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-watermark">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad8" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#cd853f;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="url(#logoGrad8)" stroke-width="2"/>
+                    <text x="20" y="25" text-anchor="middle" fill="url(#logoGrad8)" font-size="12" font-weight="bold">CP</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 社媒平台内容区域 -->
+    <div class="social-section">
+        <h2 class="social-title">社媒平台内容</h2>
+        
+        <div class="social-item">
+            <button class="copy-btn" onclick="copyToClipboard('title')">复制</button>
+            <h3>标题</h3>
+            <p id="title">马斯克的商业帝国：从3840亿身家看未来科技布局</p>
+        </div>
+
+        <div class="social-item">
+            <button class="copy-btn" onclick="copyToClipboard('content')">复制</button>
+            <h3>正文</h3>
+            <p id="content">SpaceX估值飙升至3500亿美元，2026年机器人将登陆火星，2029年人类将踏上红色星球。特斯拉虽然2024年销量首次下滑，但即将推出的3万美元以下Model Q将重新定义电动车市场。Neuralink脑机接口技术突破，预计2025-2026年实现商业化。
+
+马斯克3840亿美元的身家并非偶然，而是长期主义思维的结果。从PayPal到SpaceX，从特斯拉到Neuralink，每一步都瞄准未来十年甚至几十年的技术趋势。他曾短暂参与政府事务，但最终选择专注商业创新，这或许是明智之举。
+
+真正的创新者不是预测未来，而是创造未来。马斯克用22年时间将SpaceX从零打造成太空霸主，用革命性思维重新定义了电动汽车，现在又在脑机接口领域开疆拓土。未来已来，只是分布不均。</p>
+        </div>
+
+        <div class="social-item">
+            <button class="copy-btn" onclick="copyToClipboard('tags')">复制</button>
+            <h3>标签</h3>
+            <div class="tags" id="tags">
+                <span class="tag">#马斯克</span>
+                <span class="tag">#SpaceX</span>
+                <span class="tag">#特斯拉</span>
+                <span class="tag">#火星移民</span>
+                <span class="tag">#脑机接口</span>
+                <span class="tag">#科技创新</span>
+                <span class="tag">#商业传奇</span>
+                <span class="tag">#未来科技</span>
+                <span class="tag">#长期主义</span>
+                <span class="tag">#创业精神</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = elementId === 'tags' ? 
+                Array.from(element.querySelectorAll('.tag')).map(tag => tag.textContent).join(' ') :
+                element.textContent;
+            
+            navigator.clipboard.writeText(text).then(function() {
+                const button = element.parentElement.querySelector('.copy-btn');
+                const originalText = button.textContent;
+                button.textContent = '已复制!';
+                button.style.background = '#28a745';
+                setTimeout(function() {
+                    button.textContent = originalText;
+                    button.style.background = '#007AFF';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

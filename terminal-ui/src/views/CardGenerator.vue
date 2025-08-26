@@ -54,7 +54,7 @@
           >
             <span class="folder-icon">{{ expandedFolders.includes(folder.id) ? '📂' : '📁' }}</span>
             <span class="folder-name">{{ folder.name }}</span>
-            <span class="folder-count">({{ folder.cards?.length || 0 }})</span>
+            <span class="folder-count">({{ filterJsonFiles(folder.cards).length + (folder.folders ? folder.folders.reduce((sum, sf) => sum + filterJsonFiles(sf.cards).length, 0) : 0) }})</span>
             <button 
               class="delete-folder-btn"
               @click.stop="deleteFolder(folder)"
@@ -79,12 +79,12 @@
               >
                 <span class="folder-icon">{{ expandedFolders.includes(subfolder.id) ? '📂' : '📁' }}</span>
                 <span class="folder-name">{{ subfolder.name }}</span>
-                <span class="folder-count">({{ subfolder.cards?.length || 0 }})</span>
+                <span class="folder-count">({{ filterJsonFiles(subfolder.cards).length }})</span>
               </div>
               
               <div v-if="expandedFolders.includes(subfolder.id)" class="cards-list subfolder-cards">
                 <div 
-                  v-for="card in subfolder.cards" 
+                  v-for="card in filterJsonFiles(subfolder.cards)" 
                   :key="card.id"
                   class="card-item"
                   :class="{ active: selectedCard === card.id }"
@@ -112,7 +112,7 @@
             
             <!-- Render direct files -->
             <div 
-              v-for="card in folder.cards" 
+              v-for="card in filterJsonFiles(folder.cards)" 
               :key="card.id"
               class="card-item"
               :class="{ active: selectedCard === card.id }"
@@ -338,11 +338,11 @@
       -->
 
       <!-- Stream Messages Display - 简化为字符计数 -->
-      <div v-if="streamMessages.length > 0" class="stream-messages">
+      <div v-if="allStreamMessages.length > 0" class="stream-messages">
         <div class="stream-header">生成日志 ({{ totalMessageChars }}字符)</div>
         <div class="stream-content">
           <div class="stream-summary">
-            共 {{ streamMessages.length }} 条消息，总计 {{ totalMessageChars }} 个字符
+            共 {{ allStreamMessages.length }} 条消息，总计 {{ totalMessageChars }} 个字符
           </div>
         </div>
       </div>
@@ -406,8 +406,12 @@
             <div class="mobile-floating-input">
               <div class="floating-input-container">
                 <div class="floating-input-header">
-                  <span class="input-emoji">📝</span>
-                  <span class="input-title">输入主题</span>
+                  <span class="input-emoji">{{ isGenerating ? '⏳' : '📝' }}</span>
+                  <span class="input-title">{{ isGenerating ? '生成中...' : '输入主题' }}</span>
+                  <span v-if="allStreamMessages.length > 0 || isGenerating" class="mobile-log-counter">
+                    <span v-if="isGenerating && generatingHint" class="generating-hint-mini">{{ generatingHint }}</span>
+                    <span v-if="allStreamMessages.length > 0">({{ allStreamMessages.length }}条/{{ totalMessageChars }}字)</span>
+                  </span>
                 </div>
                 <div class="floating-input-content">
                   <textarea 
@@ -476,7 +480,7 @@
               >
                 <span class="folder-icon">{{ expandedFolders.includes(folder.id) ? '📂' : '📁' }}</span>
                 <span class="folder-name">{{ folder.name }}</span>
-                <span class="folder-count">({{ folder.cards?.length || 0 }})</span>
+                <span class="folder-count">({{ filterJsonFiles(folder.cards).length + (folder.folders ? folder.folders.reduce((sum, sf) => sum + filterJsonFiles(sf.cards).length, 0) : 0) }})</span>
                 <button 
                   class="delete-folder-btn"
                   @click.stop="deleteFolder(folder)"
@@ -501,12 +505,12 @@
                   >
                     <span class="folder-icon">{{ expandedFolders.includes(subfolder.id) ? '📂' : '📁' }}</span>
                     <span class="folder-name">{{ subfolder.name }}</span>
-                    <span class="folder-count">({{ subfolder.cards?.length || 0 }})</span>
+                    <span class="folder-count">({{ filterJsonFiles(subfolder.cards).length }})</span>
                   </div>
                   
                   <div v-if="expandedFolders.includes(subfolder.id)" class="cards-list subfolder-cards">
                     <div 
-                      v-for="card in subfolder.cards" 
+                      v-for="card in filterJsonFiles(subfolder.cards)" 
                       :key="card.id"
                       class="card-item"
                       :class="{ active: selectedCard === card.id }"
@@ -532,7 +536,7 @@
                 
                 <!-- Render direct files in mobile view -->
                 <div 
-                  v-for="card in folder.cards" 
+                  v-for="card in filterJsonFiles(folder.cards)" 
                   :key="card.id"
                   class="card-item"
                   :class="{ active: selectedCard === card.id }"
@@ -603,6 +607,17 @@
             <div class="loader-spinner"></div>
             <div class="generating-text">正在生成...</div>
             <div class="generating-hint">{{ generatingHint }}</div>
+            <!-- 添加字符计数显示 -->
+            <div v-if="allStreamMessages.length > 0" class="mobile-stream-info">
+              <div class="stream-stats">
+                共 {{ allStreamMessages.length }} 条消息，{{ totalMessageChars }} 字符
+              </div>
+              <div class="stream-messages-mini">
+                <div v-for="(msg, idx) in streamMessages.slice(-3)" :key="idx" class="stream-msg-item">
+                  {{ msg }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -768,12 +783,33 @@ const isUploading = ref(false)
 
 // Stream messages state
 const streamMessages = ref([]) // 存储最近的流消息
+const allStreamMessages = ref([]) // 存储所有的流消息用于计数
 const MAX_STREAM_MESSAGES = 5 // 最多显示5条消息
 
-// 计算总字符数
+// 计算总字符数（基于所有消息）
 const totalMessageChars = computed(() => {
-  return streamMessages.value.reduce((total, msg) => total + (msg?.length || 0), 0)
+  return allStreamMessages.value.reduce((total, msg) => total + (msg?.length || 0), 0)
 })
+
+// 添加消息的辅助函数
+const addStreamMessage = (message) => {
+  if (!message) return
+  
+  // 添加到所有消息列表（用于计数）
+  allStreamMessages.value.push(message)
+  
+  // 添加到显示列表（保持最多5条）
+  streamMessages.value.push(message)
+  if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
+    streamMessages.value.shift()
+  }
+}
+
+// 过滤掉JSON文件的辅助函数
+const filterJsonFiles = (cards) => {
+  if (!cards) return []
+  return cards.filter(card => !card.name.endsWith('.json'))
+}
 
 // 判断是否显示terminal面板（仅default用户可见）
 const shouldShowTerminal = computed(() => {
@@ -1212,7 +1248,7 @@ const uploadFilesToFolder = async (files, folderPath = '') => {
     formData.append('folderPath', folderPath)
   }
   
-  const response = await axios.post('/api/upload/files', formData, {
+  const response = await axios.post('/upload/files', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -1258,40 +1294,8 @@ const generateCard = async () => {
   // 清理主题名称用作文件夹名
   currentGeneratedFolder.value = currentTopic.value.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
   
-  // 移动端：通过 HTTP API 创建卡片
-  if (device.isMobile.value) {
-    isGenerating.value = true
-    let fallbackToTerminal = false
-    try {
-      const resp = await axios.post('/api/generate/card', {
-        topic: currentTopic.value.trim(),
-        templateName
-      })
-      if (resp.data?.success) {
-        ElMessage.success('卡片创建成功')
-        await refreshCardFolders()
-        layoutStore.switchMobileTab(MOBILE_TABS.FILES)
-        isGenerating.value = false
-        return
-      } else {
-        const msg = resp.data?.message || resp.data?.error || '未知错误'
-        console.warn('[GenerateCard API] Non-success response:', msg)
-        ElMessage.warning('创建接口失败，将切换终端方式：' + msg)
-        fallbackToTerminal = true
-      }
-    } catch (error) {
-      const detail = error?.response?.data?.message || error?.response?.data?.error || error.message
-      console.error('[GenerateCard API] Error:', error)
-      ElMessage.warning('创建接口异常，将切换终端方式：' + detail)
-      fallbackToTerminal = true
-    }
-    if (!fallbackToTerminal) {
-      return
-    }
-    // 否则继续走下方终端流程（保持 isGenerating 为 true）
-  }
-  
-  // 桌面端：使用流式API，不再使用终端
+  // 统一使用流式接口（移动端和桌面端都使用）
+  // 这样可以接收所有EventStream消息进行实时显示和计数
   // Check if template is selected
   if (selectedTemplate.value === null || !templates.value[selectedTemplate.value]) {
     ElMessage.warning('请先选择一个模板')
@@ -1303,6 +1307,7 @@ const generateCard = async () => {
   previewType.value = ''
   generatingHint.value = '正在准备生成...'
   streamMessages.value = [] // 清空之前的流消息
+  allStreamMessages.value = [] // 清空所有消息记录
   
   isGenerating.value = true
   
@@ -1350,10 +1355,7 @@ const generateCard = async () => {
     // 设置超时定时器
     timeoutTimer = setTimeout(() => {
       reader.cancel()
-      streamMessages.value.push(`生成超时，已等待${timeoutMs/1000}秒`)
-      if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
-        streamMessages.value.shift()
-      }
+      addStreamMessage(`生成超时，已等待${timeoutMs/1000}秒`)
       isGenerating.value = false
       ElMessage.error(`生成超时，已等待${timeoutMs/1000}秒`)
     }, timeoutMs)
@@ -1390,20 +1392,13 @@ const generateCard = async () => {
             // 根据不同的事件类型处理数据
             if (data.message) {
               // 添加消息到流消息列表
-              streamMessages.value.push(data.message)
-              // 保持最多5条消息
-              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
-                streamMessages.value.shift()
-              }
+              addStreamMessage(data.message)
               generatingHint.value = data.message
             }
             
             // 处理特定事件
             if (data.topic) {
-              streamMessages.value.push(`主题: ${data.topic}`)
-              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
-                streamMessages.value.shift()
-              }
+              addStreamMessage(`主题: ${data.topic}`)
             }
             
             // 处理status事件 - 包含step字段
@@ -1416,11 +1411,14 @@ const generateCard = async () => {
                 'waiting_completion': '正在等待生成完成...'
               }
               const statusMsg = stepMessages[data.step] || `状态: ${data.step}`
-              streamMessages.value.push(statusMsg)
-              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
-                streamMessages.value.shift()
-              }
+              addStreamMessage(statusMsg)
               generatingHint.value = statusMsg
+            }
+            
+            // 处理log事件 - 后端推送的日志消息
+            if (lastEventType === 'log' && data.message) {
+              addStreamMessage(data.message)
+              generatingHint.value = data.message
             }
             
             // 修复：处理output事件 - backend发送的是 { data, timestamp }
@@ -1434,10 +1432,7 @@ const generateCard = async () => {
                 const outputMsg = cleanOutput.length > 100 
                   ? `Claude: ${cleanOutput.substring(0, 100)}...`
                   : `Claude: ${cleanOutput}`
-                streamMessages.value.push(outputMsg)
-                if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
-                  streamMessages.value.shift()
-                }
+                addStreamMessage(outputMsg)
               }
             }
             
@@ -1445,10 +1440,7 @@ const generateCard = async () => {
             if (lastEventType === 'success' && data) {
               clearTimeout(timeoutTimer) // 清除超时定时器
               ElMessage.success('卡片生成成功！')
-              streamMessages.value.push('✅ 卡片生成成功')
-              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
-                streamMessages.value.shift()
-              }
+              addStreamMessage('✅ 卡片生成成功')
               
               // 保存文件夹名称和模板名称
               if (data.sanitizedTopic) {
@@ -1477,15 +1469,18 @@ const generateCard = async () => {
               
               // 刷新卡片列表
               await refreshCardFolders()
+              
+              // 移动端：切换到文件列表tab
+              if (device.isMobile.value) {
+                layoutStore.switchMobileTab(MOBILE_TABS.FILES)
+              }
+              
               isGenerating.value = false
               break
             } else if (lastEventType === 'error' && data.message) {
               clearTimeout(timeoutTimer) // 清除超时定时器
               ElMessage.error(data.message || '生成失败')
-              streamMessages.value.push(`❌ ${data.message}`)
-              if (streamMessages.value.length > MAX_STREAM_MESSAGES) {
-                streamMessages.value.shift()
-              }
+              addStreamMessage(`❌ ${data.message}`)
               generatingHint.value = '生成失败'
               isGenerating.value = false
               break
@@ -3821,6 +3816,8 @@ const handleOpenHtmlLink = () => {
 .generating-loader {
   text-align: center;
   padding: 40px;
+  max-width: 90%;
+  margin: 0 auto;
 }
 
 .loader-spinner {
@@ -3849,6 +3846,55 @@ const handleOpenHtmlLink = () => {
   font-size: 14px;
   color: #888;
   line-height: 1.5;
+}
+
+/* 移动端流消息显示样式 */
+.mobile-stream-info {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(74, 158, 255, 0.05);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.stream-stats {
+  color: #4a9eff;
+  font-size: 13px;
+  margin-bottom: 10px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.stream-messages-mini {
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 5px 0;
+}
+
+.stream-msg-item {
+  color: #c9d1d9;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  margin: 2px 0;
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid rgba(74, 158, 255, 0.3);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.stream-messages-mini::-webkit-scrollbar {
+  width: 4px;
+}
+
+.stream-messages-mini::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stream-messages-mini::-webkit-scrollbar-thumb {
+  background: rgba(74, 158, 255, 0.3);
+  border-radius: 2px;
 }
 
 .json-viewer-preview {
@@ -4986,6 +5032,27 @@ const handleOpenHtmlLink = () => {
   gap: 8px;
   padding: 12px 16px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobile-log-counter {
+  margin-left: auto;
+  font-size: 11px;
+  color: #4a9eff;
+  opacity: 0.9;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.generating-hint-mini {
+  color: #888;
+  font-size: 11px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .input-emoji {

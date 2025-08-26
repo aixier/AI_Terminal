@@ -108,6 +108,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           language: language,
           reference: referenceContent.substring(0, 100) + (referenceContent.length > 100 ? '...' : '')
         })
+        sendSSE('log', { message: `参数已生成 - 风格: ${style}, 语言: ${language}` })
       } else if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
         sendSSE('parameters', { 
           cover: cover,
@@ -115,6 +116,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           language: language,
           reference: referenceContent.substring(0, 100) + (referenceContent.length > 100 ? '...' : '')
         })
+        sendSSE('log', { message: `参数已生成 - 封面: ${cover}, 风格: ${style}, 语言: ${language}` })
       }
       
       let prompt
@@ -202,6 +204,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       await fs.mkdir(userCardPath, { recursive: true })
       
       sendSSE('start', { topic, sanitizedTopic, templatePath, userCardPath })
+      sendSSE('log', { message: `开始生成卡片 - 主题: ${topic}` })
       
       // 使用构建好的提示词
       const timeout = 600000  // 10分钟超时，适应cardplanet-Sandra模板
@@ -212,6 +215,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       console.log('[Stream API] ============ END PROMPT ============')
       
       sendSSE('command', { prompt })
+      sendSSE('log', { message: `正在调用Claude API生成内容...` })
       
       // 创建API会话
       const apiId = `stream_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
@@ -236,6 +240,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           try {
             const files = await fs.readdir(userCardPath)
             console.log(`[Stream API] Checking for generated files in ${userCardPath}, found:`, files)
+            sendSSE('log', { message: `检查生成文件... 找到 ${files.length} 个文件` })
             // 检测JSON和HTML文件
             const generatedFiles = files.filter(f => 
               (f.endsWith('.json') || f.endsWith('.html')) && 
@@ -244,6 +249,9 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
               !f.includes('_meta')    // 排除元数据文件
             )
             console.log(`[Stream API] Filtered generated files:`, generatedFiles)
+            if (generatedFiles.length > 0) {
+              sendSSE('log', { message: `检测到生成的文件: ${generatedFiles.join(', ')}` })
+            }
             
             // 对于 cardplanet-Sandra-json 模板，需要等待两个文件都生成
             if (templateName === 'cardplanet-Sandra-json') {
@@ -256,6 +264,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                 clearTimeout(timeoutTimer)
                 
                 console.log(`[Stream API] Both HTML and JSON files detected for cardplanet-Sandra-json`)
+                sendSSE('log', { message: `✅ HTML和JSON文件生成成功！` })
                 
                 // 读取两个文件
                 const result = {
@@ -327,6 +336,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                 const fileName = generatedFiles[0]
                 const filePath = path.join(userCardPath, fileName)
                 console.log(`[Stream API] Reading file: ${filePath}`)
+                sendSSE('log', { message: `✅ 卡片生成完成: ${fileName}` })
                 
                 try {
                   const content = await fs.readFile(filePath, 'utf-8')
@@ -381,6 +391,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         checkInterval = setInterval(checkFile, 2000)
         timeoutTimer = setTimeout(() => {
           clearInterval(checkInterval)
+          sendSSE('log', { message: `⚠️ 生成超时，已等待${timeout/1000}秒` })
           reject(new Error(`生成超时，已等待${timeout/1000}秒`))
         }, timeout)
         

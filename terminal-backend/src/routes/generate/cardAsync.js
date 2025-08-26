@@ -112,6 +112,20 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           ({ style, language, reference: referenceContent } = parameters)
         }
         
+        // 输出参数日志
+        console.log(`[Async Card API] ========== PARAMETERS GENERATED ==========`)
+        if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
+          console.log(`[Async Card API] Cover: ${cover}`)
+          console.log(`[Async Card API] Style: ${style}`)
+          console.log(`[Async Card API] Language: ${language}`)
+          console.log(`[Async Card API] Reference: ${referenceContent ? referenceContent.substring(0, 200) + '...' : 'N/A'}`)
+        } else {
+          console.log(`[Async Card API] Style: ${style}`)
+          console.log(`[Async Card API] Language: ${language}`)
+          console.log(`[Async Card API] Reference: ${referenceContent ? referenceContent.substring(0, 200) + '...' : 'N/A'}`)
+        }
+        console.log(`[Async Card API] ==========================================`)
+        
         // 构建提示词
         let prompt
         if (isFolder) {
@@ -154,11 +168,47 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
 从${claudePath}文档开始，按其指引阅读全部6个文档获取创作框架。
 记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
 生成的json文档保存在[${userCardPath}]`
+          } else {
+            // 其他文件夹模板
+            prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
+
+创作重点：
+- 把每张卡片当作独立的艺术海报设计
+- 深挖主题的趣味性和视觉潜力
+- 用细节和创意打动人心
+
+风格：${style}
+语言：${language}
+参考：${referenceContent}
+
+从${claudePath}文档开始，按其指引阅读全部5个文档获取创作框架。
+记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
+生成的json文档保存在[${userCardPath}]`
           }
+        } else {
+          // 单文件模式（.md文件）
+          const templatePath = isDocker 
+            ? path.join('/app/data/public_template', templateName)
+            : path.join(dataPath, 'public_template', templateName)
+          
+          // 原有的提示词
+          prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${userCardPath}]：${topic}`
         }
+        
+        // 输出完整组装后的提示词
+        console.log('\n🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥')
+        console.log('🎯 [Async Card API] ============ ASSEMBLED PROMPT ============')
+        console.log('📋 [Async Card API] Template:', templateName)
+        console.log('📝 [Async Card API] Topic:', topic)
+        console.log('📐 [Async Card API] Prompt Length:', prompt.length, 'chars')
+        console.log('💬 [Async Card API] ========== PROMPT BEGIN ==========\n')
+        console.log(prompt)
+        console.log('\n💬 [Async Card API] ========== PROMPT END ==========')
+        console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n')
         
         // 使用统一的终端服务执行生成
         const apiId = `async_${taskId}`
+        console.log(`[Async Card API] Executing Claude with API ID: ${apiId}`)
         await apiTerminalService.executeClaude(apiId, prompt)
         
         console.log(`[Async Card API] Background generation completed for task: ${taskId}`)

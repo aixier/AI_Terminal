@@ -36,7 +36,11 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
   try {
     const { 
       topic, 
-      templateName = 'cardplanet-Sandra-json'
+      templateName = 'cardplanet-Sandra-json',
+      style: userStyle,      // 用户传入的风格参数（可选）
+      language: userLanguage, // 用户传入的语言参数（可选）
+      reference: userReference, // 用户传入的参考参数（可选）
+      token: userToken         // 用户传入的token（可选），用于指定生成到特定用户
     } = req.body
     
     // 参数验证
@@ -54,8 +58,21 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
     // 生成任务ID
     const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
     
-    // 使用用户特定的路径
-    const userCardPath = userService.getUserCardPath(req.user.username, topic)
+    // 处理用户token参数，如果传入了token，尝试查找对应用户
+    let targetUser = req.user; // 默认使用认证中间件设置的用户
+    if (userToken) {
+      console.log(`[Async Card API] User token provided in request: ${userToken}`);
+      const tokenUser = await userService.findUserByToken(userToken);
+      if (tokenUser) {
+        targetUser = tokenUser;
+        console.log(`[Async Card API] Using token-specified user: ${tokenUser.username}`);
+      } else {
+        console.log(`[Async Card API] Token user not found, using default: ${req.user.username}`);
+      }
+    }
+    
+    // 使用目标用户的路径
+    const userCardPath = userService.getUserCardPath(targetUser.username, topic)
     
     // 立即创建文件夹并获取信息
     const folderInfo = await ensureCardFolder(userCardPath, topic, sanitizedTopic)
@@ -65,7 +82,8 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
     console.log(`[Async Card API] Topic: ${topic}`)
     console.log(`[Async Card API] Sanitized Topic: ${sanitizedTopic}`)
     console.log(`[Async Card API] Template: ${templateName}`)
-    console.log(`[Async Card API] User: ${req.user.username}`)
+    console.log(`[Async Card API] Target User: ${targetUser.username}`)
+    console.log(`[Async Card API] Request User: ${req.user.username}`)
     console.log(`[Async Card API] Output Path: ${userCardPath}`)
     console.log(`[Async Card API] Folder Info:`, folderInfo)
     console.log(`[Async Card API] =======================================================`)
@@ -87,9 +105,13 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
     setImmediate(async () => {
       try {
         console.log(`[Async Card API] Starting background generation for task: ${taskId}`)
+        console.log(`[Async Card API] Background generation for user: ${targetUser.username}`)
+        
+        // 确保在异步执行中也使用正确的目标用户路径
+        const backgroundUserCardPath = userService.getUserCardPath(targetUser.username, topic);
         
         // 更新文件夹状态为生成中
-        await updateFolderStatus(userCardPath, 'generating', { 
+        await updateFolderStatus(backgroundUserCardPath, 'generating', { 
           taskId: taskId,
           templateName: templateName 
         })
@@ -101,8 +123,22 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         // 判断模板类型
         const isFolder = !templateName.includes('.md')
         
+        // 检查是否有用户传入的参数
+        const hasUserParams = userStyle || userLanguage || userReference;
+        
+        if (hasUserParams) {
+          console.log(`[Async Card API] Task ${taskId}: Using user-provided parameters`);
+          console.log(`[Async Card API] User Style: ${userStyle || 'not provided'}`);
+          console.log(`[Async Card API] User Language: ${userLanguage || 'not provided'}`);
+          console.log(`[Async Card API] User Reference: ${userReference ? userReference.substring(0, 100) + '...' : 'not provided'}`);
+        }
+        
         // 使用前置提示词生成参数
-        const parameters = await claudeExecutorDirect.generateCardParameters(topic, templateName)
+        const parameters = await claudeExecutorDirect.generateCardParameters(topic, templateName, {
+          style: userStyle,
+          language: userLanguage,
+          reference: userReference
+        })
         
         // 根据模板类型解构参数
         let cover, style, language, referenceContent
@@ -151,7 +187,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
 
 从${claudePath}文档开始，按其指引阅读全部6个文档获取创作框架。
 特别注意：必须按照html_generation_workflow.md中的双文件输出规范，同时生成HTML文件（主题英文名_style.html）和JSON文件（主题英文名_data.json）。
-生成的文件保存在[${userCardPath}]`
+生成的文件保存在[${backgroundUserCardPath}]`
           } else if (templateName === 'cardplanet-Sandra-cover') {
             prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
 
@@ -167,7 +203,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
 
 从${claudePath}文档开始，按其指引阅读全部6个文档获取创作框架。
 记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
-生成的json文档保存在[${userCardPath}]`
+生成的json文档保存在[${backgroundUserCardPath}]`
           } else {
             // 其他文件夹模板
             prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
@@ -183,7 +219,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
 
 从${claudePath}文档开始，按其指引阅读全部5个文档获取创作框架。
 记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
-生成的json文档保存在[${userCardPath}]`
+生成的json文档保存在[${backgroundUserCardPath}]`
           }
         } else {
           // 单文件模式（.md文件）
@@ -192,7 +228,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
             : path.join(dataPath, 'public_template', templateName)
           
           // 原有的提示词
-          prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${userCardPath}]：${topic}`
+          prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${backgroundUserCardPath}]：${topic}`
         }
         
         // 输出完整组装后的提示词
@@ -224,8 +260,8 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           const checkInterval = setInterval(async () => {
             checkCount++
             try {
-              const files = await fs.readdir(userCardPath)
-              console.log(`[Async Card API] Check #${checkCount}: Found ${files.length} files in ${userCardPath}`)
+              const files = await fs.readdir(backgroundUserCardPath)
+              console.log(`[Async Card API] Check #${checkCount}: Found ${files.length} files in ${backgroundUserCardPath}`)
               
               // 过滤出生成的文件
               const generatedFiles = files.filter(f => 
@@ -280,7 +316,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         }
         
         // 更新文件夹状态为完成
-        await updateFolderStatus(userCardPath, 'completed', { 
+        await updateFolderStatus(backgroundUserCardPath, 'completed', { 
           taskId: taskId,
           completedAt: new Date() 
         })
@@ -293,7 +329,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         
         // 更新文件夹状态为失败
         try {
-          await updateFolderStatus(userCardPath, 'failed', { 
+          await updateFolderStatus(backgroundUserCardPath, 'failed', { 
             taskId: taskId,
             errorMessage: error.message,
             failedAt: new Date() 

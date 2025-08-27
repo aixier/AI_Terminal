@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《你，静不下来》第一期精华总结</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- IBM Plex Sans Font -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'ibm': ['IBM Plex Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        'water-lavender': '#D4C5E0',
+                        'pond-blue': '#B8C8D4', 
+                        'lily-green': '#C0D4B8',
+                        'lotus-pink': '#E8D4C8',
+                        'morning-gold': '#F0E4B8',
+                        'sunset-peach': '#E8C8B4',
+                        'mist-blue': '#D0DCE8',
+                        'reflection-purple': '#DCC8D4',
+                        'soft-bg': '#F8F6FA',
+                        'gentle-bg': '#F5F2F8'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        :root {
+            --primary-color: #D4C5E0;
+            --secondary-color: #B8C8D4;
+            --accent-color: #C0D4B8;
+            --warm-color: #E8D4C8;
+            --text-primary: #4A4A4A;
+            --text-secondary: #6B6B6B;
+            --bg-soft: #F8F6FA;
+        }
+        
+        .tutorial-card {
+            aspect-ratio: 3/4;
+            overflow: hidden;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            background: linear-gradient(135deg, var(--bg-soft) 0%, #FFFFFF 100%);
+            position: relative;
+        }
+        
+        .tutorial-card-content {
+            padding: 20px 20px 30px 20px;
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .cover-card .tutorial-card-content {
+            padding: 40px 30px 30px 30px;
+            justify-content: center;
+        }
+        
+        .tutorial-card-content > *:last-child {
+            margin-bottom: 20px;
+        }
+        
+        .card-watermark {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            opacity: 0.3;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(to bottom, var(--bg-soft), #FFFFFF);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .social-content-section {
+            background: white;
+            border: 1px solid #E5E5E5;
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 48px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .copy-btn {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background: #0056D6;
+        }
+    </style>
+</head>
+<body class="min-h-screen font-ibm">
+    <div class="container mx-auto px-6 py-12 max-w-6xl">
+        <!-- 页面标题 -->
+        <div class="text-center mb-16">
+            <h1 class="text-4xl font-bold mb-4 text-gray-800">《你，静不下来》第一期精华总结</h1>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto">李静访谈戴军、瞿颖：从创业失败到30岁焦虑，那些触动人心的真诚对话</p>
+        </div>
+
+        <!-- 卡片网格 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 tutorial-grid">
+            
+            <!-- 卡片1：封面 -->
+            <div class="tutorial-card cover-card">
+                <div class="tutorial-card-content">
+                    <div class="text-center">
+                        <!-- 主视觉SVG -->
+                        <div class="mb-6">
+                            <svg width="120" height="120" viewBox="0 0 120 120" class="mx-auto">
+                                <defs>
+                                    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                        <stop offset="50%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#C0D4B8;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                                <!-- 话筒形状 -->
+                                <ellipse cx="60" cy="35" rx="18" ry="25" fill="url(#grad1)" opacity="0.8"/>
+                                <rect x="54" y="60" width="12" height="30" fill="url(#grad1)" opacity="0.7"/>
+                                <ellipse cx="60" cy="95" rx="25" ry="8" fill="url(#grad1)" opacity="0.6"/>
+                                <!-- 声波纹理 -->
+                                <path d="M20 35 Q30 25, 40 35 Q30 45, 20 35" fill="none" stroke="#E8D4C8" stroke-width="2" opacity="0.6"/>
+                                <path d="M80 35 Q90 25, 100 35 Q90 45, 80 35" fill="none" stroke="#E8D4C8" stroke-width="2" opacity="0.6"/>
+                                <path d="M15 50 Q25 40, 35 50 Q25 60, 15 50" fill="none" stroke="#DCC8D4" stroke-width="2" opacity="0.5"/>
+                                <path d="M85 50 Q95 40, 105 50 Q95 60, 85 50" fill="none" stroke="#DCC8D4" stroke-width="2" opacity="0.5"/>
+                            </svg>
+                        </div>
+                        
+                        <h1 class="text-2xl font-bold mb-3 text-gray-800">《你，静不下来》</h1>
+                        <h2 class="text-lg font-medium mb-4 text-gray-600">第一期精华总结</h2>
+                        <div class="w-16 h-1 bg-gradient-to-r from-water-lavender to-pond-blue mx-auto mb-4"></div>
+                        <p class="text-sm italic text-gray-500">李静 × 戴军 × 瞿颖</p>
+                        <p class="text-xs text-gray-400 mt-2">那些触动人心的真诚对话</p>
+                    </div>
+                </div>
+                <div class="card-watermark">
+                    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="20" cy="20" r="18" fill="url(#logoGrad1)"/>
+                        <path d="M12 12 L28 12 L28 28 L12 28 Z" fill="none" stroke="white" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="4" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 卡片2：李静的主持风格 -->
+            <div class="tutorial-card">
+                <div class="tutorial-card-content">
+                    <!-- SVG视觉元素 -->
+                    <div class="mb-4 text-center">
+                        <svg width="90" height="90" viewBox="0 0 90 90" class="mx-auto">
+                            <defs>
+                                <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#F0E4B8;stop-opacity:0.8" />
+                                    <stop offset="100%" style="stop-color:#E8C8B4;stop-opacity:0.8" />
+                                </linearGradient>
+                            </defs>
+                            <!-- 聊天气泡 -->
+                            <ellipse cx="30" cy="35" rx="22" ry="18" fill="url(#grad2)"/>
+                            <ellipse cx="60" cy="55" rx="20" ry="16" fill="#D0DCE8" opacity="0.7"/>
+                            <path d="M35 50 Q40 55 45 50" fill="none" stroke="#DCC8D4" stroke-width="2"/>
+                            <!-- 连接线 -->
+                            <path d="M45 45 Q50 48 55 45" fill="none" stroke="#C0D4B8" stroke-width="2" opacity="0.6"/>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">李静的主持风格</h3>
+                    
+                    <div class="space-y-2 text-sm text-gray-700">
+                        <div class="flex items-start">
+                            <i class="fas fa-heart text-lotus-pink mr-2 mt-1 text-xs"></i>
+                            <span>老友聊天式的轻松氛围</span>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-search text-pond-blue mr-2 mt-1 text-xs"></i>
+                            <span>深度挖掘与灵魂拷问</span>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-hand-holding-heart text-lily-green mr-2 mt-1 text-xs"></i>
+                            <span>真诚分享与情感共鸣</span>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-lightbulb text-morning-gold mr-2 mt-1 text-xs"></i>
+                            <span>价值观的鲜明表达</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-3 bg-gradient-to-r from-gentle-bg to-soft-bg rounded-lg border-l-4 border-water-lavender">
+                        <p class="text-xs italic text-gray-600">"不想当主持人"的反向开场，打破传统访谈的严肃感</p>
+                    </div>
+                </div>
+                <div class="card-watermark">
+                    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="20" cy="20" r="18" fill="url(#logoGrad2)"/>
+                        <path d="M12 12 L28 12 L28 28 L12 28 Z" fill="none" stroke="white" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="4" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 卡片3：创业失败共鸣 -->
+            <div class="tutorial-card">
+                <div class="tutorial-card-content">
+                    <!-- SVG视觉元素 -->
+                    <div class="mb-4 text-center">
+                        <svg width="85" height="85" viewBox="0 0 85 85" class="mx-auto">
+                            <defs>
+                                <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#B8C8D4;stop-opacity:0.6" />
+                                    <stop offset="100%" style="stop-color:#D0DCE8;stop-opacity:0.6" />
+                                </linearGradient>
+                            </defs>
+                            <!-- 破碎的钱币 -->
+                            <circle cx="42" cy="42" r="25" fill="url(#grad3)"/>
+                            <path d="M25 25 L60 60" stroke="#DCC8D4" stroke-width="3" opacity="0.8"/>
+                            <path d="M60 25 L25 60" stroke="#DCC8D4" stroke-width="3" opacity="0.8"/>
+                            <!-- 小水滴 -->
+                            <ellipse cx="20" cy="20" rx="3" ry="5" fill="#C0D4B8" opacity="0.7"/>
+                            <ellipse cx="65" cy="65" rx="3" ry="5" fill="#C0D4B8" opacity="0.7"/>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">创业失败的共同经历</h3>
+                    
+                    <div class="space-y-2 text-sm text-gray-700 mb-4">
+                        <div class="flex items-start">
+                            <i class="fas fa-store text-sunset-peach mr-2 mt-1 text-xs"></i>
+                            <span><strong>李静：</strong>美甲店，大雨淹没血本无归</span>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-tshirt text-mist-blue mr-2 mt-1 text-xs"></i>
+                            <span><strong>瞿颖：</strong>服装店，投入70万只收回5万</span>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-utensils text-reflection-purple mr-2 mt-1 text-xs"></i>
+                            <span><strong>戴军：</strong>投资餐厅全部失败</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 bg-gradient-to-r from-soft-bg to-gentle-bg rounded-lg">
+                        <p class="text-xs text-gray-600 font-medium">失败原因：缺乏商业经验，只凭兴趣和热情</p>
+                    </div>
+                </div>
+                <div class="card-watermark">
+                    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="20" cy="20" r="18" fill="url(#logoGrad3)"/>
+                        <path d="M12 12 L28 12 L28 28 L12 28 Z" fill="none" stroke="white" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="4" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 卡片4：30岁焦虑转折 -->
+            <div class="tutorial-card">
+                <div class="tutorial-card-content">
+                    <!-- SVG视觉元素 -->
+                    <div class="mb-4 text-center">
+                        <svg width="80" height="80" viewBox="0 0 80 80" class="mx-auto">
+                            <defs>
+                                <linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#E8D4C8;stop-opacity:0.7" />
+                                    <stop offset="100%" style="stop-color:#F0E4B8;stop-opacity:0.7" />
+                                </linearGradient>
+                            </defs>
+                            <!-- 数字30 -->
+                            <text x="40" y="50" font-family="IBM Plex Sans" font-size="36" font-weight="bold" text-anchor="middle" fill="url(#grad4)">30</text>
+                            <!-- 时钟指针 -->
+                            <circle cx="40" cy="40" r="30" fill="none" stroke="#D4C5E0" stroke-width="2" opacity="0.5"/>
+                            <path d="M40 20 L40 40 L55 40" stroke="#B8C8D4" stroke-width="3" fill="none"/>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">30岁的人生转折</h3>
+                    
+                    <div class="space-y-2 text-sm text-gray-700 mb-4">
+                        <div class="p-2 bg-lotus-pink bg-opacity-20 rounded">
+                            <p><strong>瞿颖：</strong>第一段恋爱结束，与经纪公司打官司</p>
+                        </div>
+                        <div class="p-2 bg-pond-blue bg-opacity-20 rounded">
+                            <p><strong>李静：</strong>29岁创业，30岁遭遇背叛，选择反击</p>
+                        </div>
+                        <div class="p-2 bg-lily-green bg-opacity-20 rounded">
+                            <p><strong>戴军：</strong>陪伴与坚守，拒绝其他电视台挖角</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-xs italic text-gray-600">"30岁是社会给予的心理暗示"</p>
+                    </div>
+                </div>
+                <div class="card-watermark">
+                    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad4" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="20" cy="20" r="18" fill="url(#logoGrad4)"/>
+                        <path d="M12 12 L28 12 L28 28 L12 28 Z" fill="none" stroke="white" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="4" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 卡片5：北京记忆与变迁 -->
+            <div class="tutorial-card">
+                <div class="tutorial-card-content">
+                    <!-- SVG视觉元素 -->
+                    <div class="mb-4 text-center">
+                        <svg width="85" height="85" viewBox="0 0 85 85" class="mx-auto">
+                            <defs>
+                                <linearGradient id="grad5" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#D0DCE8;stop-opacity:0.6" />
+                                    <stop offset="100%" style="stop-color:#C0D4B8;stop-opacity:0.6" />
+                                </linearGradient>
+                            </defs>
+                            <!-- 城市轮廓 -->
+                            <rect x="10" y="50" width="8" height="25" fill="url(#grad5)"/>
+                            <rect x="22" y="40" width="10" height="35" fill="url(#grad5)"/>
+                            <rect x="35" y="35" width="12" height="40" fill="url(#grad5)"/>
+                            <rect x="50" y="45" width="9" height="30" fill="url(#grad5)"/>
+                            <rect x="62" y="38" width="11" height="37" fill="url(#grad5)"/>
+                            <!-- 云朵和天空 -->
+                            <ellipse cx="25" cy="20" rx="8" ry="5" fill="#E8C8B4" opacity="0.5"/>
+                            <ellipse cx="60" cy="25" rx="10" ry="6" fill="#DCC8D4" opacity="0.5"/>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">90年代的北京记忆</h3>
+                    
+                    <div class="space-y-2 text-sm text-gray-700 mb-4">
+                        <div class="flex items-start">
+                            <i class="fas fa-cloud text-mist-blue mr-2 mt-1 text-xs"></i>
+                            <span>蓝天白云，空气干爽清澈</span>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-road text-morning-gold mr-2 mt-1 text-xs"></i>
+                            <span>长安街宽敞，胡同生活有味道</span>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-coffee text-reflection-purple mr-2 mt-1 text-xs"></i>
+                            <span>三里屯白房子，文艺青年聚集地</span>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-music text-sunset-peach mr-2 mt-1 text-xs"></i>
+                            <span>男孩女孩酒吧，歌手签约圣地</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center p-2 bg-gradient-to-r from-gentle-bg to-soft-bg rounded">
+                        <p class="text-xs italic text-gray-600">"场所还在，但氛围已完全不同"</p>
+                    </div>
+                </div>
+                <div class="card-watermark">
+                    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad5" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="20" cy="20" r="18" fill="url(#logoGrad5)"/>
+                        <path d="M12 12 L28 12 L28 28 L12 28 Z" fill="none" stroke="white" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="4" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 卡片6：深度访谈技巧 -->
+            <div class="tutorial-card">
+                <div class="tutorial-card-content">
+                    <!-- SVG视觉元素 -->
+                    <div class="mb-4 text-center">
+                        <svg width="80" height="80" viewBox="0 0 80 80" class="mx-auto">
+                            <defs>
+                                <linearGradient id="grad6" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#C0D4B8;stop-opacity:0.7" />
+                                    <stop offset="100%" style="stop-color:#D4C5E0;stop-opacity:0.7" />
+                                </linearGradient>
+                            </defs>
+                            <!-- 问号和感叹号 -->
+                            <text x="30" y="50" font-family="IBM Plex Sans" font-size="32" font-weight="bold" text-anchor="middle" fill="url(#grad6)">?</text>
+                            <text x="50" y="50" font-family="IBM Plex Sans" font-size="32" font-weight="bold" text-anchor="middle" fill="#E8C8B4" opacity="0.8">!</text>
+                            <!-- 连接弧线 -->
+                            <path d="M25 25 Q40 15 55 25" stroke="#B8C8D4" stroke-width="2" fill="none" opacity="0.6"/>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">李静的灵魂拷问</h3>
+                    
+                    <div class="space-y-3 text-sm text-gray-700">
+                        <div class="bg-water-lavender bg-opacity-20 p-2 rounded">
+                            <p class="font-medium text-gray-800">层层深入</p>
+                            <p class="text-xs">"你30岁为什么焦虑？"</p>
+                        </div>
+                        
+                        <div class="bg-pond-blue bg-opacity-20 p-2 rounded">
+                            <p class="font-medium text-gray-800">假设推进</p>
+                            <p class="text-xs">"如果必须选一个人旅行，你选谁？"</p>
+                        </div>
+                        
+                        <div class="bg-lotus-pink bg-opacity-20 p-2 rounded">
+                            <p class="font-medium text-gray-800">敢于触碰</p>
+                            <p class="text-xs">感情经历、家庭关系、人生低谷</p>
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs italic text-gray-600 text-center mt-3">不满足于表面回答，追求深度</p>
+                </div>
+                <div class="card-watermark">
+                    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad6" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="20" cy="20" r="18" fill="url(#logoGrad6)"/>
+                        <path d="M12 12 L28 12 L28 28 L12 28 Z" fill="none" stroke="white" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="4" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 卡片7：真诚与勇敢 -->
+            <div class="tutorial-card">
+                <div class="tutorial-card-content">
+                    <!-- SVG视觉元素 -->
+                    <div class="mb-4 text-center">
+                        <svg width="75" height="75" viewBox="0 0 75 75" class="mx-auto">
+                            <defs>
+                                <linearGradient id="grad7" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#E8D4C8;stop-opacity:0.8" />
+                                    <stop offset="100%" style="stop-color:#F0E4B8;stop-opacity:0.8" />
+                                </linearGradient>
+                            </defs>
+                            <!-- 心形 -->
+                            <path d="M37.5,20 C31,10 18,10 18,25 C18,40 37.5,55 37.5,55 C37.5,55 57,40 57,25 C57,10 44,10 37.5,20 Z" fill="url(#grad7)"/>
+                            <!-- 光芒 -->
+                            <path d="M37.5 5 L37.5 15" stroke="#DCC8D4" stroke-width="2"/>
+                            <path d="M60 15 L52 23" stroke="#DCC8D4" stroke-width="2"/>
+                            <path d="M15 15 L23 23" stroke="#DCC8D4" stroke-width="2"/>
+                            <path d="M70 37.5 L60 37.5" stroke="#DCC8D4" stroke-width="2"/>
+                            <path d="M15 37.5 L5 37.5" stroke="#DCC8D4" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">女性力量的价值观</h3>
+                    
+                    <div class="space-y-3 text-sm text-gray-700 mb-4">
+                        <div class="flex items-start">
+                            <i class="fas fa-fist-raised text-morning-gold mr-2 mt-1 text-xs"></i>
+                            <div>
+                                <p class="font-medium">独立精神</p>
+                                <p class="text-xs">"谁都不可以欺负你，谁都不可以把你打垮"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <i class="fas fa-gem text-sunset-peach mr-2 mt-1 text-xs"></i>
+                            <div>
+                                <p class="font-medium">倡导勇敢</p>
+                                <p class="text-xs">"你一定要知道你特别值得"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <i class="fas fa-shield-alt text-reflection-purple mr-2 mt-1 text-xs"></i>
+                            <div>
+                                <p class="font-medium">清晰边界</p>
+                                <p class="text-xs">"你不能对我的人生指手画脚"</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-watermark">
+                    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad7" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="20" cy="20" r="18" fill="url(#logoGrad7)"/>
+                        <path d="M12 12 L28 12 L28 28 L12 28 Z" fill="none" stroke="white" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="4" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 卡片8：总结与感悟（最后一张特殊规范） -->
+            <div class="tutorial-card">
+                <div class="tutorial-card-content">
+                    <!-- 小型SVG（45px高度） -->
+                    <div class="mb-3 text-center">
+                        <svg width="45" height="45" viewBox="0 0 45 45" class="mx-auto">
+                            <defs>
+                                <linearGradient id="grad8" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:0.9" />
+                                    <stop offset="100%" style="stop-color:#C0D4B8;stop-opacity:0.9" />
+                                </linearGradient>
+                            </defs>
+                            <circle cx="22.5" cy="22.5" r="18" fill="url(#grad8)"/>
+                            <path d="M15 22.5 L20 27.5 L30 17.5" stroke="white" stroke-width="3" fill="none"/>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">访谈智慧精华</h3>
+                    
+                    <!-- 3个要点，每个不超过6个汉字 -->
+                    <div class="space-y-2 text-sm text-gray-700 mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-star text-morning-gold mr-2 text-xs"></i>
+                            <span>真诚对话</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-star text-pond-blue mr-2 text-xs"></i>
+                            <span>勇敢成长</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-star text-lily-green mr-2 text-xs"></i>
+                            <span>情感共鸣</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 底部金句，不超过15个汉字 -->
+                    <div class="text-center p-2 bg-gradient-to-r from-gentle-bg to-soft-bg rounded">
+                        <p class="text-sm font-medium text-gray-800">静不下来的，是那颗勇敢的心</p>
+                    </div>
+                </div>
+                <div class="card-watermark">
+                    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGrad8" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4C5E0;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8C8D4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="20" cy="20" r="18" fill="url(#logoGrad8)"/>
+                        <path d="M12 12 L28 12 L28 28 L12 28 Z" fill="none" stroke="white" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="4" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 社媒平台文案区域 -->
+        <div class="max-w-4xl mx-auto social-content-section">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">社媒平台发布内容</h2>
+            
+            <!-- 标题区块 -->
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-700">帖子标题</h3>
+                    <button class="copy-btn" onclick="copyToClipboard('post-title')">复制</button>
+                </div>
+                <p id="post-title" class="text-gray-800">李静访谈背后的人生智慧：30岁焦虑、创业失败、真诚对话</p>
+            </div>
+            
+            <!-- 正文区块 -->
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-700">帖子正文</h3>
+                    <button class="copy-btn" onclick="copyToClipboard('post-content')">复制</button>
+                </div>
+                <div id="post-content" class="text-gray-800 leading-relaxed">
+                    <p class="mb-3">看完李静《你，静不下来》第一期，真的被三个人的真诚打动了。</p>
+                    <p class="mb-3">李静、戴军、瞿颖聊到创业失败时，那种感同身受的氛围让人很暖心。美甲店被大雨淹了，服装店投入70万只收回5万，餐厅投资全部失败...但他们都没有逃避，而是坦然面对。</p>
+                    <p class="mb-3">最触动我的是关于30岁焦虑的讨论。瞿颖说生日当晚独自在阳台发呆到天亮，李静分享被合伙人背叛后选择反击。每个人的30岁都不容易，但重要的是如何面对。</p>
+                    <p>李静的价值观表达也很有力量："谁都不可以欺负你，谁都不可以把你打垮""你一定要知道你特别值得"。这样的访谈，温暖而有力量。</p>
+                </div>
+            </div>
+            
+            <!-- 标签区块 -->
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-700">相关标签</h3>
+                    <button class="copy-btn" onclick="copyToClipboard('post-tags')">复制</button>
+                </div>
+                <p id="post-tags" class="text-gray-800">#李静访谈 #你静不下来 #人生感悟 #30岁焦虑 #创业失败 #真诚对话 #女性力量 #戴军瞿颖 #深度访谈 #情感共鸣</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent || element.innerText;
+            
+            navigator.clipboard.writeText(text).then(function() {
+                // 找到对应的按钮并显示反馈
+                const button = element.parentElement.querySelector('.copy-btn');
+                const originalText = button.textContent;
+                button.textContent = '已复制!';
+                button.style.background = '#28a745';
+                
+                setTimeout(function() {
+                    button.textContent = originalText;
+                    button.style.background = '#007AFF';
+                }, 2000);
+            }).catch(function(err) {
+                console.error('复制失败: ', err);
+                alert('复制失败，请手动复制');
+            });
+        }
+    </script>
+</body>
+</html>

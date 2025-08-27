@@ -78,7 +78,11 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
   try {
     const { 
       topic, 
-      templateName = 'daily-knowledge-card-template.md'
+      templateName = 'daily-knowledge-card-template.md',
+      style: userStyle,      // 用户传入的风格参数（可选）
+      language: userLanguage, // 用户传入的语言参数（可选）
+      reference: userReference, // 用户传入的参考参数（可选）
+      token: userToken         // 用户传入的token（可选），用于指定生成到特定用户
     } = req.body
     
     // 任务优化 #3: 错误处理增强 - 参数验证改进（与同步接口一致）
@@ -148,10 +152,24 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
     // 判断模板类型
     const isFolder = !templateName.includes('.md')
     
-    // 使用用户特定的路径
-    const userCardPath = userService.getUserCardPath(req.user.username, topic)
+    // 处理用户token参数，如果传入了token，尝试查找对应用户
+    let targetUser = req.user; // 默认使用认证中间件设置的用户
+    if (userToken) {
+      console.log(`[Stream API] User token provided in request: ${userToken}`);
+      const tokenUser = await userService.findUserByToken(userToken);
+      if (tokenUser) {
+        targetUser = tokenUser;
+        console.log(`[Stream API] Using token-specified user: ${tokenUser.username}`);
+      } else {
+        console.log(`[Stream API] Token user not found, using default: ${req.user.username}`);
+      }
+    }
+    
+    // 使用目标用户的路径
+    const userCardPath = userService.getUserCardPath(targetUser.username, topic)
     
     // 立即创建文件夹（在发送任何SSE事件之前）
+    console.log(`[Stream API] Target user: ${targetUser.username}`)
     const folderInfo = await ensureCardFolder(userCardPath, topic, sanitizedTopic)
     sendSSE('folder_created', { 
       folderName: sanitizedTopic,
@@ -172,10 +190,25 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         sendSSE('parameter_progress', { param: 'all', status: 'generating' })
       }
       
+      // 检查是否有用户传入的参数
+      const hasUserParams = userStyle || userLanguage || userReference;
+      
+      if (hasUserParams) {
+        console.log(`[Stream API] ${requestId}: Using user-provided parameters`);
+        console.log(`[Stream API] User Style: ${userStyle || 'not provided'}`);
+        console.log(`[Stream API] User Language: ${userLanguage || 'not provided'}`);
+        console.log(`[Stream API] User Reference: ${userReference ? userReference.substring(0, 100) + '...' : 'not provided'}`);
+        sendSSE('log', { message: `使用用户提供的参数: 风格=${userStyle || '自动'}, 语言=${userLanguage || '自动'}, 参考=${userReference ? '已提供' : '自动'}` });
+      }
+      
       // 任务优化 #3: 自动重试机制 - 参数生成重试
       console.log(`[Stream API] ${requestId}: Generating parameters with retry mechanism`);
       const parameters = await retryWithBackoff(
-        () => claudeExecutorDirect.generateCardParameters(topic, templateName),
+        () => claudeExecutorDirect.generateCardParameters(topic, templateName, {
+          style: userStyle,
+          language: userLanguage,
+          reference: userReference
+        }),
         2, // 最多重试2次
         2000 // 起始延迟2秒
       );

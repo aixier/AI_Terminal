@@ -3,6 +3,7 @@ import cardRoutes from './card.js'
 import cardAsyncRoutes from './cardAsync.js'
 import cardStreamRoutes from './cardStream.js'
 import cardQueryRoutes from './cardQuery.js'
+import cardContentRoutes from './cardContent.js'
 import templateRoutes from './templates.js'
 import statusRoutes from './status.js'
 import claudeRoutes from './claude.js'
@@ -19,7 +20,8 @@ const router = express.Router()
 router.use('/card', cardRoutes)           // POST /api/generate/card
 router.use('/card/async', cardAsyncRoutes) // POST /api/generate/card/async
 router.use('/card/stream', cardStreamRoutes) // POST /api/generate/card/stream
-router.use('/card/query', cardQueryRoutes) // GET /api/generate/card/query/:folderName
+router.use('/card/query', cardQueryRoutes) // GET /api/generate/card/query/:folderName (通用目录查询)
+router.use('/card/content', cardContentRoutes) // GET /api/generate/card/content/:folderName (特殊格式化内容查询)
 
 // 模板和状态路由
 router.use('/templates', templateRoutes)   // GET /api/generate/templates

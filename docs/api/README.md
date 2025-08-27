@@ -1,5 +1,10 @@
 # AI Terminal API 接口文档
 
+> 📚 **快速导航**
+> - [卡片生成 API 详细文档](./card-generation-api.md) - v3.63.0 最新版
+> - [API 变更日志](./CHANGELOG.md) - 查看最新更新
+> - [完整 API 文档](/docs/API_DOCUMENTATION.md)
+
 ## 概述
 
 AI Terminal 提供了一套完整的 REST API 接口，用于终端会话管理、卡片生成、文件管理等功能。

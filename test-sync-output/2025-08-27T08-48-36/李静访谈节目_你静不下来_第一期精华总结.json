@@ -1,0 +1,228 @@
+{
+  "theme": {
+    "name": "daily-media-knowledge",
+    "pageTitle": "媒体知识点：李静访谈节目《你静不下来》第一期精华",
+    "sectionTitle": "如何做一档让人印象深刻的访谈节目？",
+    "sectionSubtitle": "每天学习一个媒体知识点 · 第1期",
+    "gradientColor1": "#F59E0B",
+    "gradientColor2": "#FCD34D",
+    "gradientColor1RGB": "245, 158, 11",
+    "accentColor": "#F59E0B",
+    "accentColorRGB": "245, 158, 11"
+  },
+  "copy": {
+    "title": "🎤 李静访谈《你静不下来》首期开播！这样的访谈节目为什么让人欲罢不能？",
+    "content": "今天聊聊李静的新访谈节目《你静不下来》第一期的亮点。\n\n你有没有发现：\n• 为什么有些访谈看了就忘，有些却让人印象深刻？\n• 好的主持人和普通主持人到底差在哪里？\n• 什么样的问题能挖出嘉宾内心真话？\n\n李静这期节目给了答案！\n\n🎯 一句话解释：\n好的访谈节目不是问答，而是两个灵魂的对话。\n\n📚 5个要点解析《你静不下来》：\n\n1️⃣ 节目定位\n不走寻常路，专门找\"静不下来\"的人聊天，挖掘躁动背后的故事。\n\n2️⃣ 主持风格\n李静用\"闺蜜式\"聊天，让嘉宾卸下防备，说出平时不愿说的话。\n\n3️⃣ 问题设计\n• 不问标准答案，专问意外反应\n• 从小细节入手，引出大情感\n• 善用\"为什么\"，层层递进\n\n4️⃣ 节奏把控\n• 张弛有度，紧张时缓解，平淡时加料\n• 给嘉宾思考时间，不急于填补空白\n• 关键时刻知道何时追问，何时停止\n\n5️⃣ 情感共鸣\n通过分享自己的经历，与嘉宾产生情感连接，观众也更容易代入。\n\n💡 小思考：\n你觉得一个好的访谈主持人最重要的品质是什么？\n\n明天预告：如何设计一个让人难忘的开场白？",
+    "hashtags": "#访谈节目 #李静 #你静不下来 #主持技巧 #媒体知识 #节目制作 #沟通艺术 #每日学习",
+    "tips": "发布时间：晚8-9点（黄金收视时段）\n封面选择：第1张主卡片\n互动引导：分享印象最深的访谈节目\n后续内容：可做成访谈技巧系列"
+  },
+  "cards": [
+    {
+      "type": "main",
+      "icon": "",
+      "header": "如何做一档让人印象深刻的访谈节目？",
+      "subtitle": "李静《你静不下来》首期解析",
+      "content": {
+        "highlight": {
+          "number": "访谈\\n艺术",
+          "description": "灵魂对话的秘密"
+        },
+        "points": [
+          {
+            "icon": "→",
+            "text": "学会倾听，也学会提问"
+          }
+        ],
+        "tags": []
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎯",
+      "header": "《你静不下来》是什么？",
+      "subtitle": "李静的新尝试",
+      "content": {
+        "list": [
+          "李静主持的<strong style=\"color: #F59E0B;\">深度访谈节目</strong>",
+          "专访那些\"静不下来\"的人",
+          "挖掘躁动背后的<strong style=\"color: #F59E0B;\">真实故事</strong>",
+          "不是传统的问答式访谈"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "节目特色",
+          "description": "用温度和深度重新定义访谈"
+        },
+        "tip": "🎭 访谈也可以很有趣",
+        "tags": [
+          "📺 节目"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "💫",
+      "header": "李静的主持风格",
+      "subtitle": "为什么嘉宾愿意敞开心扉？",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "三大法宝",
+          "items": [
+            "<strong>真诚倾听</strong>：不急于表达，先理解",
+            "<strong>情感共振</strong>：分享自己，引发共鸣",
+            "<strong>适度幽默</strong>：缓解紧张，营造轻松氛围"
+          ]
+        },
+        "tip": "💡 好主持人是好的倾听者",
+        "tags": [
+          "🎤 技巧"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "❓",
+      "header": "问题设计的艺术",
+      "subtitle": "什么问题能问出好答案？",
+      "content": {
+        "list": [
+          "避免<strong style=\"color: #FCD34D;\">标准化问题</strong>",
+          "从<strong style=\"color: #FCD34D;\">生活细节</strong>切入",
+          "多问\"<strong style=\"color: #FCD34D;\">为什么</strong>\"而不是\"是什么\"",
+          "设计<strong style=\"color: #FCD34D;\">递进式</strong>提问"
+        ],
+        "tip": "🤔 好问题比好答案更重要",
+        "tags": [
+          "💭 提问"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "⏱️",
+      "header": "节奏把控的智慧",
+      "subtitle": "什么时候该说，什么时候该停？",
+      "content": {
+        "list": [
+          "给嘉宾<strong style=\"color: #F59E0B;\">思考空间</strong>",
+          "关键时刻知道<strong style=\"color: #F59E0B;\">何时追问</strong>",
+          "用<strong style=\"color: #F59E0B;\">沉默</strong>引出更多内容",
+          "张弛有度，<strong style=\"color: #F59E0B;\">调节情绪</strong>"
+        ],
+        "special": {
+          "type": "progress",
+          "value": 85,
+          "label": "节奏感重要性：85%"
+        },
+        "tip": "🎵 访谈如音乐，需要节奏感",
+        "tags": [
+          "⚖️ 节奏"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "❌",
+      "header": "访谈常见误区",
+      "subtitle": "新手主持人容易犯的错",
+      "content": {
+        "list": [
+          "❌ 只关注自己要问的问题",
+          "✅ 根据嘉宾回答灵活调整",
+          "❌ 害怕冷场拼命填空白",
+          "✅ 适度沉默也是技巧"
+        ],
+        "tip": "🚫 最大误区：把访谈当成审问",
+        "tags": [
+          "⚠️ 误区"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🛠️",
+      "header": "实用访谈技巧",
+      "subtitle": "你也可以学会的方法",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "实操清单",
+          "items": [
+            "<strong>做足功课</strong>：了解嘉宾背景和经历",
+            "<strong>设计开场</strong>：用轻松话题破冰",
+            "<strong>层次提问</strong>：从浅到深，逐步深入",
+            "<strong>情感连接</strong>：适度分享自己的经历"
+          ]
+        },
+        "tip": "📝 准备充分才能自然发挥",
+        "tags": [
+          "🎯 方法"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🌟",
+      "header": "访谈的更深层价值",
+      "subtitle": "不只是聊天这么简单",
+      "content": {
+        "list": [
+          "为嘉宾提供<strong style=\"color: #F59E0B;\">表达平台</strong>",
+          "帮观众<strong style=\"color: #F59E0B;\">认识不同人生</strong>",
+          "促进社会<strong style=\"color: #F59E0B;\">理解与共情</strong>",
+          "记录时代的<strong style=\"color: #F59E0B;\">真实声音</strong>"
+        ],
+        "tip": "💖 好访谈是社会的镜子",
+        "tags": [
+          "🎭 价值"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📚",
+      "header": "今日总结",
+      "subtitle": "李静访谈的启示",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "核心要点",
+          "items": [
+            "真诚是最好的访谈技巧",
+            "好问题比标准答案更有价值",
+            "节奏感决定访谈质量",
+            "情感连接创造深度内容"
+          ]
+        },
+        "tip": "🌈 明天见：如何设计印象深刻的开场白",
+        "tags": [
+          "✅ 总结"
+        ]
+      }
+    }
+  ],
+  "footer": {
+    "tags": [
+      "🎤 访谈技巧",
+      "📺 节目制作",
+      "💡 沟通艺术"
+    ]
+  },
+  "export": {
+    "mainCardFilename": "主卡片-李静访谈艺术.png",
+    "cardFilenames": [
+      "2-节目介绍.png",
+      "3-主持风格.png",
+      "4-问题设计.png",
+      "5-节奏把控.png",
+      "6-常见误区.png",
+      "7-实用技巧.png",
+      "8-深层价值.png",
+      "9-今日总结.png"
+    ],
+    "zipFilename": "媒体知识-李静访谈艺术-知识卡片.zip"
+  },
+  "customStyles": "",
+  "exportAdjustments": ""
+}

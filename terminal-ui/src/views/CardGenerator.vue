@@ -349,6 +349,60 @@
 
       <!-- Bottom: Input & Create -->
       <div class="input-create-section">
+        <!-- Optional Parameters Section -->
+        <div class="optional-params">
+          <div class="params-header">
+            <span class="params-title">可选参数</span>
+            <span class="params-hint">（点击启用）</span>
+          </div>
+          
+          <!-- Style Parameter -->
+          <div class="param-item">
+            <label class="param-checkbox">
+              <input type="checkbox" v-model="enableStyle" />
+              <span>风格</span>
+            </label>
+            <input 
+              v-if="enableStyle"
+              v-model="customStyle"
+              type="text"
+              class="param-input"
+              placeholder="输入风格，如：简约、中国风、科技感"
+            />
+          </div>
+          
+          <!-- Language Parameter -->
+          <div class="param-item">
+            <label class="param-checkbox">
+              <input type="checkbox" v-model="enableLanguage" />
+              <span>语言</span>
+            </label>
+            <input 
+              v-if="enableLanguage"
+              v-model="customLanguage"
+              type="text"
+              class="param-input"
+              placeholder="输入语言，如：中文、英文、中英双语"
+            />
+          </div>
+          
+          <!-- Reference Parameter -->
+          <div class="param-item">
+            <label class="param-checkbox">
+              <input type="checkbox" v-model="enableReference" />
+              <span>参考</span>
+            </label>
+            <textarea 
+              v-if="enableReference"
+              v-model="customReference"
+              class="param-textarea"
+              rows="3"
+              placeholder="输入参考内容，如背景信息、具体要求等"
+            />
+          </div>
+        </div>
+        
+        <!-- Topic Input -->
         <div class="input-wrapper">
           <input 
             v-model="currentTopic"
@@ -737,6 +791,14 @@ const selectedFolder = ref(null)
 // 当前生成的文件夹名称和模板名称（用于传递给 HtmlContentViewer）
 const currentGeneratedFolder = ref('')
 const currentTemplateName = ref('')
+
+// 可选参数的启用状态和值
+const enableStyle = ref(false)
+const enableLanguage = ref(false)
+const enableReference = ref(false)
+const customStyle = ref('')
+const customLanguage = ref('')
+const customReference = ref('')
 // Terminal相关refs已移除，现在使用独立终端页面
 const cardFolders = ref([])
 const templates = ref([])
@@ -822,9 +884,14 @@ const addStreamMessage = (message) => {
   }
 }
 
-// 过滤掉JSON文件的辅助函数
+// 过滤掉JSON文件的辅助函数（default用户不过滤）
 const filterJsonFiles = (cards) => {
   if (!cards) return []
+  // default用户显示所有文件，不过滤
+  if (currentUsername.value === 'default') {
+    return cards
+  }
+  // 非default用户过滤掉JSON文件
   return cards.filter(card => !card.name.endsWith('.json'))
 }
 
@@ -1345,13 +1412,27 @@ const generateCard = async () => {
       headers['Authorization'] = `Bearer ${token}`
     }
     
+    // 构建请求体，只包含启用的参数
+    const requestBody = {
+      topic: currentTopic.value.trim(),
+      templateName
+    }
+    
+    // 只在启用时才添加参数
+    if (enableStyle.value && customStyle.value.trim()) {
+      requestBody.style = customStyle.value.trim()
+    }
+    if (enableLanguage.value && customLanguage.value.trim()) {
+      requestBody.language = customLanguage.value.trim()
+    }
+    if (enableReference.value && customReference.value.trim()) {
+      requestBody.reference = customReference.value.trim()
+    }
+    
     const response = await fetch('/api/generate/card/stream', {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        topic: currentTopic.value.trim(),
-        templateName
-      })
+      body: JSON.stringify(requestBody)
     })
     
     if (!response.ok) {
@@ -1465,6 +1546,14 @@ const generateCard = async () => {
               clearTimeout(timeoutTimer) // 清除超时定时器
               ElMessage.success('卡片生成成功！')
               addStreamMessage('✅ 卡片生成成功')
+              
+              // 清空可选参数
+              enableStyle.value = false
+              enableLanguage.value = false
+              enableReference.value = false
+              customStyle.value = ''
+              customLanguage.value = ''
+              customReference.value = ''
               
               // 保存文件夹名称和模板名称
               if (data.sanitizedTopic) {
@@ -2261,9 +2350,11 @@ const loadCardFolders = async () => {
       // 处理新的数据结构
       const { rootFiles = [], folders = [] } = response.data
       
-      // 将根目录文件作为一个特殊的文件夹显示（过滤掉.json文件）
+      // 将根目录文件作为一个特殊的文件夹显示（default用户不过滤，其他用户过滤掉.json文件）
       if (rootFiles.length > 0) {
-        const filteredRootFiles = rootFiles.filter(file => !file.name.endsWith('.json'))
+        const filteredRootFiles = currentUsername.value === 'default' 
+          ? rootFiles 
+          : rootFiles.filter(file => !file.name.endsWith('.json'))
         if (filteredRootFiles.length > 0) {
           const rootFolder = {
             id: 'root-files',
@@ -2311,7 +2402,13 @@ const transformFolder = (folder) => {
     path: folder.path,
     type: 'folder',
     cards: folder.children ? folder.children
-      .filter(item => item.type === 'file' && !item.name.endsWith('.json')) // 过滤掉.json文件
+      .filter(item => {
+        // default用户显示所有文件，其他用户过滤掉.json文件
+        if (currentUsername.value === 'default') {
+          return item.type === 'file'
+        }
+        return item.type === 'file' && !item.name.endsWith('.json')
+      })
       .map(file => ({
         id: file.path, // 使用完整路径作为文件ID: card/2019的人工智能/2019_ai_dune_style.html
         name: file.name,
@@ -4438,6 +4535,87 @@ const handleOpenHtmlLink = () => {
 .input-create-section {
   padding: 20px;
   background: #2a2a2a;
+}
+
+/* Optional Parameters Styles */
+.optional-params {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #1e1e1e;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.params-header {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.params-title {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.params-hint {
+  color: #888;
+  font-size: 12px;
+}
+
+.param-item {
+  margin-bottom: 12px;
+}
+
+.param-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.param-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.param-checkbox span {
+  color: #d0d0d0;
+  font-size: 13px;
+}
+
+.param-input,
+.param-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+
+.param-input::placeholder,
+.param-textarea::placeholder {
+  color: #666;
+}
+
+.param-input:focus,
+.param-textarea:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background: #2a2a2a;
+}
+
+.param-textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
 }
 
 .input-wrapper {

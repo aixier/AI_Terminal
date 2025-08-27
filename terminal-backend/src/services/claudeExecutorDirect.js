@@ -172,12 +172,16 @@ class ClaudeExecutorDirectService {
   }
   
   /**
-   * 生成卡片参数（与原实现相同）
+   * 生成卡片参数（支持用户传入的参数）
+   * @param {string} topic - 主题
+   * @param {string} templateName - 模板名称
+   * @param {Object} userParams - 用户传入的参数 { style, language, reference }
    */
-  async generateCardParameters(topic, templateName) {
+  async generateCardParameters(topic, templateName, userParams = {}) {
     console.log(`\n[ClaudeExecutorDirect] ========== GENERATING CARD PARAMETERS ==========`)
     console.log(`[ClaudeExecutorDirect] Topic: ${topic}`)
     console.log(`[ClaudeExecutorDirect] Template: ${templateName}`)
+    console.log(`[ClaudeExecutorDirect] User Params:`, userParams)
     
     // 支持三种模板：cardplanet-Sandra (3参数), cardplanet-Sandra-cover (4参数), cardplanet-Sandra-json (4参数)
     const supportedTemplates = ['cardplanet-Sandra', 'cardplanet-Sandra-cover', 'cardplanet-Sandra-json']
@@ -187,6 +191,36 @@ class ClaudeExecutorDirectService {
       return fourParamTemplates.includes(templateName)
         ? { cover: '', style: '', language: '', reference: '' }
         : { style: '', language: '', reference: '' }
+    }
+    
+    // 检查是否有用户提供的参数
+    const { style: userStyle, language: userLanguage, reference: userReference } = userParams;
+    const hasAllParams = userStyle && userLanguage && userReference;
+    
+    // 如果用户提供了所有参数，直接返回，无需调用Claude
+    if (hasAllParams) {
+      console.log(`[ClaudeExecutorDirect] All parameters provided by user, skipping Claude generation`);
+      if (fourParamTemplates.includes(templateName)) {
+        // 对于需要cover的模板，仍需要生成cover参数
+        if (!userParams.cover) {
+          console.log(`[ClaudeExecutorDirect] Cover parameter not provided, will generate it`);
+        } else {
+          // 用户也提供了cover参数
+          return {
+            cover: userParams.cover,
+            style: userStyle,
+            language: userLanguage,
+            reference: userReference
+          };
+        }
+      } else {
+        // 不需要cover的模板，直接返回用户参数
+        return {
+          style: userStyle,
+          language: userLanguage,
+          reference: userReference
+        };
+      }
     }
     
     try {
@@ -203,36 +237,87 @@ class ClaudeExecutorDirectService {
       // 根据模板类型生成不同的提示词
       let mergedPrompt
       
+      // 构建需要生成的参数列表
+      const needsGeneration = {
+        cover: fourParamTemplates.includes(templateName) && !userParams.cover,
+        style: !userStyle,
+        language: !userLanguage,
+        reference: !userReference
+      };
+      
+      console.log(`[ClaudeExecutorDirect] Parameters to generate:`, needsGeneration);
+      
       if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
         // 四参数模板：封面、风格、语言、参考
-        mergedPrompt = `根据[${claudePath}]和[${coverPath}]文档，针对主题"${topic}"，请生成以下四个参数：
+        const paramInstructions = [];
+        
+        if (needsGeneration.cover) {
+          paramInstructions.push(`1. 封面：根据主题特点判断使用"默认封面"还是"小红书封面"，参考[${coverPath}]文档中的触发条件和适用场景进行选择`);
+        }
+        if (needsGeneration.style) {
+          paramInstructions.push(`${paramInstructions.length + 1}. 风格：根据主题类别(心理/知识/创意等)按[${claudePath}]文档第五点（风格选择指南）自动匹配原则选择合适风格选择其中一种`);
+        }
+        if (needsGeneration.language) {
+          paramInstructions.push(`${paramInstructions.length + 1}. 语言：判断主题语言，如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"`);
+        }
+        if (needsGeneration.reference) {
+          paramInstructions.push(`${paramInstructions.length + 1}. 参考： 如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索"${topic}"获取更多内容进行生成`);
+        }
+        
+        // 如果所有参数都已提供，不需要调用Claude
+        if (paramInstructions.length === 0) {
+          return {
+            cover: userParams.cover || '默认封面',
+            style: userStyle,
+            language: userLanguage,
+            reference: userReference
+          };
+        }
+        
+        mergedPrompt = `根据[${claudePath}]和[${coverPath}]文档，针对主题"${topic}"，请生成以下参数：
 
-1. 封面：根据主题特点判断使用"默认封面"还是"小红书封面"，参考[${coverPath}]文档中的触发条件和适用场景进行选择
-2. 风格：根据主题类别(心理/知识/创意等)按[${claudePath}]文档第五点（风格选择指南）自动匹配原则选择合适风格选择其中一种
-3. 语言：判断主题语言，如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"  
-4. 参考： 如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索"${topic}"获取更多内容进行生成
+${paramInstructions.join('\n')}
 
 请以JSON格式返回，格式如下：
 {
-  "cover": "默认封面或小红书封面", 
-  "style": "风格描述，明确的风格名称", 
-  "language": "语言类型",
-  "reference": "参考要点"
-}`
+  ${needsGeneration.cover ? '"cover": "默认封面或小红书封面",' : ''}
+  ${needsGeneration.style ? '"style": "风格描述，明确的风格名称",' : ''}
+  ${needsGeneration.language ? '"language": "语言类型",' : ''}
+  ${needsGeneration.reference ? '"reference": "参考要点"' : ''}
+}`.replace(/,\s*}/g, '}'); // 移除最后一个逗号
       } else {
         // 三参数模板：风格、语言、参考
-        mergedPrompt = `根据[${claudePath}]文档，针对主题"${topic}"，请生成以下三个参数：
+        const paramInstructions = [];
+        
+        if (needsGeneration.style) {
+          paramInstructions.push(`1. 风格：根据主题类别(心理/知识/创意等)按[${claudePath}]文档第五点（风格选择指南）自动匹配原则选择合适风格`);
+        }
+        if (needsGeneration.language) {
+          paramInstructions.push(`${paramInstructions.length + 1}. 语言：判断主题语言，如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"`);
+        }
+        if (needsGeneration.reference) {
+          paramInstructions.push(`${paramInstructions.length + 1}. 参考： 如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索"${topic}"获取更多内容进行生成`);
+        }
+        
+        // 如果所有参数都已提供，不需要调用Claude
+        if (paramInstructions.length === 0) {
+          return {
+            style: userStyle,
+            language: userLanguage,
+            reference: userReference
+          };
+        }
+        
+        mergedPrompt = `根据[${claudePath}]文档，针对主题"${topic}"，请生成以下参数：
 
-1. 风格：根据主题类别(心理/知识/创意等)按[${claudePath}]文档第五点（风格选择指南）自动匹配原则选择合适风格
-2. 语言：判断主题语言，如果包含中文返回"中文"，纯英文返回"英文"，混合返回"中英双语"  
-3. 参考： 如果没有任何参考信息，或参考信息中提供了链接但无法访问，请自行检索"${topic}"获取更多内容进行生成
+${paramInstructions.join('\n')}
 
 请以JSON格式返回，格式如下：
 {
-  "style": "风格描述", 
-  "language": "语言类型",
-  "reference": "参考要点"
-}`
+  ${needsGeneration.style ? '"style": "风格描述",' : ''}
+  ${needsGeneration.language ? '"language": "语言类型",' : ''}
+  ${needsGeneration.reference ? '"reference": "参考要点"' : ''}
+}`.replace(/,\s*}/g, '}'); // 移除最后一个逗号
       }
 
       const result = await this.executePrompt(mergedPrompt, 120000, 'generate_card_params')
@@ -287,19 +372,28 @@ class ClaudeExecutorDirectService {
           }
           console.log(`[ClaudeExecutorDirect] Parameters generated successfully:`, params)
           
+          // 合并用户提供的参数和生成的参数
+          // 用户提供的参数优先级更高
+          const mergedParams = {
+            ...params,
+            style: userStyle || params.style,
+            language: userLanguage || params.language,
+            reference: userReference || params.reference
+          };
+          
           // 根据模板类型返回不同的参数结构
           if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
             return {
-              cover: params.cover || '默认封面',
-              style: params.style || '根据主题理解其精神内核',
-              language: params.language || '根据主题的语言确定',
-              reference: params.reference || '检索主题相关内容'
+              cover: userParams.cover || mergedParams.cover || '默认封面',
+              style: mergedParams.style || '根据主题理解其精神内核',
+              language: mergedParams.language || '根据主题的语言确定',
+              reference: mergedParams.reference || '检索主题相关内容'
             }
           } else {
             return {
-              style: params.style || '根据主题理解其精神内核',
-              language: params.language || '根据主题的语言确定',
-              reference: params.reference || '检索主题相关内容'
+              style: mergedParams.style || '根据主题理解其精神内核',
+              language: mergedParams.language || '根据主题的语言确定',
+              reference: mergedParams.reference || '检索主题相关内容'
             }
           }
         } catch (e) {
@@ -313,19 +407,19 @@ class ClaudeExecutorDirectService {
       console.error(`[ClaudeExecutorDirect] Error generating parameters:`, error)
     }
     
-    // 返回默认值
+    // 返回默认值，但优先使用用户提供的参数
     if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
       return {
-        cover: '默认封面',
-        style: '根据主题理解其精神内核，自动选择合适的风格',
-        language: '根据主题的语言确定语言类型',
-        reference: '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
+        cover: userParams.cover || '默认封面',
+        style: userStyle || '根据主题理解其精神内核，自动选择合适的风格',
+        language: userLanguage || '根据主题的语言确定语言类型',
+        reference: userReference || '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
       }
     } else {
       return {
-        style: '根据主题理解其精神内核，自动选择合适的风格',
-        language: '根据主题的语言确定语言类型',
-        reference: '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
+        style: userStyle || '根据主题理解其精神内核，自动选择合适的风格',
+        language: userLanguage || '根据主题的语言确定语言类型',
+        reference: userReference || '如果提供了链接但无法访问，请自行检索主题获取更多内容进行生成'
       }
     }
   }

@@ -372,10 +372,26 @@
     <!-- Mobile Layout -->
     <template #mobile-layout="slotProps">
       <div class="mobile-view-content">
-        <!-- 创建卡片 Tab -->
-        <div v-if="currentMobileTab === 'create'" class="mobile-tab-content create-tab">
-          <!-- 模板优先展示 -->
-          <div class="mobile-create-container">
+        <!-- 移动端顶部用户信息栏 -->
+        <div class="mobile-user-header">
+          <div class="mobile-user-info">
+            <span class="mobile-avatar-icon">👤</span>
+            <span class="mobile-username">{{ currentUsername }}</span>
+            <span v-if="isConnected" class="mobile-connection-status connected" title="已连接">🟢</span>
+            <span v-else class="mobile-connection-status disconnected" title="未连接">🔴</span>
+          </div>
+          <button class="mobile-logout-btn" @click="handleLogout" title="退出登录">
+            <span class="logout-icon">🚪</span>
+            <span class="logout-text">退出</span>
+          </button>
+        </div>
+        
+        <!-- Tab内容区域 -->
+        <div class="mobile-tab-area">
+          <!-- 创建卡片 Tab -->
+          <div v-if="currentMobileTab === 'create'" class="mobile-tab-content create-tab">
+            <!-- 模板优先展示 -->
+            <div class="mobile-create-container">
             <!-- 模板选择区域 - 紧凑型 -->
             <div class="mobile-template-section">
               <div class="template-header">
@@ -430,9 +446,9 @@
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
+            </div><!-- 关闭 mobile-floating-input -->
+          </div><!-- 关闭 mobile-create-container -->
+        </div><!-- 关闭 create-tab -->
         
         <!-- 文件 Tab -->
         <div v-else-if="currentMobileTab === 'files'" class="mobile-tab-content files-tab">
@@ -576,8 +592,8 @@
             <div v-if="cardFolders.length === 0" class="empty-message">
               暂无卡片文件夹
             </div>
-          </div>
-        </div>
+          </div><!-- 关闭 mobile-folder-tree -->
+        </div><!-- 关闭 files-tab -->
         
         <!-- Terminal Tab - 仅default用户可见 -->
         <div v-else-if="currentMobileTab === 'terminal' && shouldShowTerminal" class="mobile-tab-content terminal-tab">
@@ -595,8 +611,9 @@
           <div class="mobile-embedded-terminal">
             <TerminalChat :key="terminalChatMobileKey" />
           </div>
-        </div>
-      </div>
+        </div><!-- 关闭 terminal-tab -->
+      </div><!-- 关闭 mobile-tab-area -->
+    </div><!-- 关闭 mobile-view-content -->
     </template>
 
     <!-- 全屏预览内容（覆盖层） -->
@@ -1358,6 +1375,13 @@ const generateCard = async () => {
       addStreamMessage(`生成超时，已等待${timeoutMs/1000}秒`)
       isGenerating.value = false
       ElMessage.error(`生成超时，已等待${timeoutMs/1000}秒`)
+      
+      // 超时后也延迟清空消息计数
+      setTimeout(() => {
+        streamMessages.value = []
+        allStreamMessages.value = []
+        generatingHint.value = ''
+      }, 3000) // 3秒后清空
     }, timeoutMs)
     
     // 处理流式响应
@@ -1475,6 +1499,13 @@ const generateCard = async () => {
                 layoutStore.switchMobileTab(MOBILE_TABS.FILES)
               }
               
+              // 生成完成后延迟清空消息计数（让用户看到最终统计）
+              setTimeout(() => {
+                streamMessages.value = []
+                allStreamMessages.value = []
+                generatingHint.value = ''
+              }, 3000) // 3秒后清空
+              
               isGenerating.value = false
               break
             } else if (lastEventType === 'error' && data.message) {
@@ -1482,6 +1513,14 @@ const generateCard = async () => {
               ElMessage.error(data.message || '生成失败')
               addStreamMessage(`❌ ${data.message}`)
               generatingHint.value = '生成失败'
+              
+              // 错误时也延迟清空消息计数
+              setTimeout(() => {
+                streamMessages.value = []
+                allStreamMessages.value = []
+                generatingHint.value = ''
+              }, 3000) // 3秒后清空
+              
               isGenerating.value = false
               break
             }
@@ -1502,7 +1541,15 @@ const generateCard = async () => {
     console.error('[GenerateCard] Stream error:', error)
     ElMessage.error('生成失败: ' + error.message)
     isGenerating.value = false
-    generatingHint.value = ''
+    generatingHint.value = '生成异常'
+    
+    // 异常时也延迟清空消息计数
+    setTimeout(() => {
+      streamMessages.value = []
+      allStreamMessages.value = []
+      generatingHint.value = ''
+    }, 3000) // 3秒后清空
+    
     // 清除预览内容
     previewContent.value = ''
     previewType.value = ''
@@ -4775,10 +4822,12 @@ const handleOpenHtmlLink = () => {
   border-radius: 2px;
 }
 
-/* 确保移动端Tab内容不被底部导航遮挡 */
+/* 确保移动端Tab内容不被顶部用户栏和底部导航遮挡 */
 .mobile-tab-content {
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 60px; /* 为底部导航留出空间 */
 }
 
 /* 移动端响应式优化 */
@@ -4834,6 +4883,97 @@ const handleOpenHtmlLink = () => {
 .action-btn:disabled { opacity: .5; cursor: not-allowed; }
 .action-btn.primary { background: #238636; border-color: #2ea043; color: #fff; }
 
+
+/* 移动端用户信息栏样式 */
+.mobile-user-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, rgba(22,27,34,0.98), rgba(22,27,34,0.95));
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-avatar-icon {
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.mobile-username {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.mobile-connection-status {
+  font-size: 10px;
+}
+
+.mobile-connection-status.connected {
+  color: #4ade80;
+}
+
+.mobile-connection-status.disconnected {
+  color: #ef4444;
+}
+
+.mobile-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mobile-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.mobile-logout-btn .logout-icon {
+  font-size: 14px;
+}
+
+.mobile-logout-btn .logout-text {
+  font-weight: 500;
+}
+
+/* Tab内容区域调整，避免被顶部用户栏遮挡 */
+.mobile-tab-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-view-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
 
 /* 输入置底 */
 .sticky-bottom { position: sticky; bottom: 0; padding-bottom: calc(var(--spacing-mobile-safe-area, env(safe-area-inset-bottom)) + 6px); background: linear-gradient(180deg, rgba(22,27,34,0), rgba(22,27,34,.9) 30%); backdrop-filter: blur(6px); }

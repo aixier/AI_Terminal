@@ -209,9 +209,75 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         // 使用统一的终端服务执行生成
         const apiId = `async_${taskId}`
         console.log(`[Async Card API] Executing Claude with API ID: ${apiId}`)
-        await apiTerminalService.executeClaude(apiId, prompt)
         
-        console.log(`[Async Card API] Background generation completed for task: ${taskId}`)
+        // 执行Claude命令（不等待）
+        apiTerminalService.executeClaude(apiId, prompt).catch(error => {
+          console.error(`[Async Card API] Claude execution error:`, error)
+        })
+        
+        // 文件检测器 - 等待文件生成
+        console.log(`[Async Card API] Starting file detection for task: ${taskId}`)
+        const fileDetected = await new Promise((resolve) => {
+          let checkCount = 0
+          const maxChecks = 300 // 最多检查300次（10分钟）
+          
+          const checkInterval = setInterval(async () => {
+            checkCount++
+            try {
+              const files = await fs.readdir(userCardPath)
+              console.log(`[Async Card API] Check #${checkCount}: Found ${files.length} files in ${userCardPath}`)
+              
+              // 过滤出生成的文件
+              const generatedFiles = files.filter(f => 
+                (f.endsWith('.json') || f.endsWith('.html')) && 
+                !f.includes('-response') &&
+                !f.startsWith('.') &&
+                !f.includes('_meta')
+              )
+              
+              if (generatedFiles.length > 0) {
+                console.log(`[Async Card API] Generated files detected:`, generatedFiles)
+              }
+              
+              // 对于 cardplanet-Sandra-json 模板，需要两个文件
+              if (templateName === 'cardplanet-Sandra-json') {
+                const htmlFiles = generatedFiles.filter(f => f.endsWith('.html'))
+                const jsonFiles = generatedFiles.filter(f => f.endsWith('.json'))
+                
+                if (htmlFiles.length > 0 && jsonFiles.length > 0) {
+                  console.log(`[Async Card API] Both HTML and JSON files detected!`)
+                  clearInterval(checkInterval)
+                  resolve(true)
+                } else if (htmlFiles.length > 0 || jsonFiles.length > 0) {
+                  console.log(`[Async Card API] Waiting for both files... HTML: ${htmlFiles.length}, JSON: ${jsonFiles.length}`)
+                }
+              } else {
+                // 其他模板只需要一个JSON文件
+                if (generatedFiles.length > 0) {
+                  console.log(`[Async Card API] File detected!`)
+                  clearInterval(checkInterval)
+                  resolve(true)
+                }
+              }
+              
+              // 超时检查
+              if (checkCount >= maxChecks) {
+                console.error(`[Async Card API] File detection timeout after ${maxChecks * 2} seconds`)
+                clearInterval(checkInterval)
+                resolve(false)
+              }
+            } catch (error) {
+              console.error(`[Async Card API] Error checking files:`, error)
+            }
+          }, 2000) // 每2秒检查一次
+        })
+        
+        if (fileDetected) {
+          console.log(`[Async Card API] Background generation completed for task: ${taskId}`)
+        } else {
+          console.error(`[Async Card API] File generation timeout for task: ${taskId}`)
+          throw new Error('File generation timeout')
+        }
         
         // 更新文件夹状态为完成
         await updateFolderStatus(userCardPath, 'completed', { 

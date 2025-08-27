@@ -1,20 +1,6 @@
 <template>
   <div class="mobile-tab-navigation" :class="navigationClasses">
-    <!-- 用户信息栏 -->
-    <div class="user-profile-bar" v-if="userInfo || username">
-      <div class="user-info">
-        <div class="user-avatar">
-          <span class="avatar-text">{{ userInitials }}</span>
-        </div>
-        <div class="user-details">
-          <div class="username">{{ displayUsername }}</div>
-          <div class="user-status">在线</div>
-        </div>
-      </div>
-      <button class="logout-button" @click="handleLogout" title="退出登录">
-        <span class="logout-icon">🚪</span>
-      </button>
-    </div>
+    <!-- 用户信息栏已移至顶部，这里不再显示 -->
 
     <!-- 调试信息 -->
     <div class="debug-tab-info">
@@ -368,9 +354,10 @@ onUnmounted(() => {
 }
 
 /* ===========================
-   用户信息栏样式
+   用户信息栏样式 - 已移至顶部，注释保留
    =========================== */
 
+/* 用户信息栏已移至CardGenerator.vue的顶部，以下样式已废弃
 .user-profile-bar {
   display: flex;
   align-items: center;
@@ -473,6 +460,7 @@ onUnmounted(() => {
   font-size: 18px;
   line-height: 1;
 }
+*/
 
 .mobile-tab-navigation {
   display: flex;
@@ -697,14 +685,14 @@ onUnmounted(() => {
   .tab-badge { min-width: 14px; height: 14px; top: -5px; right: -5px; }
   .badge-count { font-size: 9px; }
   
-  /* 用户信息栏在小屏幕上的适配 */
+  /* 用户信息栏在小屏幕上的适配 - 已注释
   .user-profile-bar { padding: 6px 12px; min-height: 48px; }
   .user-avatar { width: 32px; height: 32px; }
   .avatar-text { font-size: 14px; }
   .username { font-size: 13px; }
   .user-status { font-size: 11px; }
   .logout-button { width: 36px; height: 36px; }
-  .logout-icon { font-size: 16px; }
+  .logout-icon { font-size: 16px; } */
 }
 
 /* 横屏优化 */

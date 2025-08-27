@@ -7,6 +7,35 @@ import { authenticateUserOrDefault, ensureUserFolder } from '../../middleware/us
 import userService from '../../services/userService.js'
 import { ensureCardFolder, updateFolderStatus, recordGeneratedFiles } from './utils/folderManager.js'
 
+// 任务优化 #2: 并发处理优化 - 添加请求队列管理
+const activeRequests = new Map(); // 活跃请求跟踪
+const MAX_CONCURRENT_REQUESTS = 7; // 基于测试结果，最多同时处理7个请求
+
+// 任务优化 #3: 错误处理增强 - 错误码分类
+const ERROR_CODES = {
+  CONCURRENT_LIMIT: 'E001_CONCURRENT_LIMIT',
+  RESOURCE_UNAVAILABLE: 'E002_RESOURCE_UNAVAILABLE', 
+  TIMEOUT: 'E003_TIMEOUT',
+  CLAUDE_API_ERROR: 'E004_CLAUDE_API_ERROR',
+  FILE_GENERATION_ERROR: 'E005_FILE_GENERATION_ERROR',
+  PARAMETER_GENERATION_ERROR: 'E006_PARAMETER_GENERATION_ERROR',
+  TEMPLATE_NOT_FOUND: 'E007_TEMPLATE_NOT_FOUND'
+};
+
+// 任务优化 #3: 自动重试机制
+const retryWithBackoff = async (fn, maxRetries = 2, baseDelay = 1000) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      const delay = baseDelay * Math.pow(2, i);
+      console.log(`[Retry] Attempt ${i + 1}/${maxRetries} failed, retrying in ${delay}ms:`, error.message);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};
+
 const router = express.Router()
 
 /**
@@ -17,18 +46,72 @@ const router = express.Router()
  * 无需复杂的Claude初始化流程
  */
 router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) => {
+  // 任务优化 #7: 性能监控 - 请求开始时间
+  const requestStartTime = Date.now();
+  const requestId = `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  
+  console.log(`[Card API] Request ${requestId} started at ${new Date().toISOString()}`);
+  console.log(`[Card API] Current active requests: ${activeRequests.size}`);
+  
+  // 任务优化 #2: 并发处理优化 - 检查并发限制
+  if (activeRequests.size >= MAX_CONCURRENT_REQUESTS) {
+    console.warn(`[Card API] Concurrent limit reached: ${activeRequests.size}/${MAX_CONCURRENT_REQUESTS}`);
+    return res.status(429).json({
+      code: 429,
+      success: false,
+      message: '服务器繁忙，请稍后重试或使用异步接口',
+      error: {
+        errorCode: ERROR_CODES.CONCURRENT_LIMIT,
+        activeRequests: activeRequests.size,
+        maxConcurrent: MAX_CONCURRENT_REQUESTS,
+        suggestion: 'Please use POST /api/generate/card/async for better concurrency support'
+      },
+      retryAfter: 30
+    });
+  }
+  
+  // 添加到活跃请求跟踪
+  activeRequests.set(requestId, {
+    startTime: requestStartTime,
+    topic: req.body.topic,
+    templateName: req.body.templateName
+  });
+  
   try {
     const { 
       topic, 
       templateName = 'daily-knowledge-card-template.md'
     } = req.body
     
-    // 参数验证
+    // 任务优化 #3: 错误处理增强 - 参数验证改进
     if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
+      activeRequests.delete(requestId); // 清理请求跟踪
       return res.status(400).json({
         code: 400,
         success: false,
-        message: '主题(topic)参数不能为空'
+        message: '主题(topic)参数不能为空',
+        error: {
+          errorCode: ERROR_CODES.PARAMETER_GENERATION_ERROR,
+          field: 'topic',
+          received: typeof topic,
+          expected: 'non-empty string'
+        }
+      })
+    }
+    
+    // 额外的输入验证
+    if (topic.length > 100) {
+      activeRequests.delete(requestId);
+      return res.status(400).json({
+        code: 400,
+        success: false,
+        message: '主题名称不能超过100个字符',
+        error: {
+          errorCode: ERROR_CODES.PARAMETER_GENERATION_ERROR,
+          field: 'topic',
+          length: topic.length,
+          maxLength: 100
+        }
       })
     }
     
@@ -73,19 +156,29 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
     
     let parameters
     try {
-      // 使用直接执行服务生成参数（避免 PTY 兼容性问题）
-      parameters = await claudeExecutorDirect.generateCardParameters(topic, templateName)
+      // 任务优化 #3: 自动重试机制 - 参数生成重试
+      console.log(`[Card API] ${requestId}: Generating parameters with retry mechanism`);
+      parameters = await retryWithBackoff(
+        () => claudeExecutorDirect.generateCardParameters(topic, templateName),
+        2, // 最多重试2次
+        2000 // 起始延迟2秒
+      );
+      console.log(`[Card API] ${requestId}: Parameters generated successfully`);
     } catch (paramError) {
-      console.error('[GenerateCard API] Failed to generate parameters:', paramError)
+      console.error(`[Card API] ${requestId}: Failed to generate parameters after retries:`, paramError)
+      activeRequests.delete(requestId); // 清理请求跟踪
       clearTimeout(responseTimeout)
       if (!res.headersSent) {
         return res.status(500).json({
           code: 500,
           success: false,
-          message: '生成参数失败',
+          message: '生成参数失败，已重试多次',
           error: {
+            errorCode: ERROR_CODES.PARAMETER_GENERATION_ERROR,
             step: 'parameter_generation',
-            details: paramError.message
+            requestId: requestId,
+            details: paramError.message,
+            retryCount: 2
           }
         })
       }
@@ -115,17 +208,25 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         ? path.join('/app/data/public_template', templateName)
         : path.join(dataPath, 'public_template', templateName)
       
-      // 检查文件夹是否存在
+      // 任务优化 #3: 错误处理增强 - 模板验证改进
       try {
         const stats = await fs.stat(templatePath)
         if (!stats.isDirectory()) {
           throw new Error('不是有效的模板文件夹')
         }
-      } catch {
+      } catch (statError) {
+        activeRequests.delete(requestId); // 清理请求跟踪
         return res.status(404).json({
           code: 404,
           success: false,
-          message: `模板文件夹不存在: ${templateName}`
+          message: `模板文件夹不存在: ${templateName}`,
+          error: {
+            errorCode: ERROR_CODES.TEMPLATE_NOT_FOUND,
+            templateName: templateName,
+            templatePath: templatePath,
+            requestId: requestId,
+            details: statError.message
+          }
         })
       }
       
@@ -189,14 +290,22 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         ? path.join('/app/data/public_template', templateName)
         : path.join(dataPath, 'public_template', templateName)
       
-      // 检查模板文件是否存在
+      // 任务优化 #3: 错误处理增强 - 单文件模板验证改进
       try {
         await fs.access(templatePath)
-      } catch {
+      } catch (accessError) {
+        activeRequests.delete(requestId); // 清理请求跟踪
         return res.status(404).json({
           code: 404,
           success: false,
-          message: `模板文件不存在: ${templateName}`
+          message: `模板文件不存在: ${templateName}`,
+          error: {
+            errorCode: ERROR_CODES.TEMPLATE_NOT_FOUND,
+            templateName: templateName,
+            templatePath: templatePath,
+            requestId: requestId,
+            details: accessError.message
+          }
         })
       }
       
@@ -415,9 +524,10 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       clearTimeout(responseTimeout)
     })
     
-    // 使用统一的终端服务（与前端完全相同的处理方式）
-    const apiId = `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    // 任务优化 #4: 统一会话管理 - 使用requestId作为apiId确保一致性
+    const apiId = requestId; // 使用同一个ID确保追踪一致性
     console.log(`[GenerateCard API] >>> Starting unified terminal processing: ${apiId}`)
+    console.log(`[GenerateCard API] Memory usage before Claude execution:`, process.memoryUsage())
     
     try {
       // v3.33+ 简化架构: 直接执行 claude -p 命令，无需初始化
@@ -434,14 +544,16 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       console.log(`[GenerateCard API] ✅ Claude command executed (no initialization needed) for ${apiId}`)
       
     } catch (executeError) {
-      console.error('[GenerateCard API] Command execution error:', executeError)
+      console.error(`[GenerateCard API] ${requestId}: Command execution error:`, executeError)
+      activeRequests.delete(requestId); // 清理请求跟踪
       clearTimeout(responseTimeout)
       
       // 清理会话
       try {
         await apiTerminalService.destroySession(apiId)
+        console.log(`[GenerateCard API] ${requestId}: Session cleaned up after execute error`)
       } catch (cleanupError) {
-        console.error('[GenerateCard API] Failed to cleanup session:', cleanupError)
+        console.error(`[GenerateCard API] ${requestId}: Failed to cleanup session:`, cleanupError)
       }
       
       // 检查是否还能发送响应
@@ -451,9 +563,12 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           success: false,
           message: 'Claude执行失败',
           error: {
+            errorCode: ERROR_CODES.CLAUDE_API_ERROR,
             step: 'claude_execution',
+            requestId: requestId,
             apiId: apiId,
-            details: executeError.message
+            details: executeError.message,
+            memoryUsage: process.memoryUsage()
           }
         })
       }
@@ -491,14 +606,20 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       ])
       
       const elapsedTime = Date.now() - startTime
-      console.log(`[GenerateCard API] Generation completed in ${elapsedTime/1000}s`)
+      const totalRequestTime = Date.now() - requestStartTime
+      console.log(`[GenerateCard API] ${requestId}: Generation completed in ${elapsedTime/1000}s (total request time: ${totalRequestTime/1000}s)`)
+      console.log(`[GenerateCard API] ${requestId}: Memory usage after completion:`, process.memoryUsage())
       
-      // 清理API终端会话
+      // 任务优化 #4: 统一会话管理 - 改进清理逻辑
       try {
         await apiTerminalService.destroySession(apiId)
-        console.log(`[GenerateCard API] ✅ Session cleaned up: ${apiId}`)
+        console.log(`[GenerateCard API] ${requestId}: ✅ Session cleaned up successfully`)
       } catch (cleanupError) {
-        console.error('[GenerateCard API] Session cleanup error:', cleanupError)
+        console.error(`[GenerateCard API] ${requestId}: Session cleanup error:`, cleanupError)
+      } finally {
+        // 无论如何都要清理请求跟踪
+        activeRequests.delete(requestId);
+        console.log(`[GenerateCard API] ${requestId}: Request tracking cleaned up, active requests: ${activeRequests.size}`);
       }
       
       clearTimeout(responseTimeout)
@@ -514,7 +635,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         return
       }
       
-      // 返回成功响应
+      // 保持响应格式与文档完全一致 - 确保前端兼容性
       const responseData = {
         topic: topic,
         sanitizedTopic: sanitizedTopic,
@@ -523,7 +644,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         filePath: result.path,
         generationTime: elapsedTime,
         content: result.content,
-        apiId: apiId // 用于调试
+        apiId: apiId
       }
       
       // 如果有多文件，添加到响应中
@@ -553,15 +674,21 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       }
       
     } catch (error) {
-      console.error('[GenerateCard API] Generation failed:', error)
+      console.error(`[GenerateCard API] ${requestId}: Generation failed:`, error)
+      activeRequests.delete(requestId); // 清理请求跟踪
       clearTimeout(responseTimeout)
       
       // 清理API终端会话
       try {
         await apiTerminalService.destroySession(apiId)
+        console.log(`[GenerateCard API] ${requestId}: Session cleaned up after generation error`)
       } catch (cleanupError) {
-        console.error('[GenerateCard API] Cleanup error:', cleanupError)
+        console.error(`[GenerateCard API] ${requestId}: Cleanup error:`, cleanupError)
       }
+      
+      // 任务优化 #3: 错误处理增强 - 根据错误类型返回相应错误码
+      const isTimeout = error.message && error.message.includes('超时');
+      const errorCode = isTimeout ? ERROR_CODES.TIMEOUT : ERROR_CODES.FILE_GENERATION_ERROR;
       
       // 检查是否还能发送错误响应
       if (!res.headersSent && !connectionClosed) {
@@ -570,20 +697,27 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           success: false,
           message: error.message || '生成失败',
           error: {
+            errorCode: errorCode,
             topic: topic,
             templateName: templateName,
+            requestId: requestId,
             apiId: apiId,
             step: 'file_generation',
-            details: error.toString()
+            details: error.toString(),
+            totalRequestTime: Date.now() - requestStartTime,
+            activeRequestsCount: activeRequests.size
           }
         })
       } else {
-        console.warn('[GenerateCard API] Cannot send error response - connection closed or response sent')
+        console.warn(`[GenerateCard API] ${requestId}: Cannot send error response - connection closed or response sent`)
       }
     }
     
   } catch (error) {
-    console.error('[GenerateCard API] Unexpected error:', error)
+    console.error(`[GenerateCard API] ${requestId}: Unexpected error:`, error)
+    
+    // 任务优化: 确保清理所有资源
+    activeRequests.delete(requestId); // 清理请求跟踪
     
     // 清理超时计时器（如果存在）
     if (typeof responseTimeout !== 'undefined') {
@@ -597,12 +731,16 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         success: false,
         message: '服务器内部错误',
         error: {
+          errorCode: ERROR_CODES.RESOURCE_UNAVAILABLE,
+          requestId: requestId,
           message: error.message,
+          totalRequestTime: Date.now() - requestStartTime,
+          activeRequestsCount: activeRequests.size,
           stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         }
       })
     } else {
-      console.error('[GenerateCard API] Cannot send error - response already sent')
+      console.error(`[GenerateCard API] ${requestId}: Cannot send error - response already sent`)
     }
   }
 })

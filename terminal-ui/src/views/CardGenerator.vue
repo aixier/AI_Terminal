@@ -48,20 +48,19 @@
         >
           <div 
             class="folder-item"
-            :class="{ expanded: expandedFolders.includes(folder.id) }"
+            :class="{ 
+              expanded: expandedFolders.includes(folder.id),
+              selected: selectedFolderInfo?.id === folder.id
+            }"
             @click="toggleFolder(folder.id)"
             @contextmenu.prevent="showFolderContextMenu($event, folder)"
           >
             <span class="folder-icon">{{ expandedFolders.includes(folder.id) ? '📂' : '📁' }}</span>
             <span class="folder-name">{{ folder.name }}</span>
             <span class="folder-count">({{ filterJsonFiles(folder.cards).length + (folder.folders ? folder.folders.reduce((sum, sf) => sum + filterJsonFiles(sf.cards).length, 0) : 0) }})</span>
-            <button 
-              class="delete-folder-btn"
-              @click.stop="deleteFolder(folder)"
-              title="删除文件夹"
-            >
-              🗑️
-            </button>
+            <div class="folder-status">
+              <span v-if="selectedFolderInfo?.id === folder.id" class="status-indicator selected">✓</span>
+            </div>
           </div>
           
           <div v-if="expandedFolders.includes(folder.id)" class="cards-list">
@@ -73,7 +72,10 @@
             >
               <div 
                 class="folder-item subfolder-item"
-                :class="{ expanded: expandedFolders.includes(subfolder.id) }"
+                :class="{ 
+                  expanded: expandedFolders.includes(subfolder.id),
+                  selected: selectedFolderInfo?.id === subfolder.id
+                }"
                 @click="toggleFolder(subfolder.id)"
                 @contextmenu.prevent="showFolderContextMenu($event, subfolder)"
               >
@@ -95,16 +97,9 @@
                     {{ getFileIcon(card.name) }}
                   </span>
                   <span class="card-name">{{ card.name }}</span>
-                  <div class="card-actions">
-                    <button 
-                      v-if="getFileIcon(card.name) === '📄' && !card.name.includes('-response')"
-                      class="generate-html-btn"
-                      @click.stop="generateHtmlForCard(card, subfolder)"
-                      :disabled="isGeneratingHtml[card.id]"
-                      :title="isGeneratingHtml[card.id] ? '生成中...' : '生成HTML页面'"
-                    >
-                      {{ isGeneratingHtml[card.id] ? '⏳' : '🎨' }}
-                    </button>
+                  <div class="card-status">
+                    <span v-if="isGeneratingHtml[card.id]" class="status-indicator generating">⏳</span>
+                    <span v-else-if="selectedCardInfo?.card.id === card.id" class="status-indicator selected">✓</span>
                   </div>
                 </div>
               </div>
@@ -123,29 +118,10 @@
                 {{ getFileIcon(card.name) }}
               </span>
               <span class="card-name">{{ card.name }}</span>
-              <div class="card-actions">
-                <button 
-                  class="delete-card-btn"
-                  @click.stop="deleteCardFile(card, folder)"
-                  title="删除文件"
-                >
-                  ❌
-                </button>
+              <div class="card-status">
                 <span class="card-type">{{ getFileType(card.name) }}</span>
-                <button 
-                  v-if="card.name.toLowerCase().endsWith('.json')"
-                  :id="`generate-html-btn-${card.id}`"
-                  class="generate-html-btn"
-                  @click.stop="generateHtmlFromJson(card, folder)"
-                  :disabled="isGeneratingHtml[card.id]"
-                  title="生成HTML"
-                >
-                  <svg v-if="!isGeneratingHtml[card.id]" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
-                    <path d="M8.646 6.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L10.293 9 8.646 7.354a.5.5 0 0 1 0-.708z"/>
-                  </svg>
-                  <span v-else class="loading-spinner">⟳</span>
-                </button>
+                <span v-if="isGeneratingHtml[card.id]" class="status-indicator generating">⏳</span>
+                <span v-else-if="selectedCardInfo?.card.id === card.id" class="status-indicator selected">✓</span>
               </div>
             </div>
           </div>
@@ -161,9 +137,138 @@
     <div class="main-area">
       <!-- Top: Card Preview Area -->
       <div class="preview-area">
-        <div class="area-title">
-          {{ selectedCard ? '卡片内容预览' : '生成结果预览' }}
-          <span v-if="selectedCard && previewType" class="preview-type-tag">{{ previewType.toUpperCase() }}</span>
+        <div class="area-header">
+          <div class="area-title">
+            {{ selectedCard ? '卡片内容预览' : '生成结果预览' }}
+            <span v-if="selectedCard && previewType" class="preview-type-tag">{{ previewType.toUpperCase() }}</span>
+          </div>
+          
+          <!-- 顶部操作按钮栏 -->
+          <div v-if="selectedCardInfo || selectedFolderInfo" class="top-action-bar">
+            <div class="selected-item-info">
+              <span class="selected-icon">
+                {{ selectedFolderInfo ? (expandedFolders.includes(selectedFolderInfo.id) ? '📂' : '📁') : getFileIcon(selectedCardInfo?.card.name) }}
+              </span>
+              <span class="selected-name">
+                {{ selectedFolderInfo ? selectedFolderInfo.name : selectedCardInfo?.card.name }}
+              </span>
+              <span v-if="!selectedFolderInfo" class="selected-type">
+                {{ getFileType(selectedCardInfo?.card.name) }}
+              </span>
+            </div>
+            
+            <div class="action-buttons">
+              <!-- 文件操作按钮 -->
+              <template v-if="selectedCardInfo">
+                <!-- 打开按钮 - 所有文件都可以打开 -->
+                <button 
+                  class="action-btn primary"
+                  @click="selectCard(selectedCardInfo.card.id, selectedCardInfo.folder.id)"
+                  title="打开"
+                >
+                  <span class="btn-icon">📄</span>
+                  <span class="btn-text">打开</span>
+                </button>
+                
+                <!-- 预览按钮 - 只对HTML文件显示 -->
+                <button 
+                  v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.html') || selectedCardInfo.card.name.toLowerCase().endsWith('.htm')"
+                  class="action-btn"
+                  @click="previewHtmlFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  title="预览"
+                >
+                  <span class="btn-icon">👁️</span>
+                  <span class="btn-text">预览</span>
+                </button>
+                
+                <!-- 生成HTML按钮 - 只对JSON文件显示 -->
+                <button 
+                  v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.json')"
+                  class="action-btn"
+                  @click="generateHtmlFromJson(selectedCardInfo.card, selectedCardInfo.folder)"
+                  :disabled="isGeneratingHtml[selectedCardInfo.card.id]"
+                  title="生成HTML"
+                >
+                  <span class="btn-icon">🔄</span>
+                  <span class="btn-text">{{ isGeneratingHtml[selectedCardInfo.card.id] ? '生成中' : '生成HTML' }}</span>
+                </button>
+                
+                <!-- 下载按钮 - 所有文件都可以下载 -->
+                <button 
+                  class="action-btn"
+                  @click="downloadFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  title="下载"
+                >
+                  <span class="btn-icon">⬇️</span>
+                  <span class="btn-text">下载</span>
+                </button>
+                
+                <!-- 重命名按钮 - 所有文件都可以重命名 -->
+                <button 
+                  class="action-btn"
+                  @click="renameFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  title="重命名"
+                >
+                  <span class="btn-icon">✏️</span>
+                  <span class="btn-text">重命名</span>
+                </button>
+                
+                <!-- 删除按钮 - 所有文件都可以删除 -->
+                <button 
+                  class="action-btn danger"
+                  @click="deleteCardFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  title="删除文件"
+                >
+                  <span class="btn-icon">🗑️</span>
+                  <span class="btn-text">删除</span>
+                </button>
+              </template>
+              
+              <!-- 文件夹操作按钮 -->
+              <template v-if="selectedFolderInfo">
+                <!-- 刷新按钮 - 所有文件夹都可以刷新 -->
+                <button 
+                  class="action-btn"
+                  @click="refreshCardFolders"
+                  title="刷新"
+                >
+                  <span class="btn-icon">🔄</span>
+                  <span class="btn-text">刷新</span>
+                </button>
+                
+                <!-- 重命名按钮 - 所有文件夹都可以重命名 -->
+                <button 
+                  class="action-btn"
+                  @click="renameFolder(selectedFolderInfo)"
+                  title="重命名文件夹"
+                >
+                  <span class="btn-icon">✏️</span>
+                  <span class="btn-text">重命名</span>
+                </button>
+                
+                <!-- 删除按钮 - 所有文件夹都可以删除 -->
+                <button 
+                  class="action-btn danger"
+                  @click="deleteFolder(selectedFolderInfo)"
+                  title="删除文件夹"
+                >
+                  <span class="btn-icon">🗑️</span>
+                  <span class="btn-text">删除</span>
+                </button>
+              </template>
+              
+              <!-- 取消选择按钮 - 当有选择时显示 -->
+              <button 
+                v-if="selectedCardInfo || selectedFolderInfo"
+                class="action-btn secondary"
+                @click="clearSelection"
+                title="取消选择"
+              >
+                <span class="btn-icon">✖️</span>
+                <span class="btn-text">取消选择</span>
+              </button>
+            </div>
+          </div>
         </div>
         <!-- Tab 切换区域 -->
         <div v-if="previewType === 'iframe' && responseUrls.shareLink && responseUrls.originalUrl" class="preview-tabs">
@@ -512,28 +617,109 @@
             <button class="refresh-btn" @click="refreshCardFolders" title="刷新">🔄</button>
           </div>
           
-          <!-- 文件操作栏（根据选中项上下文展示） -->
-          <div v-if="selectedCard && selectedFolder" class="file-action-bar">
-            <!-- 加载状态指示器 -->
-            <div v-if="isLoadingPreview" class="loading-indicator">
-              <div class="loading-progress-bar">
-                <div class="loading-progress-fill" :style="{ width: previewLoadingProgress + '%' }"></div>
-              </div>
-              <span class="loading-text">加载中... {{ previewLoadingProgress }}%</span>
+          <!-- 文件操作栏（根据选中项动态显示按钮） -->
+          <div v-if="selectedCardInfo || selectedFolderInfo" class="file-action-bar">
+            <!-- 选中项信息 -->
+            <div class="mobile-selected-info">
+              <span class="selected-icon">
+                {{ selectedFolderInfo ? (expandedFolders.includes(selectedFolderInfo.id) ? '📂' : '📁') : getFileIcon(selectedCardInfo?.card.name) }}
+              </span>
+              <span class="selected-name">
+                {{ selectedFolderInfo ? selectedFolderInfo.name : selectedCardInfo?.card.name }}
+              </span>
             </div>
             
-            <!-- 预览按钮 -->
-            <button 
-              class="action-btn primary" 
-              @click="handlePreviewSelected"
-              :disabled="isLoadingPreview"
-            >
-              {{ isLoadingPreview ? '加载中...' : '预览' }}
-            </button>
-            <button class="action-btn" :disabled="!responseUrls.shareLink" @click="copyLink('share')">复制分享</button>
-            <button class="action-btn" :disabled="!responseUrls.shareLink" @click="openLink('share')">打开分享</button>
-            <button class="action-btn" :disabled="!responseUrls.originalUrl" @click="copyLink('original')">复制原始</button>
-            <button class="action-btn" :disabled="!responseUrls.originalUrl" @click="openLink('original')">打开原始</button>
+            <!-- 动态操作按钮 -->
+            <div class="mobile-action-buttons">
+              <!-- 文件操作 -->
+              <template v-if="selectedCardInfo">
+                <!-- 打开按钮 -->
+                <button 
+                  class="action-btn primary"
+                  @click="selectCard(selectedCardInfo.card.id, selectedCardInfo.folder.id)"
+                >
+                  📄 打开
+                </button>
+                
+                <!-- 预览按钮 - 只对HTML文件显示 -->
+                <button 
+                  v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.html') || selectedCardInfo.card.name.toLowerCase().endsWith('.htm')"
+                  class="action-btn"
+                  @click="previewHtmlFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                >
+                  👁️ 预览
+                </button>
+                
+                <!-- 生成HTML按钮 - 只对JSON文件显示 -->
+                <button 
+                  v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.json')"
+                  class="action-btn"
+                  @click="generateHtmlFromJson(selectedCardInfo.card, selectedCardInfo.folder)"
+                  :disabled="isGeneratingHtml[selectedCardInfo.card.id]"
+                >
+                  🔄 {{ isGeneratingHtml[selectedCardInfo.card.id] ? '生成中' : '生成HTML' }}
+                </button>
+                
+                <!-- 下载按钮 -->
+                <button 
+                  class="action-btn"
+                  @click="downloadFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                >
+                  ⬇️ 下载
+                </button>
+                
+                <!-- 重命名按钮 -->
+                <button 
+                  class="action-btn"
+                  @click="renameFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                >
+                  ✏️ 重命名
+                </button>
+                
+                <!-- 删除按钮 -->
+                <button 
+                  class="action-btn danger"
+                  @click="deleteCardFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                >
+                  🗑️ 删除
+                </button>
+              </template>
+              
+              <!-- 文件夹操作 -->
+              <template v-if="selectedFolderInfo">
+                <!-- 刷新按钮 -->
+                <button 
+                  class="action-btn"
+                  @click="refreshCardFolders"
+                >
+                  🔄 刷新
+                </button>
+                
+                <!-- 重命名按钮 -->
+                <button 
+                  class="action-btn"
+                  @click="renameFolder(selectedFolderInfo)"
+                >
+                  ✏️ 重命名
+                </button>
+                
+                <!-- 删除按钮 -->
+                <button 
+                  class="action-btn danger"
+                  @click="deleteFolder(selectedFolderInfo)"
+                >
+                  🗑️ 删除
+                </button>
+              </template>
+              
+              <!-- 取消选择按钮 -->
+              <button 
+                class="action-btn secondary"
+                @click="clearSelection"
+              >
+                ✖️ 取消
+              </button>
+            </div>
           </div>
           
           <div class="mobile-folder-tree">
@@ -788,6 +974,9 @@ const isGenerating = ref(false)
 const selectedTemplate = ref(0)
 const selectedCard = ref(null)
 const selectedFolder = ref(null)
+// 新增：用于顶部操作栏的选择状态
+const selectedCardInfo = ref(null) // { card, folder }
+const selectedFolderInfo = ref(null) // folder object
 // 当前生成的文件夹名称和模板名称（用于传递给 HtmlContentViewer）
 const currentGeneratedFolder = ref('')
 const currentTemplateName = ref('')
@@ -1237,6 +1426,79 @@ const previewHtmlFile = async (card, folder) => {
     console.error('预览HTML文件失败:', error)
     ElMessage.error('预览失败: ' + error.message)
   }
+}
+
+// 顶部操作栏辅助方法
+const updateTopBarSelection = (id, folderId, type) => {
+  // 清除之前的选择
+  selectedCardInfo.value = null
+  selectedFolderInfo.value = null
+  
+  if (type === 'card') {
+    // 查找卡片和文件夹信息
+    const folderInfo = findFolderById(folderId)
+    const cardInfo = findCardById(id, folderId)
+    
+    if (folderInfo && cardInfo) {
+      selectedCardInfo.value = {
+        card: cardInfo,
+        folder: folderInfo
+      }
+    }
+  } else if (type === 'folder') {
+    // 查找文件夹信息
+    const folderInfo = findFolderById(id)
+    if (folderInfo) {
+      selectedFolderInfo.value = folderInfo
+    }
+  }
+}
+
+const clearSelection = () => {
+  selectedCardInfo.value = null
+  selectedFolderInfo.value = null
+  selectedCard.value = null
+  selectedFolder.value = null
+  previewContent.value = ''
+  previewType.value = ''
+}
+
+// 递归查找文件夹的辅助方法
+const findFolderById = (folderId) => {
+  const findFolderRecursive = (folders, targetId) => {
+    for (const folder of folders) {
+      if (folder.id === targetId) {
+        return folder
+      }
+      if (folder.subfolders && folder.subfolders.length > 0) {
+        const found = findFolderRecursive(folder.subfolders, targetId)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  
+  return findFolderRecursive(cardFolders.value, folderId)
+}
+
+// 递归查找卡片的辅助方法
+const findCardById = (cardId, folderId) => {
+  const folder = findFolderById(folderId)
+  if (!folder) return null
+  
+  // 在直接文件中查找
+  const directCard = folder.cards?.find(card => card.id === cardId)
+  if (directCard) return directCard
+  
+  // 在子文件夹中查找
+  if (folder.subfolders) {
+    for (const subfolder of folder.subfolders) {
+      const card = subfolder.cards?.find(card => card.id === cardId)
+      if (card) return card
+    }
+  }
+  
+  return null
 }
 
 // 切换预览Tab
@@ -1689,6 +1951,9 @@ const toggleFolder = (folderId) => {
   } else {
     expandedFolders.value.push(folderId)
   }
+  
+  // 更新顶部操作栏的选择状态
+  updateTopBarSelection(folderId, null, 'folder')
 }
 
 // Select a card
@@ -1696,6 +1961,9 @@ const selectCard = (cardId, folderId) => {
   console.log('[CardGenerator] selectCard called:', { cardId, folderId })
   selectedCard.value = cardId
   selectedFolder.value = folderId
+  
+  // 更新顶部操作栏的选择状态
+  updateTopBarSelection(cardId, folderId, 'card')
   
   // 移动端：预加载内容，但不自动触发全屏预览，等用户点击"预览"按钮
   // 桌面端：加载内容并在右侧预览区域显示
@@ -3397,12 +3665,14 @@ const handleOpenHtmlLink = () => {
 .left-sidebar {
   width: 240px;
   min-width: 240px;
+  max-width: 240px;
   flex-shrink: 0;
   background: #1e1e1e;
   border-right: 1px solid #2d2d2d;
   padding: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* User Info Section */
@@ -3517,6 +3787,7 @@ const handleOpenHtmlLink = () => {
 .folder-tree {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px;
 }
 
@@ -3545,20 +3816,21 @@ const handleOpenHtmlLink = () => {
 .folder-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
+  gap: 8px;
+  padding: 8px 12px;
   background: transparent;
-  border-radius: 3px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 14px;
   user-select: none;
   margin-bottom: 2px;
   position: relative;
+  max-width: calc(100vw - 40px);
 }
 
 .folder-item:hover {
-  background: #2a2a2a;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .delete-folder-btn {
@@ -3587,17 +3859,23 @@ const handleOpenHtmlLink = () => {
   background: transparent;
 }
 
+.folder-item.selected {
+  background: rgba(74, 158, 255, 0.15);
+  border-left: 3px solid #4a9eff;
+}
+
 /* Subfolder styling */
 .subfolder {
-  margin-left: 20px;
+  margin-left: 10px;
 }
 
 .subfolder-item {
   font-size: 13px;
+  padding: 5px 8px;
 }
 
 .subfolder-cards {
-  margin-left: 20px;
+  margin-left: 8px;
 }
 
 .folder-icon {
@@ -3611,6 +3889,10 @@ const handleOpenHtmlLink = () => {
   flex: 1;
   color: #e0e0e0;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100vw - 200px);
 }
 
 .folder-count {
@@ -3622,8 +3904,8 @@ const handleOpenHtmlLink = () => {
 }
 
 .cards-list {
-  margin-left: 22px;
-  margin-top: 4px;
+  margin-left: 12px;
+  margin-top: 2px;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -3632,23 +3914,24 @@ const handleOpenHtmlLink = () => {
 .card-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
+  gap: 8px;
+  padding: 6px 12px;
   background: transparent;
-  border-radius: 3px;
+  border-radius: 6px;
   transition: all 0.2s;
   font-size: 13px;
   cursor: pointer;
   position: relative;
+  max-width: calc(100vw - 60px);
 }
 
 .card-item:hover {
-  background: #2a2a2a;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .card-item.active {
-  background: #2a2a2a;
-  border-left: 2px solid #4a9eff;
+  background: rgba(74, 158, 255, 0.15);
+  border-left: 3px solid #4a9eff;
 }
 
 .card-item.active::before {
@@ -3731,6 +4014,7 @@ const handleOpenHtmlLink = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  max-width: calc(100vw - 220px);
 }
 
 .card-actions {
@@ -3738,6 +4022,49 @@ const handleOpenHtmlLink = () => {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+}
+
+/* 新的状态样式 */
+.card-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.folder-status {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-right: 8px;
+}
+
+.status-indicator {
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.status-indicator.selected {
+  background: #4a9eff;
+  color: white;
+  animation: pulse 1.5s infinite;
+}
+
+.status-indicator.generating {
+  color: #ffa500;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .delete-card-btn {
@@ -3875,10 +4202,14 @@ const handleOpenHtmlLink = () => {
   min-height: 0;
 }
 
-.area-title {
-  padding: 12px 20px;
+/* 更新后的区域头部样式 */
+.area-header {
   background: #2a2a2a;
   border-bottom: 1px solid #333;
+}
+
+.area-title {
+  padding: 12px 20px;
   font-size: 14px;
   font-weight: 500;
   text-align: center;
@@ -3886,6 +4217,140 @@ const handleOpenHtmlLink = () => {
   justify-content: center;
   align-items: center;
   gap: 10px;
+}
+
+/* 顶部操作栏样式 */
+.top-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  background: #333;
+  border-top: 1px solid #444;
+}
+
+.selected-item-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #e0e0e0;
+}
+
+.selected-icon {
+  font-size: 16px;
+}
+
+.selected-name {
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-type {
+  background: #555;
+  color: #ccc;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #555;
+  color: #e0e0e0;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: #666;
+  transform: translateY(-1px);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.primary {
+  background: #4a9eff;
+  color: white;
+}
+
+.action-btn.primary:hover:not(:disabled) {
+  background: #3a8eef;
+}
+
+.action-btn.danger {
+  background: #f56565;
+  color: white;
+}
+
+.action-btn.danger:hover:not(:disabled) {
+  background: #e55555;
+}
+
+.action-btn.secondary {
+  background: #666;
+  color: #ccc;
+}
+
+.action-btn.secondary:hover:not(:disabled) {
+  background: #777;
+}
+
+.btn-icon {
+  font-size: 14px;
+}
+
+.btn-text {
+  font-weight: 500;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .top-action-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+  }
+  
+  .selected-item-info {
+    justify-content: center;
+    padding: 4px 0;
+  }
+  
+  .action-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  
+  .action-btn {
+    flex: 0 0 auto;
+    min-width: 80px;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
 }
 
 .preview-type-tag {
@@ -5043,23 +5508,75 @@ const handleOpenHtmlLink = () => {
   position: sticky;
   top: 0;
   z-index: 2;
-  display: flex;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(22,27,34,0.9);
-  backdrop-filter: blur(8px);
+  background: rgba(22,27,34,0.95);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid #30363d;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.action-btn {
+
+.mobile-selected-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 14px;
+  color: #c9d1d9;
+}
+
+.mobile-selected-info .selected-icon {
+  font-size: 16px;
+}
+
+.mobile-selected-info .selected-name {
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mobile-action-buttons .action-btn {
   padding: 8px 12px;
   background: #2a2f3a;
   border: 1px solid #3a3f4a;
   color: #c9d1d9;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  flex: 0 1 auto;
+  min-width: fit-content;
 }
-.action-btn:disabled { opacity: .5; cursor: not-allowed; }
-.action-btn.primary { background: #238636; border-color: #2ea043; color: #fff; }
+
+.mobile-action-buttons .action-btn:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+}
+
+.mobile-action-buttons .action-btn.primary { 
+  background: #238636; 
+  border-color: #2ea043; 
+  color: #fff; 
+}
+
+.mobile-action-buttons .action-btn.danger { 
+  background: #da3633; 
+  border-color: #f85149; 
+  color: #fff; 
+}
+
+.mobile-action-buttons .action-btn.secondary { 
+  background: #6a737d; 
+  border-color: #8b949e; 
+  color: #fff; 
+}
 
 
 /* 移动端用户信息栏样式 */

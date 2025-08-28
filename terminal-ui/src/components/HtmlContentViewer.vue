@@ -748,9 +748,9 @@ const handleShareToXHS = async () => {
       hasHtmlContent: !!props.htmlContent
     })
 
-    // 如果是 cardplanet-Sandra-json 模板，尝试获取 pageinfo
-    if (props.templateName === 'cardplanet-Sandra-json' && props.folderName) {
-      console.log('[HtmlContentViewer] 尝试获取 pageinfo，文件夹:', props.folderName)
+    // 根据 meta.json 中的 templateName 决定是否传递 pageinfo
+    if (props.folderName) {
+      console.log('[HtmlContentViewer] 检查 meta.json，文件夹:', props.folderName)
       try {
         // 查询文件夹中的所有文件
         const queryUrl = `/api/generate/card/query/${encodeURIComponent(props.folderName)}`
@@ -762,47 +762,59 @@ const handleShareToXHS = async () => {
           console.log('[HtmlContentViewer] 查询响应:', queryData)
           
           if (queryData.success && queryData.data) {
-            // 首先检查响应中是否直接包含 pageinfo
-            if (queryData.data.pageinfo) {
-              requestBody.pageinfo = queryData.data.pageinfo
-              console.log('[HtmlContentViewer] 直接使用响应中的 pageinfo 字段')
-            } else {
-              // 否则尝试从文件列表中查找
-              const files = queryData.data.files || queryData.data.allFiles || []
-              console.log('[HtmlContentViewer] 文件列表:', files)
+            const files = queryData.data.files || queryData.data.allFiles || []
+            const templateName = queryData.data.templateName || ''
+            console.log('[HtmlContentViewer] 文件列表:', files)
+            console.log('[HtmlContentViewer] API响应中的 templateName:', templateName)
+            
+            // 如果 templateName 不是 "daily-knowledge-card-template.md"，则获取 pageinfo
+            if (templateName !== 'daily-knowledge-card-template.md') {
+              console.log('[HtmlContentViewer] 非 daily 模板，获取 pageinfo')
               
-              // 查找 JSON 文件
-              const jsonFile = files.find(f => {
-                // 兼容不同的字段名
-                const fileName = f.name || f.fileName
-                return fileName && fileName.endsWith('.json') && !fileName.includes('-response')
-              })
-              
-              if (jsonFile) {
-                const fileName = jsonFile.name || jsonFile.fileName
-                console.log('[HtmlContentViewer] 找到 JSON 文件:', fileName)
+              // 优先使用API响应中的pageinfo字段
+              if (queryData.data.pageinfo) {
+                requestBody.pageinfo = JSON.stringify(queryData.data.pageinfo)
+                console.log('[HtmlContentViewer] 使用API响应中的 pageinfo 数据')
+              } else {
+                // 否则查找 JSON 文件
+                const jsonFile = files.find(f => {
+                  const fileName = f.fileName || f.name
+                  return fileName && fileName.endsWith('.json') && 
+                         !fileName.includes('meta') && 
+                         !fileName.includes('-response')
+                })
                 
-                // 获取 JSON 文件内容 - 可能直接在响应中或需要额外请求
-                if (jsonFile.content) {
-                  // 内容已经在响应中
-                  requestBody.pageinfo = jsonFile.content
-                  console.log('[HtmlContentViewer] 使用文件中的 pageinfo 数据')
-                } else if (jsonFile.url) {
-                  // 需要额外请求获取内容
-                  console.log('[HtmlContentViewer] 从 URL 获取 JSON:', jsonFile.url)
-                  const jsonResponse = await fetch(jsonFile.url)
-                  if (jsonResponse.ok) {
-                    const pageinfo = await jsonResponse.json()
-                    requestBody.pageinfo = pageinfo
-                    console.log('[HtmlContentViewer] 成功从 URL 获取 pageinfo 数据')
+                if (jsonFile) {
+                  const fileName = jsonFile.fileName || jsonFile.name
+                  console.log('[HtmlContentViewer] 找到数据 JSON 文件:', fileName)
+                  
+                  // 获取 JSON 文件内容
+                  if (jsonFile.content) {
+                    requestBody.pageinfo = JSON.stringify(jsonFile.content)
+                    console.log('[HtmlContentViewer] 使用文件中的 pageinfo 数据')
+                  } else if (jsonFile.url || jsonFile.path) {
+                    const jsonUrl = jsonFile.url || jsonFile.path
+                    console.log('[HtmlContentViewer] 从 URL 获取 JSON:', jsonUrl)
+                    try {
+                      const jsonResponse = await fetch(jsonUrl)
+                      if (jsonResponse.ok) {
+                        const pageinfo = await jsonResponse.json()
+                        requestBody.pageinfo = JSON.stringify(pageinfo)
+                        console.log('[HtmlContentViewer] 成功从 URL 获取 pageinfo 数据')
+                      }
+                    } catch (fetchError) {
+                      console.warn('[HtmlContentViewer] 从URL获取JSON失败:', fetchError)
+                    }
                   }
                 }
               }
+            } else {
+              console.log('[HtmlContentViewer] daily 模板，不传递 pageinfo 参数')
             }
           }
         }
       } catch (error) {
-        console.warn('获取 pageinfo 失败，将仅发送 HTML:', error)
+        console.warn('获取 meta.json 或 pageinfo 失败，将仅发送 HTML:', error)
       }
     }
 
@@ -810,7 +822,8 @@ const handleShareToXHS = async () => {
     console.log('[HtmlContentViewer] 最终发送到 Engagia 的请求体:', {
       hasHtml: !!requestBody.html,
       hasPageinfo: !!requestBody.pageinfo,
-      pageinfoKeys: requestBody.pageinfo ? Object.keys(requestBody.pageinfo) : null
+      pageinfoKeys: requestBody.pageinfo ? Object.keys(requestBody.pageinfo) : null,
+      fullRequestBody: requestBody
     })
 
     // 调用 Engagia API

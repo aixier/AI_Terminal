@@ -6,6 +6,8 @@ import claudeExecutorDirect from '../../services/claudeExecutorDirect.js'
 import { authenticateUserOrDefault, ensureUserFolder } from '../../middleware/userAuth.js'
 import userService from '../../services/userService.js'
 import { ensureCardFolder, updateFolderStatus } from './utils/folderManager.js'
+import { SessionMetadata } from './utils/sessionMetadata.js'
+import { generateFourFiles, isDailyKnowledgeTemplate } from './utils/fileGenerator.js'
 
 const router = express.Router()
 
@@ -313,6 +315,103 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         } else {
           console.error(`[Async Card API] File generation timeout for task: ${taskId}`)
           throw new Error('File generation timeout')
+        }
+        
+        // === 新增：通用元数据记录和daily模板特殊处理 ===
+        try {
+          console.log(`[Async Card API] Starting meta processing for task: ${taskId}`)
+          
+          // 1. 创建会话元数据
+          const metadata = new SessionMetadata(targetUser.username, topic, templateName, '/api/generate/card/async', taskId)
+          
+          // 设置请求参数
+          if (style || language || reference) {
+            metadata.setUserParameters({ 
+              style, 
+              language, 
+              reference
+            })
+          }
+          
+          // 设置处理信息
+          metadata.setPaths(templatePath, backgroundUserCardPath)
+          metadata.setAssembledPrompt(prompt)
+          
+          // 检查生成的文件并记录
+          const files = await fs.readdir(backgroundUserCardPath)
+          const generatedFiles = files.filter(f => 
+            (f.endsWith('.json') || f.endsWith('.html')) && 
+            !f.includes('-response') &&
+            !f.startsWith('.') &&
+            !f.includes('_meta')
+          )
+          
+          // 记录生成的文件
+          for (const fileName of generatedFiles) {
+            const filePath = path.join(backgroundUserCardPath, fileName)
+            const fileType = fileName.endsWith('.html') ? 'html' : 'json'
+            await metadata.addFile(fileName, filePath, fileType)
+          }
+          
+          metadata.logStep('file_generation', 'completed', {
+            generatedFiles: generatedFiles,
+            fileCount: generatedFiles.length
+          })
+          
+          // 2. 检查是否为daily模板，需要四文件生成
+          if (isDailyKnowledgeTemplate(templateName)) {
+            console.log(`[Async Card API] Daily template detected, starting four-file generation for task: ${taskId}`)
+            
+            try {
+              // 找到JSON文件作为输入
+              const jsonFiles = generatedFiles.filter(f => f.endsWith('.json'))
+              if (jsonFiles.length > 0) {
+                const jsonFilePath = path.join(backgroundUserCardPath, jsonFiles[0])
+                
+                // 执行四文件生成流程
+                const fourFileResult = await generateFourFiles({
+                  userId: targetUser.username,
+                  topic,
+                  templateName,
+                  outputDir: backgroundUserCardPath,
+                  jsonFilePath,
+                  baseName: path.basename(jsonFiles[0], '.json'), // 使用JSON文件的基础名
+                  requestId: taskId,
+                  apiEndpoint: '/api/generate/card/async'
+                })
+                
+                if (fourFileResult.success) {
+                  console.log(`[Async Card API] Four-file generation completed for task: ${taskId}`)
+                  metadata.addLog('info', 'Four-file generation completed', {
+                    files: fourFileResult.files
+                  })
+                } else {
+                  console.warn(`[Async Card API] Four-file generation failed for task ${taskId}:`, fourFileResult.errors)
+                  metadata.addLog('warn', 'Four-file generation failed', {
+                    errors: fourFileResult.errors
+                  })
+                }
+              } else {
+                console.warn(`[Async Card API] No JSON file found for daily template processing: ${taskId}`)
+                metadata.addLog('warn', 'No JSON file found for daily template processing')
+              }
+              
+            } catch (fourFileError) {
+              console.error(`[Async Card API] Four-file generation error for task ${taskId}:`, fourFileError)
+              metadata.addLog('error', 'Four-file generation error', {
+                error: fourFileError.message
+              })
+            }
+          } else {
+            // 非daily模板，只记录完成并保存元数据
+            metadata.complete('success')
+            const metaFilePath = await metadata.save(backgroundUserCardPath)
+            console.log(`[Async Card API] Meta file saved for task ${taskId}: ${metaFilePath}`)
+          }
+          
+        } catch (metaError) {
+          console.error(`[Async Card API] Meta processing error for task ${taskId}:`, metaError)
+          // 元数据处理失败不影响主流程
         }
         
         // 更新文件夹状态为完成

@@ -6,6 +6,8 @@ import claudeExecutorDirect from '../../services/claudeExecutorDirect.js'
 import { authenticateUserOrDefault, ensureUserFolder } from '../../middleware/userAuth.js'
 import userService from '../../services/userService.js'
 import { ensureCardFolder, updateFolderStatus, recordGeneratedFiles } from './utils/folderManager.js'
+import { SessionMetadata } from './utils/sessionMetadata.js'
+import { generateFourFiles, isDailyKnowledgeTemplate } from './utils/fileGenerator.js'
 
 // 任务优化 #2: 并发处理优化 - 添加请求队列管理
 const activeRequests = new Map(); // 活跃请求跟踪
@@ -642,6 +644,105 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       console.log(`[GenerateCard API] ${requestId}: Generation completed in ${elapsedTime/1000}s (total request time: ${totalRequestTime/1000}s)`)
       console.log(`[GenerateCard API] ${requestId}: Memory usage after completion:`, process.memoryUsage())
       
+      // 准备响应数据 - 放在元数据处理之前
+      const responseData = {
+        topic: topic,
+        sanitizedTopic: sanitizedTopic,
+        templateName: templateName,
+        fileName: result.fileName,
+        filePath: result.path,
+        generationTime: elapsedTime,
+        content: result.content,
+        apiId: apiId
+      }
+      
+      // === 新增：通用元数据记录和daily模板特殊处理 ===
+      try {
+        console.log(`[GenerateCard API] ${requestId}: Starting meta processing`)
+        
+        // 1. 创建会话元数据
+        const metadata = new SessionMetadata(targetUser.username, topic, templateName, '/api/generate/card', requestId)
+        
+        // 设置请求参数
+        if (cover || style || language || referenceContent) {
+          metadata.setUserParameters({ 
+            cover, 
+            style, 
+            language, 
+            reference: referenceContent 
+          })
+        }
+        
+        // 设置处理信息
+        metadata.setPaths(templatePath, userCardPath)
+        metadata.setAssembledPrompt(prompt)
+        
+        // 记录主要生成步骤
+        metadata.logStep('json_generation', 'completed', {
+          fileName: result.fileName,
+          filePath: result.path,
+          fileSize: result.content?.length || 0
+        })
+        
+        // 2. 记录生成的文件
+        if (result.allFiles && result.allFiles.length > 0) {
+          for (const file of result.allFiles) {
+            await metadata.addFile(file.fileName, file.path, file.fileType)
+          }
+        } else {
+          await metadata.addFile(result.fileName, result.path, result.fileType)
+        }
+        
+        // 3. 检查是否为daily模板，需要四文件生成
+        if (isDailyKnowledgeTemplate(templateName)) {
+          console.log(`[GenerateCard API] ${requestId}: Daily template detected, starting four-file generation`)
+          
+          try {
+            // 执行四文件生成流程
+            const fourFileResult = await generateFourFiles({
+              userId: targetUser.username,
+              topic,
+              templateName,
+              outputDir: userCardPath,
+              jsonFilePath: result.path,
+              baseName: sanitizedTopic, // 使用清理后的主题名作为基础文件名
+              requestId,
+              apiEndpoint: '/api/generate/card'
+            })
+            
+            if (fourFileResult.success) {
+              console.log(`[GenerateCard API] ${requestId}: Four-file generation completed`)
+              // 更新响应数据以包含所有生成的文件
+              responseData.fourFileGeneration = {
+                success: true,
+                files: fourFileResult.files
+              }
+            } else {
+              console.warn(`[GenerateCard API] ${requestId}: Four-file generation failed:`, fourFileResult.errors)
+              responseData.fourFileGeneration = {
+                success: false,
+                errors: fourFileResult.errors
+              }
+            }
+          } catch (fourFileError) {
+            console.error(`[GenerateCard API] ${requestId}: Four-file generation error:`, fourFileError)
+            responseData.fourFileGeneration = {
+              success: false,
+              error: fourFileError.message
+            }
+          }
+        } else {
+          // 非daily模板，只记录完成并保存元数据
+          metadata.complete('success')
+          const metaFilePath = await metadata.save(userCardPath)
+          console.log(`[GenerateCard API] ${requestId}: Meta file saved: ${metaFilePath}`)
+        }
+        
+      } catch (metaError) {
+        console.error(`[GenerateCard API] ${requestId}: Meta processing error:`, metaError)
+        // 元数据处理失败不影响主流程
+      }
+      
       // 任务优化 #4: 统一会话管理 - 改进清理逻辑
       try {
         await apiTerminalService.destroySession(apiId)
@@ -667,17 +768,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         return
       }
       
-      // 保持响应格式与文档完全一致 - 确保前端兼容性
-      const responseData = {
-        topic: topic,
-        sanitizedTopic: sanitizedTopic,
-        templateName: templateName,
-        fileName: result.fileName,
-        filePath: result.path,
-        generationTime: elapsedTime,
-        content: result.content,
-        apiId: apiId
-      }
+      // 响应数据已在元数据处理前准备好
       
       // 如果有多文件，添加到响应中
       if (result.allFiles) {

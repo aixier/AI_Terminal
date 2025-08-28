@@ -7,6 +7,8 @@ import { authenticateUserOrDefault, ensureUserFolder } from '../../middleware/us
 import userService from '../../services/userService.js'
 import { buildPromptForTemplate, waitForFileGeneration } from './utils/promptBuilder.js'
 import { ensureCardFolder, updateFolderStatus, recordGeneratedFiles } from './utils/folderManager.js'
+import { SessionMetadata } from './utils/sessionMetadata.js'
+import { generateFourFiles, isDailyKnowledgeTemplate } from './utils/fileGenerator.js'
 
 // 任务优化 #2: 并发处理优化 - 流式接口也需要并发控制
 const activeStreamRequests = new Map(); // 活跃流式请求跟踪
@@ -399,51 +401,104 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
             console.log(`[Stream API] Checking for generated files in ${userCardPath}, found:`, files)
             sendSSE('log', { message: `检查生成文件... 找到 ${files.length} 个文件` })
             // 检测JSON和HTML文件
-            const generatedFiles = files.filter(f => 
-              (f.endsWith('.json') || f.endsWith('.html')) && 
-              !f.includes('-response') &&
-              !f.startsWith('.') &&  // 排除隐藏文件
-              !f.includes('_meta')    // 排除元数据文件
-            )
-            console.log(`[Stream API] Filtered generated files:`, generatedFiles)
-            if (generatedFiles.length > 0) {
-              sendSSE('log', { message: `检测到生成的文件: ${generatedFiles.join(', ')}` })
-            }
+            let generatedFiles
             
-            // 对于 cardplanet-Sandra-json 模板，需要等待两个文件都生成
-            if (templateName === 'cardplanet-Sandra-json') {
-              const htmlFiles = generatedFiles.filter(f => f.endsWith('.html'))
-              const jsonFiles = generatedFiles.filter(f => f.endsWith('.json'))
+            // 对于 daily-knowledge-card-template.md，需要等待4个文件
+            if (templateName === 'daily-knowledge-card-template.md') {
+              // 对于daily模板，包含所有文件类型（包括response和meta文件）
+              generatedFiles = files.filter(f => 
+                (f.endsWith('.json') || f.endsWith('.html')) && 
+                !f.startsWith('.')  // 只排除隐藏文件
+              )
+              console.log(`[Stream API] Daily template files found:`, generatedFiles)
+              if (generatedFiles.length > 0) {
+                sendSSE('log', { message: `检测到生成的文件 (${generatedFiles.length}/3+): ${generatedFiles.join(', ')}` })
+              }
               
-              // 必须两个文件都存在才认为完成
-              if (htmlFiles.length > 0 && jsonFiles.length > 0) {
+              // daily模板：找到主JSON文件即可触发，四文件生成过程会创建其他文件
+              const primaryJsonFile = generatedFiles.find(f => f.endsWith('.json') && !f.includes('response') && !f.includes('meta'))
+              if (primaryJsonFile) {
                 clearInterval(checkInterval)
                 clearTimeout(timeoutTimer)
                 
-                console.log(`[Stream API] Both HTML and JSON files detected for cardplanet-Sandra-json`)
-                sendSSE('log', { message: `✅ HTML和JSON文件生成成功！` })
+                console.log(`[Stream API] Found primary JSON file for daily template: ${primaryJsonFile}`)
                 
-                // 读取两个文件
-                const result = {
-                  success: true,
-                  files: []
-                }
-                
-                // 读取HTML文件
-                const htmlFileName = htmlFiles[0]
-                const htmlFilePath = path.join(userCardPath, htmlFileName)
+                // 读取主要的JSON文件
+                const jsonFilePath = path.join(userCardPath, primaryJsonFile)
                 try {
-                  const htmlContent = await fs.readFile(htmlFilePath, 'utf-8')
-                  result.files.push({
-                    fileName: htmlFileName,
-                    path: htmlFilePath,
-                    content: htmlContent,
-                    fileType: 'html'
-                  })
-                  console.log(`[Stream API] HTML file read successfully: ${htmlFileName}`)
-                } catch (error) {
-                  console.error(`[Stream API] Error reading HTML file:`, error)
-                }
+                  const jsonContent = await fs.readFile(jsonFilePath, 'utf-8')
+                  const parsedJson = JSON.parse(jsonContent)
+                  console.log(`[Stream API] Daily template primary JSON parsed successfully: ${primaryJsonFile}`)
+                    
+                    resolve({
+                      success: true,
+                      fileName: primaryJsonFile,
+                      path: jsonFilePath,
+                      content: parsedJson,
+                      fileType: 'json',
+                      allFiles: generatedFiles.map(fileName => ({
+                        fileName,
+                        path: path.join(userCardPath, fileName),
+                        fileType: fileName.endsWith('.json') ? 'json' : 'html'
+                      }))
+                    })
+                  } catch (error) {
+                    console.error(`[Stream API] Error reading daily template JSON:`, error)
+                    resolve({
+                      success: false,
+                      error: `读取主JSON文件失败: ${error.message}`
+                    })
+                  }
+              } else {
+                console.log(`[Stream API] Daily template waiting for JSON file`)
+              }
+            } else {
+              // 其他模板的原有逻辑
+              generatedFiles = files.filter(f => 
+                (f.endsWith('.json') || f.endsWith('.html')) && 
+                !f.includes('-response') &&
+                !f.startsWith('.') &&  // 排除隐藏文件
+                !f.includes('_meta')    // 排除元数据文件
+              )
+              console.log(`[Stream API] Filtered generated files:`, generatedFiles)
+              if (generatedFiles.length > 0) {
+                sendSSE('log', { message: `检测到生成的文件: ${generatedFiles.join(', ')}` })
+              }
+            
+              // 对于 cardplanet-Sandra-json 模板，需要等待两个文件都生成
+              if (templateName === 'cardplanet-Sandra-json') {
+                const htmlFiles = generatedFiles.filter(f => f.endsWith('.html'))
+                const jsonFiles = generatedFiles.filter(f => f.endsWith('.json'))
+                
+                // 必须两个文件都存在才认为完成
+                if (htmlFiles.length > 0 && jsonFiles.length > 0) {
+                  clearInterval(checkInterval)
+                  clearTimeout(timeoutTimer)
+                  
+                  console.log(`[Stream API] Both HTML and JSON files detected for cardplanet-Sandra-json`)
+                  sendSSE('log', { message: `✅ HTML和JSON文件生成成功！` })
+                  
+                  // 读取两个文件
+                  const result = {
+                    success: true,
+                    files: []
+                  }
+                  
+                  // 读取HTML文件
+                  const htmlFileName = htmlFiles[0]
+                  const htmlFilePath = path.join(userCardPath, htmlFileName)
+                  try {
+                    const htmlContent = await fs.readFile(htmlFilePath, 'utf-8')
+                    result.files.push({
+                      fileName: htmlFileName,
+                      path: htmlFilePath,
+                      content: htmlContent,
+                      fileType: 'html'
+                    })
+                    console.log(`[Stream API] HTML file read successfully: ${htmlFileName}`)
+                  } catch (error) {
+                    console.error(`[Stream API] Error reading HTML file:`, error)
+                  }
                 
                 // 读取JSON文件
                 const jsonFileName = jsonFiles[0]
@@ -481,62 +536,63 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                   ...primaryFile,
                   allFiles: result.files
                 })
+                } else {
+                  console.log(`[Stream API] Waiting for both files... HTML: ${htmlFiles.length}, JSON: ${jsonFiles.length}`)
+                }
               } else {
-                console.log(`[Stream API] Waiting for both files... HTML: ${htmlFiles.length}, JSON: ${jsonFiles.length}`)
-              }
-            } else {
-              // 其他模板只需要一个文件
-              if (generatedFiles.length > 0) {
-                clearInterval(checkInterval)
-                clearTimeout(timeoutTimer)
-                
-                const fileName = generatedFiles[0]
-                const filePath = path.join(userCardPath, fileName)
-                console.log(`[Stream API] Reading file: ${filePath}`)
-                sendSSE('log', { message: `✅ 卡片生成完成: ${fileName}` })
-                
-                try {
-                  const content = await fs.readFile(filePath, 'utf-8')
-                  console.log(`[Stream API] File read successfully, length: ${content.length}`)
+                // 其他模板只需要一个文件
+                if (generatedFiles.length > 0) {
+                  clearInterval(checkInterval)
+                  clearTimeout(timeoutTimer)
                   
-                  // 根据文件类型处理
-                  if (fileName.endsWith('.json')) {
-                    try {
-                      const jsonContent = JSON.parse(content)
-                      console.log(`[Stream API] JSON parsed successfully`)
+                  const fileName = generatedFiles[0]
+                  const filePath = path.join(userCardPath, fileName)
+                  console.log(`[Stream API] Reading file: ${filePath}`)
+                  sendSSE('log', { message: `✅ 卡片生成完成: ${fileName}` })
+                  
+                  try {
+                    const content = await fs.readFile(filePath, 'utf-8')
+                    console.log(`[Stream API] File read successfully, length: ${content.length}`)
+                    
+                    // 根据文件类型处理
+                    if (fileName.endsWith('.json')) {
+                      try {
+                        const jsonContent = JSON.parse(content)
+                        console.log(`[Stream API] JSON parsed successfully`)
+                        resolve({
+                          success: true,
+                          fileName: fileName,
+                          path: filePath,
+                          content: jsonContent,
+                          fileType: 'json'
+                        })
+                      } catch (parseError) {
+                        console.error(`[Stream API] JSON parse error, returning raw content:`, parseError.message)
+                        // JSON解析失败时返回原始内容，让前端处理
+                        resolve({
+                          success: true,
+                          fileName: fileName,
+                          path: filePath,
+                          content: content,  // 返回原始字符串
+                          fileType: 'json',
+                          parseError: true
+                        })
+                      }
+                    } else if (fileName.endsWith('.html')) {
+                      // HTML文件直接返回内容
+                      console.log(`[Stream API] HTML file detected`)
                       resolve({
                         success: true,
                         fileName: fileName,
                         path: filePath,
-                        content: jsonContent,
-                        fileType: 'json'
-                      })
-                    } catch (parseError) {
-                      console.error(`[Stream API] JSON parse error, returning raw content:`, parseError.message)
-                      // JSON解析失败时返回原始内容，让前端处理
-                      resolve({
-                        success: true,
-                        fileName: fileName,
-                        path: filePath,
-                        content: content,  // 返回原始字符串
-                        fileType: 'json',
-                        parseError: true
+                        content: content,
+                        fileType: 'html'
                       })
                     }
-                  } else if (fileName.endsWith('.html')) {
-                    // HTML文件直接返回内容
-                    console.log(`[Stream API] HTML file detected`)
-                    resolve({
-                      success: true,
-                      fileName: fileName,
-                      path: filePath,
-                      content: content,
-                      fileType: 'html'
-                    })
+                  } catch (readError) {
+                    console.error(`[Stream API] File read error:`, readError)
+                    // 文件可能还在写入中，继续等待
                   }
-                } catch (readError) {
-                  console.error(`[Stream API] File read error:`, readError)
-                  // 文件可能还在写入中，继续等待
                 }
               }
             }
@@ -601,6 +657,109 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         
         sendSSE('success', successData)
         console.log(`[Stream API] Success event sent`)
+        
+        // === 新增：通用元数据记录和daily模板特殊处理 ===
+        try {
+          console.log(`[Stream API] Starting meta processing for request: ${requestId}`)
+          sendSSE('status', { step: 'processing_metadata' })
+          
+          // 1. 创建会话元数据
+          const metadata = new SessionMetadata(targetUser.username, topic, templateName, '/api/generate/card/stream', requestId)
+          
+          // 设置请求参数
+          if (userStyle || userLanguage || userReference) {
+            metadata.setUserParameters({ 
+              style: userStyle, 
+              language: userLanguage, 
+              reference: userReference
+            })
+          }
+          
+          // 设置处理信息
+          metadata.setPaths(templatePath, userCardPath)
+          metadata.setAssembledPrompt(prompt)
+          
+          // 记录生成的文件
+          if (fileResult.allFiles && fileResult.allFiles.length > 0) {
+            for (const file of fileResult.allFiles) {
+              await metadata.addFile(file.fileName, file.path, file.fileType)
+            }
+          } else {
+            await metadata.addFile(fileResult.fileName, fileResult.path, fileResult.fileType || 'json')
+          }
+          
+          metadata.logStep('file_generation', 'completed', {
+            fileName: fileResult.fileName,
+            filePath: fileResult.path,
+            generationTime: elapsedTime
+          })
+          
+          // 2. 检查是否为daily模板，需要四文件生成
+          if (isDailyKnowledgeTemplate(templateName)) {
+            console.log(`[Stream API] Daily template detected, starting four-file generation for request: ${requestId}`)
+            sendSSE('status', { step: 'generating_additional_files' })
+            
+            try {
+              // 执行四文件生成流程
+              const fourFileResult = await generateFourFiles({
+                userId: targetUser.username,
+                topic,
+                templateName,
+                outputDir: userCardPath,
+                jsonFilePath: fileResult.path,
+                baseName: path.basename(fileResult.fileName, path.extname(fileResult.fileName)),
+                requestId,
+                apiEndpoint: '/api/generate/card/stream'
+              })
+              
+              if (fourFileResult.success) {
+                console.log(`[Stream API] Four-file generation completed for request: ${requestId}`)
+                sendSSE('four_file_generation', {
+                  success: true,
+                  files: fourFileResult.files
+                })
+                metadata.addLog('info', 'Four-file generation completed', {
+                  files: fourFileResult.files
+                })
+              } else {
+                console.warn(`[Stream API] Four-file generation failed for request ${requestId}:`, fourFileResult.errors)
+                sendSSE('four_file_generation', {
+                  success: false,
+                  errors: fourFileResult.errors
+                })
+                metadata.addLog('warn', 'Four-file generation failed', {
+                  errors: fourFileResult.errors
+                })
+              }
+              
+            } catch (fourFileError) {
+              console.error(`[Stream API] Four-file generation error for request ${requestId}:`, fourFileError)
+              sendSSE('four_file_generation', {
+                success: false,
+                error: fourFileError.message
+              })
+              metadata.addLog('error', 'Four-file generation error', {
+                error: fourFileError.message
+              })
+            }
+          } else {
+            // 非daily模板，只记录完成并保存元数据
+            metadata.complete('success')
+            const metaFilePath = await metadata.save(userCardPath)
+            console.log(`[Stream API] Meta file saved for request ${requestId}: ${metaFilePath}`)
+            sendSSE('metadata_saved', {
+              metaFilePath: path.basename(metaFilePath)
+            })
+          }
+          
+        } catch (metaError) {
+          console.error(`[Stream API] Meta processing error for request ${requestId}:`, metaError)
+          sendSSE('error', {
+            step: 'metadata_processing',
+            message: `元数据处理失败: ${metaError.message}`
+          })
+          // 元数据处理失败不影响主流程
+        }
         
         // 记录生成的文件
         const fileNames = fileResult.allFiles 

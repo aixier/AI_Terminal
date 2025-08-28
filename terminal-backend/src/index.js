@@ -483,12 +483,19 @@ console.log(`  Port: ${PORT}`)
 console.log(`  Mode: ${config.nodeEnv || 'production'}`)
 
 httpServer.listen(PORT, HOST, () => {
+  // 设置HTTP服务器超时为10分钟，支持长时间运行的同步请求
+  const TIMEOUT_MS = 10 * 60 * 1000 // 10分钟
+  httpServer.timeout = TIMEOUT_MS
+  httpServer.keepAliveTimeout = TIMEOUT_MS
+  httpServer.headersTimeout = TIMEOUT_MS + 1000 // 比keepAlive多1秒
+  
   console.log('================================================================================')
   console.log('✅ SERVER STARTED SUCCESSFULLY!')
   console.log('================================================================================')
   console.log(`📡 Server is running on http://${HOST}:${PORT}`)
   console.log(`🌍 Accessible from any network interface`)
   console.log(`🔧 Environment: ${config.nodeEnv || 'production'}`)
+  console.log(`⏰ HTTP Timeout: ${TIMEOUT_MS/1000}s (${TIMEOUT_MS/60000}min) - supports long sync requests`)
   console.log('--------------------------------------------------------------------------------')
   console.log('📌 Available endpoints:')
   console.log(`  Health Check: http://${HOST}:${PORT}/health`)
@@ -503,6 +510,7 @@ httpServer.listen(PORT, HOST, () => {
   // 使用logger记录到日志文件
   logger.info(`Server running on ${HOST}:${PORT} in ${config.nodeEnv} mode`)
   logger.info(`Server is accessible from any network interface`)
+  logger.info(`HTTP timeout set to ${TIMEOUT_MS/1000}s for long-running requests`)
 })
 
 export { io }

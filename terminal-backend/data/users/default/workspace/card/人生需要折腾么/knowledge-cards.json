@@ -1,0 +1,236 @@
+{
+  "theme": {
+    "name": "daily-philosophy-knowledge",
+    "pageTitle": "人生哲学知识点：人生需要折腾么",
+    "sectionTitle": "安于现状还是勇敢折腾？",
+    "sectionSubtitle": "每天学习一个人生哲学 · 第1期",
+    "gradientColor1": "#8B5CF6",
+    "gradientColor2": "#A78BFA",
+    "gradientColor1RGB": "139, 92, 246",
+    "accentColor": "#8B5CF6",
+    "accentColorRGB": "139, 92, 246"
+  },
+  "copy": {
+    "title": "🔥 为什么有人越折腾越有劲，有人却怕变化？人生到底需要折腾吗？",
+    "content": "今天聊聊人生的永恒话题：要不要折腾。\n\n你是否也有这样的纠结：\n• 工作稳定但没激情，要不要跳槽创业？\n• 生活安逸但单调，要不要来点变化？\n• 看别人折腾得风生水起，自己却不敢动？\n• 害怕折腾失败，但又担心后悔？\n\n其实，这背后藏着人生的大智慧！\n\n🎯 一句话解释：\n折腾不是盲目冒险，而是在舒适圈边缘找到属于你的生活节奏。\n\n📚 7个角度看透\"折腾\"这件事：\n\n1️⃣ 什么是真正的折腾？\n不是瞎折腾，是有目标的突破和尝试。\n\n2️⃣ 为什么有人爱折腾？\n• 天生好奇心强\n• 追求成长和挑战\n• 不甘于平凡\n• 相信努力能改变命运\n\n3️⃣ 折腾的好处：\n• 发现更多可能性\n• 获得珍贵经验\n• 提升抗风险能力\n• 避免中年危机\n\n4️⃣ 不折腾的智慧：\n• 专注深耕一个领域\n• 享受稳定带来的安全感\n• 把精力投入到家庭和兴趣\n• 避免不必要的压力\n\n5️⃣ 什么时候该折腾？\n• 年轻时试错成本低\n• 现状让你痛苦\n• 有明确目标和规划\n• 做好了充分准备\n\n6️⃣ 聪明的折腾方式：\n• 小步快跑，而不是豪赌\n• 保留后路，降低风险\n• 边做边学，快速迭代\n• 找到支持你的人\n\n7️⃣ 如何找到适合自己的节奏？\n测试：你更害怕失败还是后悔？\n\n💡 思考题：\n最近有什么想法让你蠢蠢欲动，但又不敢行动？\n\n明天预告：什么是\"舒适圈陷阱\"？如何优雅地走出去？",
+    "hashtags": "#人生哲学 #个人成长 #生活选择 #每日思考 #人生智慧 #舒适圈 #人生规划 #自我提升",
+    "tips": "发布时间：晚上8-10点（思考时间）\n封面选择：第1张主卡片\n互动引导：分享自己的折腾经历或纠结\n后续内容：可做成人生哲学系列"
+  },
+  "cards": [
+    {
+      "type": "main",
+      "icon": "",
+      "header": "安于现状还是勇敢折腾？",
+      "subtitle": "找到属于你的人生节奏",
+      "content": {
+        "highlight": {
+          "number": "人生\\n折腾学",
+          "description": "在舒适与冒险间找平衡"
+        },
+        "points": [
+          {
+            "icon": "→",
+            "text": "不是所有人都要折腾，关键是选择适合自己的路"
+          }
+        ],
+        "tags": []
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🤔",
+      "header": "什么是真正的折腾？",
+      "subtitle": "不是瞎折腾，而是有目标的突破",
+      "content": {
+        "list": [
+          "<strong style=\"color: #8B5CF6;\">有目标</strong>：知道自己要什么",
+          "<strong style=\"color: #8B5CF6;\">有规划</strong>：不是随心所欲",
+          "<strong style=\"color: #8B5CF6;\">能承担</strong>：评估过风险",
+          "<strong style=\"color: #8B5CF6;\">会学习</strong>：从经历中成长"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "核心区别",
+          "description": "折腾≠瞎折腾，是理性的冒险"
+        },
+        "tip": "🎯 真正的折腾是有方向的探索",
+        "tags": [
+          "📖 概念"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "⚡",
+      "header": "为什么有人爱折腾？",
+      "subtitle": "背后的心理动机",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "四大驱动力",
+          "items": [
+            "<strong>好奇心</strong>：想看看世界有多大",
+            "<strong>成就感</strong>：通过挑战证明自己",
+            "<strong>控制感</strong>：主动改变而非被动接受",
+            "<strong>意义感</strong>：追求更有价值的人生"
+          ]
+        },
+        "tip": "💡 折腾族往往是天生的探险家",
+        "tags": [
+          "🧠 心理"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🌟",
+      "header": "折腾的5大好处",
+      "subtitle": "为什么值得冒这个险",
+      "content": {
+        "list": [
+          "发现<strong style=\"color: #A78BFA;\">隐藏天赋</strong>：你可能有意想不到的能力",
+          "积累<strong style=\"color: #A78BFA;\">人生经验</strong>：失败也是宝贵财富",
+          "提升<strong style=\"color: #A78BFA;\">适应能力</strong>：变化中成长",
+          "拓展<strong style=\"color: #A78BFA;\">人脉圈子</strong>：认识更多有趣的人",
+          "避免<strong style=\"color: #A78BFA;\">中年危机</strong>：不会突然觉得人生虚度"
+        ],
+        "tip": "🚀 折腾是投资未来的自己",
+        "tags": [
+          "✨ 收益"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🛡️",
+      "header": "不折腾也有智慧",
+      "subtitle": "稳定也是一种选择",
+      "content": {
+        "list": [
+          "专业深度<strong style=\"color: #8B5CF6;\">更有价值</strong>",
+          "心理压力<strong style=\"color: #8B5CF6;\">相对较小</strong>",
+          "生活节奏<strong style=\"color: #8B5CF6;\">更可控</strong>",
+          "有更多时间<strong style=\"color: #8B5CF6;\">陪伴家人</strong>"
+        ],
+        "special": {
+          "type": "progress",
+          "value": 85,
+          "label": "稳定型人格占比：85%"
+        },
+        "tip": "🏠 大多数人其实更适合稳定",
+        "tags": [
+          "⚖️ 平衡"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "⏰",
+      "header": "什么时候该折腾？",
+      "subtitle": "时机很重要",
+      "content": {
+        "list": [
+          "✅ <strong>年轻时</strong>：试错成本低，恢复能力强",
+          "✅ <strong>痛苦时</strong>：现状已经很难受了",
+          "✅ <strong>准备好时</strong>：有技能、资源、人脉",
+          "❌ <strong>冲动时</strong>：情绪化决定往往后悔"
+        ],
+        "tip": "🎯 最好的时机：痛苦+准备充分",
+        "tags": [
+          "⏳ 时机"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🎯",
+      "header": "聪明的折腾方式",
+      "subtitle": "如何降低风险？",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "四步走策略",
+          "items": [
+            "<strong>小步测试</strong>：先做副业试试水",
+            "<strong>保留后路</strong>：不要裸辞裸创",
+            "<strong>快速迭代</strong>：边做边调整方向",
+            "<strong>寻找支持</strong>：找到理解你的人"
+          ]
+        },
+        "tip": "🛡️ 聪明的人会给自己留退路",
+        "tags": [
+          "🛠️ 方法"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "🔍",
+      "header": "如何判断自己适合哪种？",
+      "subtitle": "简单的自我测试",
+      "content": {
+        "list": [
+          "<strong style=\"color: #8B5CF6;\">问自己</strong>：",
+          "• 你更怕失败还是怕后悔？",
+          "• 变化让你兴奋还是焦虑？",
+          "• 你是风险偏好还是安全第一？",
+          "• 现在的生活让你满意吗？"
+        ],
+        "special": {
+          "type": "info-box",
+          "title": "参考答案",
+          "description": "更怕后悔→适合折腾；更怕失败→适合稳定"
+        },
+        "tip": "🤔 诚实面对内心的声音",
+        "tags": [
+          "🎭 测试"
+        ]
+      }
+    },
+    {
+      "type": "normal",
+      "icon": "📚",
+      "header": "今日总结",
+      "subtitle": "记住这几点",
+      "content": {
+        "special": {
+          "type": "action-plan",
+          "title": "核心观点",
+          "items": [
+            "折腾不是目的，成长才是",
+            "每个人的节奏都不同",
+            "聪明的折腾胜过盲目的稳定",
+            "关键是找到适合自己的路"
+          ]
+        },
+        "tip": "🌈 明天见：什么是\"舒适圈陷阱\"？",
+        "tags": [
+          "✅ 总结"
+        ]
+      }
+    }
+  ],
+  "footer": {
+    "tags": [
+      "🤔 人生哲学",
+      "📚 每日思考",
+      "💡 成长智慧"
+    ]
+  },
+  "export": {
+    "mainCardFilename": "主卡片-人生折腾学.png",
+    "cardFilenames": [
+      "2-什么是真正的折腾.png",
+      "3-为什么有人爱折腾.png",
+      "4-折腾的5大好处.png",
+      "5-不折腾也有智慧.png",
+      "6-什么时候该折腾.png",
+      "7-聪明的折腾方式.png",
+      "8-如何判断适合哪种.png",
+      "9-今日总结.png"
+    ],
+    "zipFilename": "人生哲学-人生需要折腾么-知识卡片.zip"
+  },
+  "customStyles": "",
+  "exportAdjustments": ""
+}

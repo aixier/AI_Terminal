@@ -410,22 +410,67 @@
       </div>
     </div>
 
-    <!-- Right Sidebar - Style Templates & Input -->
-    <div class="right-sidebar">
-      <!-- Top: Style Templates -->
-      <div class="style-templates">
-        <div class="template-header">风格模板</div>
-        <div class="template-list">
-          <div 
-            v-for="(template, index) in templates" 
-            :key="index"
-            class="template-item"
-            :class="{ active: selectedTemplate === index }"
-            @click="selectTemplate(index)"
-          >
-            <div class="template-name">{{ template.name }}</div>
-            <div class="template-desc">{{ template.description }}</div>
+    <!-- Right Sidebar - Chat Mode AI Creation -->
+    <div class="right-sidebar desktop-create-panel">
+      <!-- 标题栏 -->
+      <div class="panel-header">
+        <h3 class="panel-title">AI创作助手</h3>
+        <button class="clear-btn" @click="clearChatHistory" title="清空对话">
+          🗑️
+        </button>
+      </div>
+      
+      <!-- 对话区域 -->
+      <div class="desktop-chat-container" ref="desktopChatContainer">
+        <div 
+          v-for="message in chatMessages" 
+          :key="message.id"
+          class="desktop-message-item"
+          :class="message.type"
+        >
+          <!-- 用户消息 -->
+          <div v-if="message.type === 'user'" class="desktop-user-msg">
+            <div class="desktop-msg-content">{{ message.content }}</div>
           </div>
+          
+          <!-- AI响应 -->
+          <div v-else class="desktop-ai-msg">
+            <div v-if="message.isGenerating" class="desktop-generating">
+              <div class="desktop-dot-loading">
+                <span></span><span></span><span></span>
+              </div>
+              <span>生成中...</span>
+            </div>
+            <div v-else-if="message.error" class="desktop-error-card">
+              <div class="desktop-error-header">
+                <span class="desktop-error-icon">⚠️</span>
+                <span class="desktop-error-title">错误</span>
+              </div>
+              <div class="desktop-error-content">
+                {{ message.content }}
+              </div>
+              <button class="desktop-retry-btn" @click="retryGeneration(message)">重试</button>
+            </div>
+            <div v-else class="desktop-result-mini-card">
+              <div class="desktop-mini-card-header">
+                <span class="desktop-template-icon">{{ getTemplateIcon(message.template) }}</span>
+                <span class="desktop-card-name">{{ message.title || '生成结果' }}</span>
+              </div>
+              <div class="desktop-mini-card-preview">
+                {{ message.content ? message.content.substring(0, 60) + '...' : '' }}
+              </div>
+              <div class="desktop-mini-card-actions">
+                <button class="desktop-mini-btn" @click="previewChatContent(message)">预览</button>
+                <button class="desktop-mini-btn" @click="saveChatContent(message)">保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 空状态 -->
+        <div v-if="chatMessages.length === 0" class="desktop-chat-empty">
+          <div class="desktop-empty-icon">💬</div>
+          <div class="desktop-empty-text">开始创作</div>
         </div>
       </div>
 
@@ -470,85 +515,39 @@
       </div>
       -->
 
-      <!-- Stream Messages Display - 简化为字符计数 -->
-      <div v-if="allStreamMessages.length > 0" class="stream-messages">
-        <div class="stream-header">生成日志 ({{ totalMessageChars }}字符)</div>
-        <div class="stream-content">
-          <div class="stream-summary">
-            共 {{ allStreamMessages.length }} 条消息，总计 {{ totalMessageChars }} 个字符
-          </div>
-        </div>
-      </div>
 
-      <!-- Bottom: Input & Create -->
-      <div class="input-create-section">
-        <!-- Optional Parameters Section -->
-        <div class="optional-params">
-          <div class="params-header">
-            <span class="params-title">可选参数</span>
-            <span class="params-hint">（点击启用）</span>
-          </div>
-          
-          <!-- Style Parameter -->
-          <div class="param-item">
-            <label class="param-checkbox">
-              <input type="checkbox" v-model="enableStyle" />
-              <span>风格</span>
-            </label>
-            <input 
-              v-if="enableStyle"
-              v-model="customStyle"
-              type="text"
-              class="param-input"
-              placeholder="输入风格，如：简约、中国风、科技感"
-            />
-          </div>
-          
-          <!-- Language Parameter -->
-          <div class="param-item">
-            <label class="param-checkbox">
-              <input type="checkbox" v-model="enableLanguage" />
-              <span>语言</span>
-            </label>
-            <input 
-              v-if="enableLanguage"
-              v-model="customLanguage"
-              type="text"
-              class="param-input"
-              placeholder="输入语言，如：中文、英文、中英双语"
-            />
-          </div>
-          
-          <!-- Reference Parameter -->
-          <div class="param-item">
-            <label class="param-checkbox">
-              <input type="checkbox" v-model="enableReference" />
-              <span>参考</span>
-            </label>
-            <textarea 
-              v-if="enableReference"
-              v-model="customReference"
-              class="param-textarea"
-              rows="3"
-              placeholder="输入参考内容，如背景信息、具体要求等"
-            />
-          </div>
+      <!-- 输入区域 -->
+      <div class="desktop-input-section">
+        <!-- 模板快选 -->
+        <div class="desktop-quick-templates">
+          <button 
+            v-for="template in popularTemplates.slice(0, 4)" 
+            :key="template.id"
+            class="desktop-quick-btn"
+            :class="{ active: selectedQuickTemplate === template.id }"
+            @click="selectQuickTemplate(template)"
+            :title="template.name"
+          >
+            {{ template.icon }}
+          </button>
         </div>
         
-        <!-- Topic Input -->
-        <div class="input-wrapper">
-          <input 
-            v-model="currentTopic"
-            type="text"
-            class="topic-input"
-            placeholder="输入主题"
-          />
+        <!-- 输入框 -->
+        <div class="desktop-input-row">
+          <textarea
+            v-model="chatInputText"
+            class="desktop-input-textarea"
+            placeholder="输入创作需求..."
+            rows="2"
+            @keydown.ctrl.enter="sendChatMessage"
+            @keydown.meta.enter="sendChatMessage"
+          ></textarea>
           <button 
-            class="create-btn"
-            @click="generateCard"
-            :disabled="!currentTopic.trim() || isGenerating"
+            class="desktop-send-button"
+            :disabled="!canSendMessage"
+            @click="sendChatMessage"
           >
-            {{ isGenerating ? '生成中...' : '创建' }}
+            发送
           </button>
         </div>
       </div>
@@ -603,6 +602,19 @@
                         <span></span><span></span><span></span>
                       </div>
                       <div class="generating-text">AI正在创作中...</div>
+                    </div>
+                    <!-- 错误消息 -->
+                    <div v-else-if="message.error" class="error-card">
+                      <div class="error-header">
+                        <span class="error-icon">⚠️</span>
+                        <span class="error-title">生成失败</span>
+                      </div>
+                      <div class="error-content">
+                        {{ message.content }}
+                      </div>
+                      <button class="retry-btn" @click="retryGeneration(message)">
+                        🔄 重试
+                      </button>
                     </div>
                     <!-- 生成完成的卡片 -->
                     <div v-else class="result-card">
@@ -1209,12 +1221,26 @@ const canSendMessage = computed(() => {
   return chatInputText.value.trim().length > 0 && !isSending.value && !isGenerating.value
 })
 
-// 滚动到最新消息
+// 滚动到最新消息（支持移动端和桌面端）
 const scrollToLatestMessage = async () => {
   await nextTick()
-  const chatContainer = document.querySelector('.chat-history')
-  if (chatContainer) {
-    chatContainer.scrollTop = chatContainer.scrollHeight
+  
+  // 移动端滚动
+  const mobileChatContainer = document.querySelector('.chat-history')
+  if (mobileChatContainer) {
+    mobileChatContainer.scrollTo({
+      top: mobileChatContainer.scrollHeight,
+      behavior: 'smooth'
+    })
+  }
+  
+  // 桌面端滚动
+  const desktopChatContainer = document.querySelector('.desktop-chat-container')
+  if (desktopChatContainer) {
+    desktopChatContainer.scrollTo({
+      top: desktopChatContainer.scrollHeight,
+      behavior: 'smooth'
+    })
   }
 }
 
@@ -1271,10 +1297,12 @@ const sendChatMessage = async () => {
     // 更新AI消息为错误状态
     updateAIMessage(aiMessage.id, {
       isGenerating: false,
-      content: '生成失败，请重试',
-      error: true
+      content: `生成失败：${error.message || '未知错误'}`,
+      error: true,
+      title: '错误'
     })
     ElMessage.error('生成失败：' + error.message)
+    console.error('Chat generation error:', error)
   }
   
   // 保存聊天历史
@@ -1478,6 +1506,45 @@ const shareChatContent = async (message) => {
 const showAllTemplates = () => {
   // 可以显示一个模态框或者展开更多模板
   ElMessage.info('更多模板功能开发中...')
+}
+
+// 重试生成
+const retryGeneration = async (errorMessage) => {
+  // 找到错误消息的前一条用户消息
+  const messageIndex = chatMessages.value.findIndex(m => m.id === errorMessage.id)
+  if (messageIndex > 0) {
+    const previousMessage = chatMessages.value[messageIndex - 1]
+    if (previousMessage.type === 'user') {
+      // 移除错误消息
+      chatMessages.value.splice(messageIndex, 1)
+      
+      // 重新设置输入并发送
+      currentTopic.value = previousMessage.content
+      
+      // 添加新的AI占位消息
+      const aiMessage = addAIMessage('', true, '', previousMessage.template)
+      
+      // 滚动到最新消息
+      await scrollToLatestMessage()
+      
+      try {
+        // 重新调用生成逻辑
+        await generateCardForChat(aiMessage.id)
+      } catch (error) {
+        // 更新AI消息为错误状态
+        updateAIMessage(aiMessage.id, {
+          isGenerating: false,
+          content: `生成失败：${error.message || '未知错误'}`,
+          error: true,
+          title: '错误'
+        })
+        ElMessage.error('重试失败：' + error.message)
+      }
+      
+      // 保存聊天历史
+      saveChatHistoryToLocal()
+    }
+  }
 }
 
 // 终端功能已移至独立页面
@@ -6517,6 +6584,18 @@ const handleOpenHtmlLink = () => {
 /* 聊天消息容器 */
 .chat-message {
   margin-bottom: 16px;
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 用户消息 */
@@ -6684,6 +6763,53 @@ const handleOpenHtmlLink = () => {
   background: #3a8ef6;
 }
 
+/* 错误卡片 */
+.error-card {
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.error-icon {
+  font-size: 20px;
+}
+
+.error-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #c53030;
+}
+
+.error-content {
+  color: #742a2a;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.retry-btn {
+  padding: 6px 12px;
+  background: #fc8181;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover {
+  background: #f56565;
+}
+
 /* 空状态 */
 .chat-empty-state {
   display: flex;
@@ -6818,6 +6944,353 @@ const handleOpenHtmlLink = () => {
 
 .send-btn:disabled {
   background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+/* ============ Desktop Chat Mode Styles ============ */
+.desktop-create-panel {
+  display: flex;
+  flex-direction: column;
+  background: #252525;
+}
+
+/* 桌面端标题栏 */
+.panel-header {
+  padding: 16px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2a2a2a;
+}
+
+.panel-title {
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.clear-btn {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #999;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.clear-btn:hover {
+  background: #ff4444;
+  border-color: #ff4444;
+  color: white;
+}
+
+/* 桌面端对话容器 */
+.desktop-chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: #1e1e1e;
+}
+
+.desktop-message-item {
+  margin-bottom: 12px;
+  animation: desktopMessageFade 0.2s ease-out;
+}
+
+@keyframes desktopMessageFade {
+  from {
+    opacity: 0;
+    transform: translateX(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 桌面端用户消息 */
+.desktop-user-msg {
+  text-align: right;
+}
+
+.desktop-msg-content {
+  background: #4a9eff;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px 12px 4px 12px;
+  display: inline-block;
+  max-width: 80%;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* 桌面端AI消息 */
+.desktop-ai-msg {
+  text-align: left;
+}
+
+/* 桌面端生成中状态 */
+.desktop-generating {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  color: #999;
+  font-size: 13px;
+}
+
+.desktop-dot-loading {
+  display: flex;
+  gap: 4px;
+}
+
+.desktop-dot-loading span {
+  width: 6px;
+  height: 6px;
+  background: #4a9eff;
+  border-radius: 50%;
+  animation: desktop-loading 1.4s infinite;
+}
+
+.desktop-dot-loading span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.desktop-dot-loading span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes desktop-loading {
+  0%, 60%, 100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* 桌面端迷你卡片 */
+.desktop-result-mini-card {
+  background: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  display: inline-block;
+  max-width: 90%;
+}
+
+.desktop-mini-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.desktop-template-icon {
+  font-size: 16px;
+}
+
+.desktop-card-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.desktop-mini-card-preview {
+  color: #999;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.desktop-mini-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.desktop-mini-btn {
+  padding: 4px 10px;
+  background: #333;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.desktop-mini-btn:hover {
+  background: #4a9eff;
+  border-color: #4a9eff;
+  color: white;
+}
+
+/* 桌面端错误卡片 */
+.desktop-error-card {
+  background: #3a2929;
+  border: 1px solid #c53030;
+  border-radius: 8px;
+  padding: 12px;
+  display: inline-block;
+  max-width: 90%;
+}
+
+.desktop-error-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.desktop-error-icon {
+  font-size: 16px;
+}
+
+.desktop-error-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fc8181;
+}
+
+.desktop-error-content {
+  color: #feb2b2;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.desktop-retry-btn {
+  padding: 4px 10px;
+  background: #c53030;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.desktop-retry-btn:hover {
+  background: #e53e3e;
+}
+
+/* 桌面端空状态 */
+.desktop-chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.desktop-empty-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: 0.3;
+}
+
+.desktop-empty-text {
+  font-size: 14px;
+  color: #999;
+}
+
+/* 桌面端输入区域 */
+.desktop-input-section {
+  border-top: 1px solid #333;
+  background: #252525;
+  padding: 12px;
+}
+
+/* 桌面端快捷模板 */
+.desktop-quick-templates {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.desktop-quick-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #2a2a2a;
+  color: #999;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.desktop-quick-btn:hover {
+  background: #333;
+  border-color: #444;
+}
+
+.desktop-quick-btn.active {
+  border-color: #4a9eff;
+  background: rgba(74, 158, 255, 0.1);
+  color: #4a9eff;
+}
+
+/* 桌面端输入框 */
+.desktop-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.desktop-input-textarea {
+  flex: 1;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #e0e0e0;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.desktop-input-textarea:focus {
+  border-color: #4a9eff;
+}
+
+.desktop-input-textarea::placeholder {
+  color: #666;
+}
+
+.desktop-send-button {
+  padding: 8px 20px;
+  background: #4a9eff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.desktop-send-button:hover:not(:disabled) {
+  background: #3a8ef6;
+}
+
+.desktop-send-button:disabled {
+  background: #333;
+  color: #666;
   cursor: not-allowed;
 }
 </style>

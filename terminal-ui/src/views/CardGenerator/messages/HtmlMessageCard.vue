@@ -15,14 +15,6 @@
           <el-radio-button label="preview">预览</el-radio-button>
           <el-radio-button label="code">代码</el-radio-button>
         </el-radio-group>
-        <el-button 
-          v-if="viewMode === 'preview'"
-          size="small"
-          @click="refreshPreview"
-          :icon="Refresh"
-        >
-          刷新
-        </el-button>
       </div>
       
       <div v-if="viewMode === 'preview'" class="html-preview">
@@ -51,14 +43,7 @@
         @click="handleFullscreen"
         :icon="FullScreen"
       >
-        全屏
-      </el-button>
-      <el-button 
-        size="small"
-        @click="handleCopy"
-        :icon="CopyDocument"
-      >
-        复制
+        全屏预览
       </el-button>
       <el-button 
         size="small"
@@ -66,6 +51,13 @@
         :icon="Download"
       >
         下载
+      </el-button>
+      <el-button 
+        size="small"
+        @click="refreshPreview"
+        :icon="Refresh"
+      >
+        刷新
       </el-button>
     </template>
   </MessageCard>
@@ -131,12 +123,25 @@ const actualHtmlContent = computed(() => {
   return props.htmlContent
 })
 
-// 获取主题名称
+// 获取卡片名称（使用content作为标题）
 const displayTopic = computed(() => {
+  // 根据需求：使用content作为卡片信息名称
+  if (props.resultData && props.resultData.content) {
+    // 如果content是HTML，提取前50个字符作为标题
+    if (typeof props.resultData.content === 'string') {
+      const plainText = props.resultData.content.replace(/<[^>]*>/g, '').trim()
+      return plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText
+    }
+    if (typeof props.resultData.content === 'object' && props.resultData.content.html) {
+      const plainText = props.resultData.content.html.replace(/<[^>]*>/g, '').trim()
+      return plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText
+    }
+  }
+  // 后备方案
   if (props.resultData && props.resultData.topic) {
     return props.resultData.topic
   }
-  return props.topic
+  return props.topic || 'HTML卡片'
 })
 
 // 获取文件名

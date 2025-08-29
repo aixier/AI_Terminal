@@ -531,13 +531,50 @@ const handleSendMessage = async (messageData) => {
         })
       },
       (allChunks) => {
-        updateMessage(aiMessage.id, {
-          isGenerating: false,
-          resultData: {
+        // 打印完整的流式响应数据，确认格式
+        console.log('[CardGenerator] 完整流式响应数据:', allChunks)
+        console.log('[CardGenerator] 合并后的内容:', allChunks.join(''))
+        
+        // 尝试解析最后一个chunk看是否是JSON格式的完整响应
+        const lastChunk = allChunks[allChunks.length - 1]
+        console.log('[CardGenerator] 最后一个chunk:', lastChunk)
+        
+        let parsedResponse = null
+        let finalResultData = null
+        
+        try {
+          parsedResponse = JSON.parse(lastChunk)
+          console.log('[CardGenerator] 解析的JSON响应:', parsedResponse)
+          
+          // 按照API文档格式解析：data.content是真正的内容
+          if (parsedResponse && parsedResponse.data) {
+            finalResultData = {
+              type: 'html',
+              content: parsedResponse.data.content,
+              topic: parsedResponse.data.topic,
+              fileName: parsedResponse.data.fileName,
+              templateName: parsedResponse.data.templateName,
+              generationTime: parsedResponse.data.generationTime,
+              apiId: parsedResponse.data.apiId
+            }
+            console.log('[CardGenerator] 格式化后的resultData:', finalResultData)
+          }
+        } catch (e) {
+          console.log('[CardGenerator] 非JSON格式，直接作为HTML内容')
+        }
+        
+        // 如果没有解析成功，使用原有逻辑作为后备
+        if (!finalResultData) {
+          finalResultData = {
             type: 'html',
             content: allChunks.join(''),
             fileName: `generated_${Date.now()}.html`
           }
+        }
+        
+        updateMessage(aiMessage.id, {
+          isGenerating: false,
+          resultData: finalResultData
         })
         refreshCardFolders()
       }

@@ -171,68 +171,93 @@
             <div class="action-buttons">
               <!-- 文件操作按钮 -->
               <template v-if="selectedCardInfo">
-                <!-- 打开按钮 - 所有文件都可以打开 -->
-                <button 
-                  class="action-btn primary"
-                  @click="selectCard(selectedCardInfo.card.id, selectedCardInfo.folder.id)"
-                  title="打开"
-                >
-                  <span class="btn-icon">📄</span>
-                  <span class="btn-text">打开</span>
-                </button>
+                <!-- HTML文件：只显示预览、下载、删除 -->
+                <template v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.html') || selectedCardInfo.card.name.toLowerCase().endsWith('.htm')">
+                  <!-- 预览按钮 -->
+                  <button 
+                    class="action-btn primary"
+                    @click="previewHtmlFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                    title="预览"
+                  >
+                    <span class="btn-icon">👁️</span>
+                    <span class="btn-text">预览</span>
+                  </button>
+                  
+                  <!-- 下载按钮 -->
+                  <button 
+                    class="action-btn"
+                    @click="downloadFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                    title="下载"
+                  >
+                    <span class="btn-icon">⬇️</span>
+                    <span class="btn-text">下载</span>
+                  </button>
+                  
+                  <!-- 删除按钮 -->
+                  <button 
+                    class="action-btn danger"
+                    @click="deleteCardFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                    title="删除文件"
+                  >
+                    <span class="btn-icon">🗑️</span>
+                    <span class="btn-text">删除</span>
+                  </button>
+                </template>
                 
-                <!-- 预览按钮 - 只对HTML文件显示 -->
-                <button 
-                  v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.html') || selectedCardInfo.card.name.toLowerCase().endsWith('.htm')"
-                  class="action-btn"
-                  @click="previewHtmlFile(selectedCardInfo.card, selectedCardInfo.folder)"
-                  title="预览"
-                >
-                  <span class="btn-icon">👁️</span>
-                  <span class="btn-text">预览</span>
-                </button>
-                
-                <!-- 生成HTML按钮 - 只对JSON文件显示 -->
-                <button 
-                  v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.json')"
-                  class="action-btn"
-                  @click="generateHtmlFromJson(selectedCardInfo.card, selectedCardInfo.folder)"
-                  :disabled="isGeneratingHtml[selectedCardInfo.card.id]"
-                  title="生成HTML"
-                >
-                  <span class="btn-icon">🔄</span>
-                  <span class="btn-text">{{ isGeneratingHtml[selectedCardInfo.card.id] ? '生成中' : '生成HTML' }}</span>
-                </button>
-                
-                <!-- 下载按钮 - 所有文件都可以下载 -->
-                <button 
-                  class="action-btn"
-                  @click="downloadFile(selectedCardInfo.card, selectedCardInfo.folder)"
-                  title="下载"
-                >
-                  <span class="btn-icon">⬇️</span>
-                  <span class="btn-text">下载</span>
-                </button>
-                
-                <!-- 重命名按钮 - 所有文件都可以重命名 -->
-                <button 
-                  class="action-btn"
-                  @click="renameFile(selectedCardInfo.card, selectedCardInfo.folder)"
-                  title="重命名"
-                >
-                  <span class="btn-icon">✏️</span>
-                  <span class="btn-text">重命名</span>
-                </button>
-                
-                <!-- 删除按钮 - 所有文件都可以删除 -->
-                <button 
-                  class="action-btn danger"
-                  @click="deleteCardFile(selectedCardInfo.card, selectedCardInfo.folder)"
-                  title="删除文件"
-                >
-                  <span class="btn-icon">🗑️</span>
-                  <span class="btn-text">删除</span>
-                </button>
+                <!-- 非HTML文件：显示完整功能按钮 -->
+                <template v-else>
+                  <!-- 打开按钮 -->
+                  <button 
+                    class="action-btn primary"
+                    @click="selectCard(selectedCardInfo.card.id, selectedCardInfo.folder.id)"
+                    title="打开"
+                  >
+                    <span class="btn-icon">📄</span>
+                    <span class="btn-text">打开</span>
+                  </button>
+                  
+                  <!-- 生成HTML按钮 - 只对JSON文件显示 -->
+                  <button 
+                    v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.json')"
+                    class="action-btn"
+                    @click="generateHtmlFromJson(selectedCardInfo.card, selectedCardInfo.folder)"
+                    :disabled="isGeneratingHtml[selectedCardInfo.card.id]"
+                    title="生成HTML"
+                  >
+                    <span class="btn-icon">🔄</span>
+                    <span class="btn-text">{{ isGeneratingHtml[selectedCardInfo.card.id] ? '生成中' : '生成HTML' }}</span>
+                  </button>
+                  
+                  <!-- 下载按钮 -->
+                  <button 
+                    class="action-btn"
+                    @click="downloadFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                    title="下载"
+                  >
+                    <span class="btn-icon">⬇️</span>
+                    <span class="btn-text">下载</span>
+                  </button>
+                  
+                  <!-- 重命名按钮 -->
+                  <button 
+                    class="action-btn"
+                    @click="renameFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                    title="重命名"
+                  >
+                    <span class="btn-icon">✏️</span>
+                    <span class="btn-text">重命名</span>
+                  </button>
+                  
+                  <!-- 删除按钮 -->
+                  <button 
+                    class="action-btn danger"
+                    @click="deleteCardFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                    title="删除文件"
+                  >
+                    <span class="btn-icon">🗑️</span>
+                    <span class="btn-text">删除</span>
+                  </button>
+                </template>
               </template>
               
               <!-- 文件夹操作按钮 -->
@@ -632,56 +657,77 @@
             <div class="mobile-action-buttons">
               <!-- 文件操作 -->
               <template v-if="selectedCardInfo">
-                <!-- 打开按钮 -->
-                <button 
-                  class="action-btn primary"
-                  @click="selectCard(selectedCardInfo.card.id, selectedCardInfo.folder.id)"
-                >
-                  📄 打开
-                </button>
+                <!-- HTML文件：只显示预览、下载、删除 -->
+                <template v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.html') || selectedCardInfo.card.name.toLowerCase().endsWith('.htm')">
+                  <!-- 预览按钮 -->
+                  <button 
+                    class="action-btn primary"
+                    @click="previewHtmlFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  >
+                    👁️ 预览
+                  </button>
+                  
+                  <!-- 下载按钮 -->
+                  <button 
+                    class="action-btn"
+                    @click="downloadFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  >
+                    ⬇️ 下载
+                  </button>
+                  
+                  <!-- 删除按钮 -->
+                  <button 
+                    class="action-btn danger"
+                    @click="deleteCardFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  >
+                    🗑️ 删除
+                  </button>
+                </template>
                 
-                <!-- 预览按钮 - 只对HTML文件显示 -->
-                <button 
-                  v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.html') || selectedCardInfo.card.name.toLowerCase().endsWith('.htm')"
-                  class="action-btn"
-                  @click="previewHtmlFile(selectedCardInfo.card, selectedCardInfo.folder)"
-                >
-                  👁️ 预览
-                </button>
-                
-                <!-- 生成HTML按钮 - 只对JSON文件显示 -->
-                <button 
-                  v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.json')"
-                  class="action-btn"
-                  @click="generateHtmlFromJson(selectedCardInfo.card, selectedCardInfo.folder)"
-                  :disabled="isGeneratingHtml[selectedCardInfo.card.id]"
-                >
-                  🔄 {{ isGeneratingHtml[selectedCardInfo.card.id] ? '生成中' : '生成HTML' }}
-                </button>
-                
-                <!-- 下载按钮 -->
-                <button 
-                  class="action-btn"
-                  @click="downloadFile(selectedCardInfo.card, selectedCardInfo.folder)"
-                >
-                  ⬇️ 下载
-                </button>
-                
-                <!-- 重命名按钮 -->
-                <button 
-                  class="action-btn"
-                  @click="renameFile(selectedCardInfo.card, selectedCardInfo.folder)"
-                >
-                  ✏️ 重命名
-                </button>
-                
-                <!-- 删除按钮 -->
-                <button 
-                  class="action-btn danger"
-                  @click="deleteCardFile(selectedCardInfo.card, selectedCardInfo.folder)"
-                >
-                  🗑️ 删除
-                </button>
+                <!-- 非HTML文件：显示完整功能按钮 -->
+                <template v-else>
+                  <!-- 打开按钮 -->
+                  <button 
+                    class="action-btn primary"
+                    @click="selectCard(selectedCardInfo.card.id, selectedCardInfo.folder.id)"
+                  >
+                    📄 打开
+                  </button>
+                  
+                  <!-- 生成HTML按钮 - 只对JSON文件显示 -->
+                  <button 
+                    v-if="selectedCardInfo.card.name.toLowerCase().endsWith('.json')"
+                    class="action-btn"
+                    @click="generateHtmlFromJson(selectedCardInfo.card, selectedCardInfo.folder)"
+                    :disabled="isGeneratingHtml[selectedCardInfo.card.id]"
+                  >
+                    🔄 {{ isGeneratingHtml[selectedCardInfo.card.id] ? '生成中' : '生成HTML' }}
+                  </button>
+                  
+                  <!-- 下载按钮 -->
+                  <button 
+                    class="action-btn"
+                    @click="downloadFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  >
+                    ⬇️ 下载
+                  </button>
+                  
+                  <!-- 重命名按钮 -->
+                  <button 
+                    class="action-btn"
+                    @click="renameFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  >
+                    ✏️ 重命名
+                  </button>
+                  
+                  <!-- 删除按钮 -->
+                  <button 
+                    class="action-btn danger"
+                    @click="deleteCardFile(selectedCardInfo.card, selectedCardInfo.folder)"
+                  >
+                    🗑️ 删除
+                  </button>
+                </template>
               </template>
               
               <!-- 文件夹操作 -->

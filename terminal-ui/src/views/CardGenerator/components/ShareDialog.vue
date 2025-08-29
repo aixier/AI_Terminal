@@ -137,7 +137,10 @@
     <div v-else class="loading-content">
       <div class="loading-spinner">
         <el-icon class="is-loading"><Loading /></el-icon>
-        <p>正在生成分享内容...</p>
+        <div class="loading-text">
+          <p class="loading-title">{{ loadingProgress || '正在生成分享内容...' }}</p>
+          <p class="loading-hint">AI正在处理您的内容，请稍候片刻</p>
+        </div>
       </div>
     </div>
   </el-dialog>
@@ -160,6 +163,10 @@ const props = defineProps({
   isMobile: {
     type: Boolean,
     default: false
+  },
+  loadingProgress: {
+    type: String,
+    default: ''
   }
 })
 
@@ -371,25 +378,46 @@ const openShareLink = () => {
 }
 
 .loading-content {
-  padding: 60px;
+  padding: 80px 40px;
   text-align: center;
+  background: linear-gradient(135deg, #f5f7ff 0%, #e8f2ff 100%);
 }
 
 .loading-spinner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .loading-spinner .el-icon {
-  font-size: 40px;
+  font-size: 48px;
   color: #667eea;
+  animation: pulse 2s ease-in-out infinite;
 }
 
-.loading-spinner p {
-  font-size: 16px;
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+.loading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loading-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.loading-hint {
+  font-size: 14px;
   color: #666;
   margin: 0;
+  opacity: 0.8;
 }
 </style>

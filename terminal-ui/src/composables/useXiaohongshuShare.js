@@ -10,6 +10,7 @@ export function useXiaohongshuShare() {
   const isSharing = ref(false)
   const shareDialogVisible = ref(false)
   const shareResult = ref(null)
+  const loadingProgress = ref('')
 
   /**
    * 检查是否为HTML文件
@@ -76,17 +77,24 @@ export function useXiaohongshuShare() {
       return false
     }
 
+    // 立即显示等待对话框，提升用户体验
     isSharing.value = true
     shareResult.value = null
+    loadingProgress.value = '正在读取文件内容...'
+    shareDialogVisible.value = true  // 立即显示对话框
+    
+    ElMessage.info('正在生成分享内容，请稍候...')
 
     try {
       // 获取文件内容
+      loadingProgress.value = '正在读取文件内容...'
       const content = await getFileContent(file)
       if (!content) {
         throw new Error('无法获取文件内容')
       }
 
       // 准备请求体
+      loadingProgress.value = '正在准备分享数据...'
       let requestBody = { html: content }
       
       // 处理文件夹信息（如果存在）
@@ -96,6 +104,7 @@ export function useXiaohongshuShare() {
       if (folderName && folderName !== 'root-files') {
         try {
           // 尝试获取页面信息
+          loadingProgress.value = '正在获取模板信息...'
           const queryUrl = `/api/generate/card/query/${encodeURIComponent(folderName)}`
           const queryResponse = await fetch(queryUrl)
           
@@ -134,6 +143,7 @@ export function useXiaohongshuShare() {
       console.log('[XHS Share] 发送请求体:', requestBody)
 
       // 发送分享请求
+      loadingProgress.value = '正在生成分享内容，请稍候...'
       const response = await fetch('/api/generate/share/xiaohongshu', {
         method: 'POST',
         headers: {
@@ -162,6 +172,9 @@ export function useXiaohongshuShare() {
     } catch (error) {
       console.error('[XHS Share] 分享失败:', error)
       ElMessage.error('分享失败: ' + error.message)
+      
+      // 失败时关闭对话框
+      shareDialogVisible.value = false
       return false
     } finally {
       isSharing.value = false
@@ -232,6 +245,7 @@ export function useXiaohongshuShare() {
     isSharing,
     shareDialogVisible,
     shareResult,
+    loadingProgress,
     
     // 方法
     shareToXiaohongshu,

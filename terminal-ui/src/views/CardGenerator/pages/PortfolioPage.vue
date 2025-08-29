@@ -133,6 +133,7 @@
   <ShareDialog
     :visible="shareDialogVisible"
     :share-result="shareResult"
+    :loading-progress="loadingProgress"
     :is-mobile="isMobile"
     @close="closeShareDialog"
     @copy-content="copyShareContent"
@@ -204,6 +205,7 @@ const {
   isSharing,
   shareDialogVisible,
   shareResult,
+  loadingProgress,
   shareToXiaohongshu,
   closeShareDialog,
   copyShareContent,

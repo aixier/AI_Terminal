@@ -48,7 +48,7 @@
                   <button @click="$emit('preview-file', selectedFile)" class="action-btn">
                     <span>👁️</span> 预览
                   </button>
-                  <button @click="$emit('share-xiaohongshu', selectedFile)" class="action-btn xhs-share-btn">
+                  <button @click="shareToXiaohongshu(selectedFile, selectedFolder)" class="action-btn xhs-share-btn">
                     <span>📤</span> 分享小红书
                   </button>
                 </template>
@@ -95,7 +95,7 @@
               <button @click="$emit('preview-file', selectedFile)" class="action-btn">
                 <span>👁️</span>
               </button>
-              <button @click="$emit('share-xiaohongshu', selectedFile)" class="action-btn xhs-share-btn">
+              <button @click="shareToXiaohongshu(selectedFile, selectedFolder)" class="action-btn xhs-share-btn">
                 <span>📤</span>
               </button>
             </template>
@@ -128,11 +128,25 @@
       </div>
     </div>
   </div>
+  
+  <!-- 小红书分享对话框 -->
+  <ShareDialog
+    :visible="shareDialogVisible"
+    :share-result="shareResult"
+    :is-mobile="isMobile"
+    @close="closeShareDialog"
+    @copy-content="copyShareContent"
+    @copy-link="copyLink"
+    @copy-short-link="copyShortLink"
+    @open-link="openShareLink"
+  />
 </template>
 
 <script setup>
 import { defineProps, defineEmits } from 'vue'
 import FileManager from '../components/FileManager.vue'
+import ShareDialog from '../components/ShareDialog.vue'
+import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
 
 const props = defineProps({
   // 数据属性
@@ -181,10 +195,22 @@ const emit = defineEmits([
   'folder-context-menu',
   'file-context-menu',
   'preview-file',
-  'share-xiaohongshu',
   'download-file',
   'delete-file'
 ])
+
+// 使用小红书分享模块
+const {
+  isSharing,
+  shareDialogVisible,
+  shareResult,
+  shareToXiaohongshu,
+  closeShareDialog,
+  copyShareContent,
+  copyLink,
+  copyShortLink,
+  openShareLink
+} = useXiaohongshuShare()
 
 // 工具函数
 const isHtmlFile = (filename) => {

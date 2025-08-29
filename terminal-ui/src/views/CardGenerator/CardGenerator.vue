@@ -69,7 +69,6 @@
             @folder-context-menu="showFolderContextMenu"
             @file-context-menu="showCardContextMenu"
             @preview-file="previewHtmlFile"
-            @share-xiaohongshu="shareToXiaohongshu"
             @download-file="downloadFile"
             @delete-file="deleteCardFile"
           />
@@ -136,7 +135,6 @@
             @folder-context-menu="showFolderContextMenu"
             @file-context-menu="showCardContextMenu"
             @preview-file="previewHtmlFile"
-            @share-xiaohongshu="shareToXiaohongshu"
             @download-file="downloadFile"
             @delete-file="deleteCardFile"
           />
@@ -172,17 +170,7 @@
     @select="handleContextMenuSelect"
   />
   
-  <!-- Share to Xiaohongshu Dialog -->
-  <ShareDialog
-    :visible="shareDialogVisible"
-    :share-result="shareResult"
-    :is-mobile="isMobile"
-    @close="shareDialogVisible = false"
-    @copy-content="copyShareContent"
-    @copy-link="copyLink"
-    @copy-short-link="copyShortLink"
-    @open-link="openShareLink"
-  />
+  <!-- Share dialog moved to PortfolioPage.vue -->
 </template>
 
 <script setup>
@@ -200,7 +188,6 @@ import TerminalPage from './pages/TerminalPage.vue'
 import DesktopSidebar from './components/DesktopSidebar.vue'
 import UserHeader from './components/UserHeader.vue'
 import MobileNavigation from './components/MobileNavigation.vue'
-import ShareDialog from './components/ShareDialog.vue'
 
 // Import composables
 import { useCardGeneration } from './composables/useCardGeneration'
@@ -304,10 +291,7 @@ const contextMenu = ref({
   context: null
 })
 
-// ============ Share State ============
-const isSharing = ref(false)
-const shareDialogVisible = ref(false)
-const shareResult = ref(null)
+// Share state moved to PortfolioPage.vue
 
 // ============ Use Composables ============
 const { 
@@ -692,124 +676,7 @@ const setupSSEConnection = () => {
   })
 }
 
-// ============ Share Methods ============
-const shareToXiaohongshu = async (file, folder) => {
-  if (!file || !isHtmlFile(file.name)) {
-    ElMessage.warning('请选择HTML文件进行分享')
-    return
-  }
-
-  isSharing.value = true
-  shareResult.value = null
-
-  try {
-    const content = await getFileContent(file)
-    if (!content) {
-      throw new Error('无法获取文件内容')
-    }
-
-    const folderName = folder.name || folder.id
-    let requestBody = { html: content }
-
-    if (folderName && folderName !== 'root-files') {
-      try {
-        const queryUrl = `/api/generate/card/query/${encodeURIComponent(folderName)}`
-        const queryResponse = await fetch(queryUrl)
-        
-        if (queryResponse.ok) {
-          const queryData = await queryResponse.json()
-          
-          if (queryData.success && queryData.data) {
-            const templateName = queryData.data.templateName || ''
-            
-            if (templateName !== 'daily-knowledge-card-template.md') {
-              if (queryData.data.pageinfo) {
-                requestBody.pageinfo = JSON.stringify(queryData.data.pageinfo)
-              } else {
-                const files = queryData.data.files || queryData.data.allFiles || []
-                const jsonFile = files.find(f => {
-                  const fileName = f.fileName || f.name
-                  return fileName && fileName.endsWith('.json') && 
-                         !fileName.includes('meta') && 
-                         !fileName.includes('-response')
-                })
-                
-                if (jsonFile && jsonFile.content) {
-                  requestBody.pageinfo = JSON.stringify(jsonFile.content)
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('[ShareToXHS] 获取pageinfo失败，继续使用HTML:', error)
-      }
-    }
-
-    const response = await fetch('/api/generate/share/xiaohongshu', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    })
-
-    if (!response.ok) {
-      throw new Error(`API请求失败: ${response.status}`)
-    }
-
-    const result = await response.json()
-
-    if (!result.success) {
-      throw new Error(result.message || '处理失败')
-    }
-
-    shareResult.value = result
-    shareDialogVisible.value = true
-    
-    ElMessage.success('生成分享内容成功！')
-    
-  } catch (error) {
-    console.error('[ShareToXHS] 分享失败:', error)
-    ElMessage.error('分享失败: ' + error.message)
-  } finally {
-    isSharing.value = false
-  }
-}
-
-// Share content functions (moved to ShareDialog component)
-const copyShareContent = async (content) => {
-  try {
-    await navigator.clipboard.writeText(content)
-    ElMessage.success('发布内容已复制到剪贴板')
-  } catch (e) {
-    ElMessage.error('复制失败: ' + e.message)
-  }
-}
-
-const openShareLink = (url) => {
-  if (url) {
-    window.open(url, '_blank')
-  }
-}
-
-const copyLink = async (url) => {
-  try {
-    await navigator.clipboard.writeText(url)
-    ElMessage.success('链接已复制到剪贴板')
-  } catch (e) {
-    ElMessage.error('复制失败: ' + e.message)
-  }
-}
-
-const copyShortLink = async (url) => {
-  try {
-    await navigator.clipboard.writeText(url)
-    ElMessage.success('短链接已复制到剪贴板')
-  } catch (e) {
-    ElMessage.error('复制失败: ' + e.message)
-  }
-}
+// Share methods moved to PortfolioPage.vue
 
 // ============ Utility Methods ============
 const isHtmlFile = (filename) => {

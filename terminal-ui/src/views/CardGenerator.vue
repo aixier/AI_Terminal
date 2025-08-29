@@ -3363,23 +3363,57 @@ const loadTemplates = async () => {
 const initSSE = () => {
   console.log('[SSE] Initializing SSE connection...')
   
+  // 检查SSE服务状态
+  console.log('[SSE] Current SSE service state:', {
+    isConnected: sseService.isConnected,
+    eventSource: sseService.eventSource ? 'exists' : 'null'
+  })
+  
   // 连接SSE
   sseService.connect()
   
+  // 监听连接成功事件
+  sseService.on('connected', (data) => {
+    console.log('[SSE] ✅ Successfully connected to SSE:', data)
+    isConnected.value = true
+  })
+  
+  // 监听断开连接事件
+  sseService.on('disconnected', () => {
+    console.log('[SSE] ❌ Disconnected from SSE')
+    isConnected.value = false
+  })
+  
+  // 监听错误事件
+  sseService.on('error', (error) => {
+    console.error('[SSE] ⚠️ SSE Error:', error)
+    isConnected.value = false
+  })
+  
   // 监听文件系统变化事件
   sseUnsubscribe = sseService.on('filesystem:changed', async (data) => {
-    console.log('[SSE] Filesystem changed:', data)
+    console.log('[SSE] 📁 Filesystem changed:', data)
     
     // 如果不在生成过程中，刷新文件夹列表
     if (!isGenerating.value) {
-      console.log('[SSE] Refreshing folders due to filesystem change...')
+      console.log('[SSE] 🔄 Refreshing folders due to filesystem change...')
+      await loadCardFolders()
+    } else {
+      console.log('[SSE] ⏳ Skipping refresh - generation in progress')
+    }
+  })
+  
+  // 监听刷新事件（后端在连接时发送）
+  sseService.on('refresh', async (data) => {
+    console.log('[SSE] 🔄 Refresh event received:', data)
+    if (!isGenerating.value) {
       await loadCardFolders()
     }
   })
   
   // 监听文件添加事件，用于检测生成完成
   sseService.on('file:added', async (data) => {
-    console.log('[SSE] File added:', data)
+    console.log('[SSE] 📄 File added:', data)
     
     // 检查是否是JSON文件
     if (data.path && data.path.endsWith('.json')) {

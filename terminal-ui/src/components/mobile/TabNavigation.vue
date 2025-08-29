@@ -66,6 +66,11 @@ import { useTerminalStore } from '../../store/terminal.js'
 
 // Props
 const props = defineProps({
+  // 当前激活的tab
+  activeTab: {
+    type: String,
+    default: undefined
+  },
   // 是否启用滑动切换
   swipeEnabled: {
     type: Boolean,
@@ -87,7 +92,8 @@ const props = defineProps({
 const emits = defineEmits([
   'tab-change',
   'tab-swipe',
-  'tab-long-press'
+  'tab-long-press',
+  'update:activeTab'
 ])
 
 // 组合式API
@@ -141,8 +147,10 @@ const tabs = computed(() => {
   ]
 })
 
-// 当前活跃Tab（注意：返回字符串值，而不是ref本身）
-const activeTab = computed(() => layout.activeMobileTab.value)
+// 当前活跃Tab（优先使用prop，否则使用store）
+const activeTab = computed(() => {
+  return props.activeTab !== undefined ? props.activeTab : layout.activeMobileTab.value
+})
 
 // 用户信息相关
 const userInfo = computed(() => terminalStore.userInfo)
@@ -226,8 +234,14 @@ const handleTabClick = async (tabKey) => {
   isTransitioning.value = true
   console.log('[TabNavigation] 开始切换Tab:', `${activeTab.value} -> ${tabKey}`)
   try {
-    const result = layout.switchMobileTab(tabKey)
-    console.log('[TabNavigation] switchMobileTab结果:', result)
+    // 如果使用prop控制，则emit更新事件
+    if (props.activeTab !== undefined) {
+      emits('update:activeTab', tabKey)
+    } else {
+      // 否则使用store
+      const result = layout.switchMobileTab(tabKey)
+      console.log('[TabNavigation] switchMobileTab结果:', result)
+    }
     const eventData = { from: activeTab.value, to: tabKey, tabInfo: tabs.value.find(t => t.key === tabKey) }
     emits('tab-change', eventData)
     await nextTick()

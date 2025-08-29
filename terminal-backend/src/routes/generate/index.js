@@ -7,6 +7,7 @@ import cardContentRoutes from './cardContent.js'
 import templateRoutes from './templates.js'
 import statusRoutes from './status.js'
 import claudeRoutes from './claude.js'
+import shareRoutes from './share.js'
 
 const router = express.Router()
 
@@ -29,6 +30,9 @@ router.use('/status', statusRoutes)        // GET /api/generate/status/:topic
 
 // Claude执行路由
 router.use('/cc', claudeRoutes)           // POST /api/generate/cc
+
+// 分享路由
+router.use('/share', shareRoutes)         // POST /api/generate/share/xiaohongshu
 
 // 健康检查
 router.get('/health', (req, res) => {

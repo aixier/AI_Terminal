@@ -31,7 +31,7 @@ const routes = [
   {
     path: '/card-generator',
     name: 'CardGenerator',
-    component: () => import('../views/CardGenerator.vue'),
+    component: () => import('../views/CardGenerator/CardGenerator.vue'),
     meta: { requiresAuth: true }
   },
   {

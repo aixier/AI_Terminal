@@ -9,8 +9,8 @@ import { useDevice } from '../composables/useDevice.js'
 
 // 移动端Tab类型常量
 export const MOBILE_TABS = {
-  CREATE: 'create',    // 创建卡片 (对应PC端右边栏)
-  FILES: 'files',      // 文件管理 (对应PC端左边栏)
+  CREATE: 'create',    // AI创作 (对应PC端右边栏)
+  FILES: 'files',      // 作品集 (对应PC端左边栏)
   PREVIEW: 'preview',  // 预览显示 (对应PC端中上区域)
   TERMINAL: 'terminal' // 终端交互 (对应PC端中下区域)
 }
@@ -53,7 +53,7 @@ export const useLayoutStore = defineStore('layout', () => {
   const rightSidebarCollapsed = ref(false)
   
   // 移动端Tab状态
-  const activeMobileTab = ref(MOBILE_TABS.CREATE) // 默认显示创建卡片Tab
+  const activeMobileTab = ref(MOBILE_TABS.CREATE) // 默认显示AI创作Tab
   
   // 全屏状态
   const isFullScreen = ref(false)
@@ -115,14 +115,14 @@ export const useLayoutStore = defineStore('layout', () => {
     const tab = activeMobileTab.value
     const tabConfig = {
       [MOBILE_TABS.CREATE]: {
-        label: '创建卡片',
+        label: 'AI创作',
         icon: '📝',
-        description: '模板选择和卡片创建'
+        description: '模板选择和AI创作'
       },
       [MOBILE_TABS.FILES]: {
-        label: '文件',
+        label: '作品集',
         icon: '📁',
-        description: '卡片文件管理'
+        description: '作品文件管理'
       },
       [MOBILE_TABS.PREVIEW]: {
         label: '预览',

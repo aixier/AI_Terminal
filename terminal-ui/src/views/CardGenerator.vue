@@ -550,7 +550,7 @@
         
         <!-- Tab内容区域 -->
         <div class="mobile-tab-area">
-          <!-- 创建卡片 Tab -->
+          <!-- AI创作 Tab -->
           <div v-if="currentMobileTab === 'create'" class="mobile-tab-content create-tab">
             <!-- 模板优先展示 -->
             <div class="mobile-create-container">
@@ -1081,16 +1081,16 @@ const filteredMobileTabs = computed(() => {
   const tabConfigs = [
     {
       key: MOBILE_TABS.CREATE,
-      label: '创建卡片',
+      label: 'AI创作',
       icon: '📝',
-      description: '模板选择和卡片创建',
+      description: '模板选择和AI创作',
       badge: 0
     },
     {
       key: MOBILE_TABS.FILES,
-      label: '文件',
+      label: '作品集',
       icon: '📁',
-      description: '卡片文件管理',
+      description: '作品文件管理',
       badge: 0
     }
     // 不包含MOBILE_TABS.TERMINAL

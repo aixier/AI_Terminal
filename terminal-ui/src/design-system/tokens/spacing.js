@@ -150,7 +150,7 @@ export const responsiveSpacing = {
   desktop: {
     // 桌面端保持现有
     sidebar: '240px',         // 桌面端侧栏宽度（左边栏）
-    rightSidebar: '320px',    // 右边栏宽度（创建卡片区域）
+    rightSidebar: '320px',    // 右边栏宽度（AI创作区域）
     padding: '20px',          // 舒适内边距
     gap: '16px',              // 舒适间隙
     margin: '16px',           // 舒适外边距

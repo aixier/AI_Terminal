@@ -119,16 +119,16 @@ const tabs = computed(() => {
   return [
     {
       key: MOBILE_TABS.CREATE,
-      label: '创建卡片',
+      label: 'AI创作',
       icon: '📝',
-      description: '模板选择和卡片创建',
+      description: '模板选择和AI创作',
       badge: 0  // 可以根据实际需要设置徽章数量
     },
     {
       key: MOBILE_TABS.FILES,
-      label: '文件',
+      label: '作品集',
       icon: '📁', 
-      description: '卡片文件管理和浏览',
+      description: '作品文件管理和浏览',
       badge: 0
     },
     {

@@ -106,7 +106,7 @@
             <slot name="tablet-right-drawer">
               <div class="drawer-content">
                 <div class="drawer-header">
-                  <h3>📝 创建卡片</h3>
+                  <h3>📝 AI创作</h3>
                   <button class="drawer-close" @click="toggleDrawer('right')">×</button>
                 </div>
                 <div class="drawer-body">

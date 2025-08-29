@@ -1,51 +1,61 @@
 <template>
-  <div class="ai-creation-page">
+  <div class="ai-creation-page" :class="{ mobile: isMobile }">
     <!-- PC端布局 -->
     <div v-if="!isMobile" class="desktop-creation-layout">
-      <!-- 模板选择区域 -->
-      <div class="template-section">
-        <TemplateSelector
-          :templates="templates"
-          :selected-index="selectedTemplate"
-          :quick-selected-index="selectedQuickTemplate"
-          :show-refresh="false"
-          :show-quick-buttons="false"
-          @select="$emit('template-select', $event)"
-        />
-      </div>
-      
-      <!-- 聊天界面 -->
+      <!-- 消息和输入区域 -->
       <div class="chat-section">
-        <ChatInterface
-          :messages="messages"
-          :model-value="inputText"
-          :templates="templates"
-          :selected-template="selectedQuickTemplate"
-          :is-generating="isGenerating"
-          :placeholder="placeholder"
-          @send="$emit('send-message', $event)"
-          @select-template="$emit('quick-template-select', $event)"
-          @retry="$emit('retry-generation', $event)"
-          @clear-history="$emit('clear-history')"
-          @update:model-value="$emit('update:input-text', $event)"
-        />
+        <!-- 消息列表（可滚动） -->
+        <div class="messages-area">
+          <MessageListView
+            :messages="messages"
+            :is-mobile="false"
+            @retry-generation="$emit('retry-generation', $event)"
+            @preview-content="handlePreviewContent"
+            @save-content="handleSaveContent"
+            @share-content="handleShareContent"
+            @clear-chat="$emit('clear-history')"
+          />
+        </div>
+        
+        <!-- 输入面板（固定底部） -->
+        <div class="input-area">
+          <ChatInputPanel
+            :input-text="inputText"
+            :is-generating="isGenerating"
+            :placeholder="placeholder"
+            :is-mobile="false"
+            :max-templates="6"
+            @send-message="$emit('send-message', $event)"
+            @clear-history="$emit('clear-history')"
+            @update:input-text="$emit('update:input-text', $event)"
+          />
+        </div>
       </div>
     </div>
     
     <!-- 移动端布局 -->
     <div v-else class="mobile-creation-layout">
-      <ChatInterface
+      <!-- 消息列表（全屏滚动） -->
+      <MessageListView
         :messages="messages"
-        :model-value="inputText"
-        :templates="templates"
-        :selected-template="selectedQuickTemplate"
+        :is-mobile="true"
+        @retry-generation="$emit('retry-generation', $event)"
+        @preview-content="handlePreviewContent"
+        @save-content="handleSaveContent"
+        @share-content="handleShareContent"
+        @clear-chat="$emit('clear-history')"
+      />
+      
+      <!-- 输入面板（浮动在底部） -->
+      <ChatInputPanel
+        :input-text="inputText"
         :is-generating="isGenerating"
         :placeholder="placeholder"
-        @send="$emit('send-message', $event)"
-        @select-template="$emit('quick-template-select', $event)"
-        @retry="$emit('retry-generation', $event)"
+        :is-mobile="true"
+        :max-templates="4"
+        @send-message="$emit('send-message', $event)"
         @clear-history="$emit('clear-history')"
-        @update:model-value="$emit('update:input-text', $event)"
+        @update:input-text="$emit('update:input-text', $event)"
       />
     </div>
   </div>
@@ -53,8 +63,8 @@
 
 <script setup>
 import { defineProps, defineEmits } from 'vue'
-import ChatInterface from '../components/ChatInterface.vue'
-import TemplateSelector from '../components/TemplateSelector.vue'
+import MessageListView from '../components/MessageListView.vue'
+import ChatInputPanel from '../components/ChatInputPanel.vue'
 
 const props = defineProps({
   // 数据属性
@@ -62,21 +72,9 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  templates: {
-    type: Array,
-    default: () => []
-  },
   inputText: {
     type: String,
     default: ''
-  },
-  selectedTemplate: {
-    type: Number,
-    default: 0
-  },
-  selectedQuickTemplate: {
-    type: Number,
-    default: null
   },
   isGenerating: {
     type: Boolean,
@@ -93,13 +91,27 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'template-select',
-  'quick-template-select', 
   'send-message',
   'retry-generation',
   'clear-history',
   'update:input-text'
 ])
+
+// 处理消息操作
+const handlePreviewContent = (message) => {
+  // TODO: 实现预览功能
+  console.log('Preview content:', message)
+}
+
+const handleSaveContent = (message) => {
+  // TODO: 实现保存功能  
+  console.log('Save content:', message)
+}
+
+const handleShareContent = (message) => {
+  // TODO: 实现分享功能
+  console.log('Share content:', message)
+}
 </script>
 
 <style scoped>
@@ -116,18 +128,25 @@ const emit = defineEmits([
   flex-direction: column;
 }
 
-.template-section {
-  max-height: 200px;
-  overflow-y: auto;
-  border-bottom: 1px solid #e0e0e0;
-  background: #fff;
-}
-
 .chat-section {
   flex: 1;
   display: flex;
   flex-direction: column;
+  position: relative;
   overflow: hidden;
+}
+
+.messages-area {
+  flex: 1;
+  overflow: hidden;
+}
+
+.input-area {
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
 }
 
 /* 移动端布局 */
@@ -135,5 +154,7 @@ const emit = defineEmits([
   height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
+
 </style>

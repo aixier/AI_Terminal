@@ -33,9 +33,8 @@ export function useChatHistory() {
       resultData: null
     }
     messages.value.push(message)
-    if (!isGenerating) {
-      saveToLocal()
-    }
+    // 始终保存，包括生成中的消息，以防切换tab时丢失状态
+    saveToLocal()
     return message
   }
   
@@ -47,9 +46,8 @@ export function useChatHistory() {
         ...messages.value[index],
         ...updates
       }
-      if (!updates.isGenerating) {
-        saveToLocal()
-      }
+      // 始终保存更新，确保状态变化被持久化
+      saveToLocal()
     }
   }
   

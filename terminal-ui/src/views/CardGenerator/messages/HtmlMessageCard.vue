@@ -1,10 +1,11 @@
 <template>
   <MessageCard 
     type="html"
-    :content="htmlContent"
+    :content="actualHtmlContent"
     :timestamp="timestamp"
     :show-actions="true"
     :can-download="true"
+    :title="displayTopic"
     @copy="handleCopy"
     @download="handleDownload"
   >
@@ -82,9 +83,15 @@ import 'highlight.js/styles/github.css'
 hljs.registerLanguage('html', xml)
 
 const props = defineProps({
+  // API响应数据
+  resultData: {
+    type: Object,
+    default: null
+  },
+  // 兼容旧格式
   htmlContent: {
     type: String,
-    required: true
+    default: ''
   },
   timestamp: {
     type: [Date, Number],
@@ -93,6 +100,11 @@ const props = defineProps({
   fileName: {
     type: String,
     default: 'generated.html'
+  },
+  // 主题名称
+  topic: {
+    type: String,
+    default: ''
   }
 })
 
@@ -102,11 +114,44 @@ const viewMode = ref('preview')
 const isLoading = ref(true)
 const previewFrame = ref(null)
 
+// 计算实际的HTML内容
+const actualHtmlContent = computed(() => {
+  // 优先使用API响应数据
+  if (props.resultData && props.resultData.content) {
+    // 如果content是对象并且包含HTML内容
+    if (typeof props.resultData.content === 'object' && props.resultData.content.html) {
+      return props.resultData.content.html
+    }
+    // 如果content直接是HTML字符串
+    if (typeof props.resultData.content === 'string') {
+      return props.resultData.content
+    }
+  }
+  // 兼容旧格式
+  return props.htmlContent
+})
+
+// 获取主题名称
+const displayTopic = computed(() => {
+  if (props.resultData && props.resultData.topic) {
+    return props.resultData.topic
+  }
+  return props.topic
+})
+
+// 获取文件名
+const actualFileName = computed(() => {
+  if (props.resultData && props.resultData.fileName) {
+    return props.resultData.fileName
+  }
+  return props.fileName
+})
+
 const processedHtml = computed(() => {
-  if (!props.htmlContent) return ''
+  if (!actualHtmlContent.value) return ''
   
   // 如果HTML内容不包含完整的文档结构，添加基础结构
-  if (!props.htmlContent.includes('<!DOCTYPE') && !props.htmlContent.includes('<html')) {
+  if (!actualHtmlContent.value.includes('<!DOCTYPE') && !actualHtmlContent.value.includes('<html')) {
     return `
       <!DOCTYPE html>
       <html lang="zh-CN">
@@ -124,21 +169,21 @@ const processedHtml = computed(() => {
         </style>
       </head>
       <body>
-        ${props.htmlContent}
+        ${actualHtmlContent.value}
       </body>
       </html>
     `
   }
-  return props.htmlContent
+  return actualHtmlContent.value
 })
 
 const highlightedCode = computed(() => {
-  if (!props.htmlContent) return ''
+  if (!actualHtmlContent.value) return ''
   try {
-    return hljs.highlight(props.htmlContent, { language: 'html' }).value
+    return hljs.highlight(actualHtmlContent.value, { language: 'html' }).value
   } catch (error) {
     console.error('Code highlighting failed:', error)
-    return props.htmlContent
+    return actualHtmlContent.value
   }
 })
 
@@ -172,9 +217,9 @@ const handleIframeLoad = () => {
 
 const handleCopy = async () => {
   try {
-    await navigator.clipboard.writeText(props.htmlContent)
+    await navigator.clipboard.writeText(actualHtmlContent.value)
     ElMessage.success('HTML代码已复制')
-    emit('copy', props.htmlContent)
+    emit('copy', actualHtmlContent.value)
   } catch (error) {
     console.error('Copy failed:', error)
     ElMessage.error('复制失败')
@@ -182,18 +227,18 @@ const handleCopy = async () => {
 }
 
 const handleDownload = () => {
-  const blob = new Blob([props.htmlContent], { type: 'text/html;charset=utf-8' })
+  const blob = new Blob([actualHtmlContent.value], { type: 'text/html;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = props.fileName
+  link.download = actualFileName.value
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
   
   ElMessage.success('下载成功')
-  emit('download', props.fileName)
+  emit('download', actualFileName.value)
 }
 
 const handleFullscreen = () => {

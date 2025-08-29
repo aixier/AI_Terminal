@@ -36,15 +36,10 @@
           <AICreationPage
             v-if="activeDesktopTab === 'ai-creation'"
             :messages="chatMessages"
-            :templates="templates"
             :input-text="chatInputText"
-            :selected-template="selectedTemplate"
-            :selected-quick-template="selectedQuickTemplate"
             :is-generating="isGenerating"
             :placeholder="chatPlaceholder"
             :is-mobile="false"
-            @template-select="handleTemplateSelect"
-            @quick-template-select="handleQuickTemplateSelect"
             @send-message="handleSendMessage"
             @retry-generation="retryGeneration"
             @clear-history="clearChatHistory"
@@ -103,15 +98,10 @@
           <AICreationPage
             v-if="activeMobileTab === 'ai-creation'"
             :messages="chatMessages"
-            :templates="templates"
             :input-text="chatInputText"
-            :selected-template="selectedTemplate"
-            :selected-quick-template="selectedQuickTemplate"
             :is-generating="isGenerating"
             :placeholder="chatPlaceholder"
             :is-mobile="true"
-            @template-select="handleTemplateSelect"
-            @quick-template-select="handleQuickTemplateSelect"
             @send-message="handleSendMessage"
             @retry-generation="retryGeneration"
             @clear-history="clearChatHistory"
@@ -257,9 +247,7 @@ const previewType = ref('')
 const isGeneratingHtml = ref({})
 
 // ============ Template State ============
-const templates = ref([])
-const selectedTemplate = ref(0)
-const selectedQuickTemplate = ref(null)
+// 模板状态已移动到ChatInputPanel组件管理
 
 // ============ Connection State ============
 const isConnected = ref(false)
@@ -268,6 +256,9 @@ const connectionStatus = computed(() => {
     ? { icon: '🟢', text: '已连接' }
     : { icon: '🔴', text: '未连接' }
 })
+
+// ============ Template Availability ============
+// 模板可用性检查移动到ChatInputPanel组件
 
 // ============ Mobile State ============
 const shouldShowTerminal = computed(() => currentUsername.value === 'default')
@@ -323,9 +314,6 @@ const {
 // ============ Chat State ============
 const chatInputText = ref('')
 const chatPlaceholder = computed(() => {
-  if (selectedQuickTemplate.value !== null && templates.value[selectedQuickTemplate.value]) {
-    return `使用${templates.value[selectedQuickTemplate.value].name}模板...`
-  }
   return '描述你的创作需求...'
 })
 
@@ -336,7 +324,6 @@ const onInitializationComplete = () => {
 }
 
 const initialize = async () => {
-  await loadTemplates()
   await refreshCardFolders()
   restoreChatHistory()
   setupSSEConnection()
@@ -344,46 +331,11 @@ const initialize = async () => {
 
 // ============ Template Methods ============
 const loadTemplates = async () => {
-  try {
-    console.log('[Templates] Loading templates from public_template directory...')
-    const response = await axios.get('/upload/structure')
-    console.log('[Templates] Response received:', response)
-    
-    if (response.data && response.data.success) {
-      const templateFiles = response.data.data || []
-      templates.value = templateFiles.map((file, index) => ({
-        id: index,
-        name: file.name.replace('.txt', ''),
-        path: file.path
-      }))
-      console.log('[Templates] Loaded templates:', templates.value)
-    } else {
-      console.warn('[Templates] No templates found or API returned error')
-      templates.value = [
-        { id: 0, name: '日记', path: '' },
-        { id: 1, name: '报告', path: '' },
-        { id: 2, name: '邮件', path: '' },
-        { id: 3, name: '文章', path: '' }
-      ]
-    }
-  } catch (error) {
-    console.error('Failed to load templates:', error)
-    templates.value = [
-      { id: 0, name: '日记', path: '' },
-      { id: 1, name: '报告', path: '' },
-      { id: 2, name: '邮件', path: '' },
-      { id: 3, name: '文章', path: '' }
-    ]
-  }
+  // 模板加载逻辑移动到ChatInputPanel组件
+  console.log('[Templates] Template loading moved to ChatInputPanel component')
 }
 
-const handleTemplateSelect = (index) => {
-  selectedTemplate.value = index
-}
-
-const handleQuickTemplateSelect = (index) => {
-  selectedQuickTemplate.value = index
-}
+// 模板选择处理已移动到ChatInputPanel组件
 
 // ============ File Management Methods ============
 const loadCardFolders = async () => {
@@ -499,6 +451,12 @@ const filterJsonFiles = (files) => {
 
 const handleToggleFolder = (folderId) => {
   console.log('Toggle folder:', folderId)
+  
+  // 在移动端点击作品集文件夹时自动刷新文件列表
+  if (isMobile.value && activeTab.value === 'portfolio') {
+    console.log('Mobile portfolio folder toggle - refreshing folders')
+    refreshCardFolders()
+  }
 }
 
 const handleSelectFile = async (file, folder) => {
@@ -525,21 +483,44 @@ const deleteCardFile = async (file, folder) => {
 }
 
 // ============ Chat Methods ============
-const handleSendMessage = async (message) => {
+const handleSendMessage = async (messageData) => {
+  // 处理新的消息格式：{message, template, style, language, reference}
+  let message, currentTemplate, style, language, reference
+  
+  if (typeof messageData === 'string') {
+    // 兼容旧格式
+    message = messageData
+    currentTemplate = null
+  } else {
+    // 新格式：从ChatInputPanel传来的对象
+    message = messageData.message
+    currentTemplate = messageData.template
+    style = messageData.style
+    language = messageData.language
+    reference = messageData.reference
+  }
+  
   if (!message || isGenerating.value) return
   
-  addUserMessage(message, selectedQuickTemplate.value)
-  const aiMessage = addAIMessage('', true, '', selectedQuickTemplate.value)
+  addUserMessage(message, currentTemplate)
+  const aiMessage = addAIMessage('', true, '', currentTemplate)
   chatInputText.value = ''
-  selectedQuickTemplate.value = null
   
+  // 构建完整的API参数
   const params = {
-    prompt: message,
-    template: selectedQuickTemplate.value !== null 
-      ? templates.value[selectedQuickTemplate.value]?.name 
-      : templates.value[selectedTemplate.value]?.name,
-    username: currentUsername.value
+    topic: message,
+    templateName: currentTemplate 
+      ? currentTemplate.fileName 
+      : 'daily-knowledge-card-template.md',
+    token: currentUsername.value  // 页面调用必传
   }
+  
+  // 添加可选参数（只在有值时传递）
+  if (style) params.style = style
+  if (language) params.language = language  
+  if (reference) params.reference = reference
+  
+  console.log('[CardGenerator] API params:', params)
   
   const response = await startGeneration(params)
   if (response) {
@@ -757,6 +738,7 @@ onUnmounted(() => {
 .mobile-tab-area {
   flex: 1;
   overflow: hidden;
+  margin-bottom: 60px; /* 为底部导航栏预留空间 */
 }
 
 /* Share dialog styles moved to ShareDialog.vue */

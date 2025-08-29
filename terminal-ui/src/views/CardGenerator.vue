@@ -7,6 +7,17 @@
   
   <!-- Main Content (hidden during initialization) -->
   <ResponsiveLayout v-else>
+    <!-- 全局任务状态栏 -->
+    <template #global-task-status>
+      <GlobalTaskStatus
+        :is-generating="isGenerating"
+        :is-generating-html="Object.values(isGeneratingHtml).some(Boolean)"
+        :generating-hint="generatingHint"
+        :stream-count="allStreamMessages.length"
+        :total-chars="totalMessageChars"
+      />
+    </template>
+    
     <!-- Desktop Layout -->
     <template #desktop-layout>
       <div class="card-generator-layout">
@@ -290,18 +301,10 @@
           </div>
         </div>
         <div class="preview-content">
-          <!-- 生成中的进度提示 -->
-          <div v-if="isGenerating" class="generating-state">
-            <div class="generating-loader">
-              <div class="loader-spinner"></div>
-              <div class="generating-text">正在生成...</div>
-              <div class="generating-hint">{{ generatingHint }}</div>
-            </div>
-          </div>
           
           <!-- HTML内容直接渲染 -->
           <HtmlContentViewer
-            v-else-if="previewType === 'html-content' && previewContent"
+            v-if="previewType === 'html-content' && previewContent"
             :html-content="previewContent"
             :scale-mode="iframeScaleMode"
             :folder-name="currentGeneratedFolder"
@@ -520,7 +523,7 @@
             @click="generateCard"
             :disabled="!currentTopic.trim() || isGenerating"
           >
-            创建
+            {{ isGenerating ? '生成中...' : '创建' }}
           </button>
         </div>
       </div>
@@ -581,12 +584,8 @@
             <div class="mobile-floating-input">
               <div class="floating-input-container">
                 <div class="floating-input-header">
-                  <span class="input-emoji">{{ isGenerating ? '⏳' : '📝' }}</span>
-                  <span class="input-title">{{ isGenerating ? '生成中...' : '输入主题' }}</span>
-                  <span v-if="allStreamMessages.length > 0 || isGenerating" class="mobile-log-counter">
-                    <span v-if="isGenerating && generatingHint" class="generating-hint-mini">{{ generatingHint }}</span>
-                    <span v-if="allStreamMessages.length > 0">({{ allStreamMessages.length }}条/{{ totalMessageChars }}字)</span>
-                  </span>
+                  <span class="input-emoji">📝</span>
+                  <span class="input-title">输入主题</span>
                 </div>
                 <div class="floating-input-content">
                   <textarea 
@@ -601,7 +600,7 @@
                     @click="generateCard"
                     :disabled="!currentTopic.trim() || isGenerating"
                   >
-                    {{ isGenerating ? '生成中...' : '创建' }}
+                    创建
                   </button>
                 </div>
               </div>
@@ -859,28 +858,10 @@
     <!-- 全屏预览内容（覆盖层） -->
     <template #fullscreen-content>
       <div class="mobile-preview-content fill">
-        <div v-if="isGenerating" class="generating-state">
-          <div class="generating-loader">
-            <div class="loader-spinner"></div>
-            <div class="generating-text">正在生成...</div>
-            <div class="generating-hint">{{ generatingHint }}</div>
-            <!-- 添加字符计数显示 -->
-            <div v-if="allStreamMessages.length > 0" class="mobile-stream-info">
-              <div class="stream-stats">
-                共 {{ allStreamMessages.length }} 条消息，{{ totalMessageChars }} 字符
-              </div>
-              <div class="stream-messages-mini">
-                <div v-for="(msg, idx) in streamMessages.slice(-3)" :key="idx" class="stream-msg-item">
-                  {{ msg }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
         
         <!-- 移动端预览Tab：分享链接 / 原始HTML -->
         <div
-          v-else-if="previewType === 'html' || previewType === 'iframe'"
+          v-if="previewType === 'html' || previewType === 'iframe'"
           class="mobile-preview-tabs"
         >
           <button
@@ -957,6 +938,7 @@ import ResponsiveLayout from '../layouts/ResponsiveLayout.vue'
 import TabNavigation from '../components/mobile/TabNavigation.vue'
 import StartupInitializer from '../components/StartupInitializer.vue'
 import ContextMenu from '../components/ContextMenu.vue'
+import GlobalTaskStatus from '../components/GlobalTaskStatus.vue'
 import { useDevice } from '../composables/useDevice.js'
 import axios from '../api/config.js'
 import { useLayoutStore, MOBILE_TABS } from '../store/layout.js'
@@ -1419,6 +1401,12 @@ const previewHtmlFile = async (card, folder) => {
       selectedCard.value = card.id
       selectedFolder.value = folder.id
       ElMessage.success('HTML文件预览已加载')
+      
+      // 移动端触发全屏预览
+      if (device.isMobile.value) {
+        console.log('[Preview] HTML file loaded, opening fullscreen preview')
+        layoutStore.toggleFullScreen('preview')
+      }
     } else {
       ElMessage.error(response.message || '预览失败')
     }
@@ -4414,72 +4402,6 @@ const handleOpenHtmlLink = () => {
   flex-direction: column;
 }
 
-.generating-state {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #1a1a1a;
-}
-
-.generating-loader {
-  text-align: center;
-  padding: 40px;
-  max-width: 90%;
-  margin: 0 auto;
-}
-
-.loader-spinner {
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 20px;
-  border: 3px solid #333;
-  border-top-color: #4a9eff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.generating-text {
-  font-size: 18px;
-  font-weight: 500;
-  color: #e0e0e0;
-  margin-bottom: 10px;
-}
-
-.generating-hint {
-  font-size: 14px;
-  color: #888;
-  line-height: 1.5;
-}
-
-/* 移动端流消息显示样式 */
-.mobile-stream-info {
-  margin-top: 20px;
-  padding: 15px;
-  background: rgba(74, 158, 255, 0.05);
-  border: 1px solid rgba(74, 158, 255, 0.2);
-  border-radius: 8px;
-  max-width: 100%;
-}
-
-.stream-stats {
-  color: #4a9eff;
-  font-size: 13px;
-  margin-bottom: 10px;
-  text-align: center;
-  font-weight: 500;
-}
-
-.stream-messages-mini {
-  max-height: 120px;
-  overflow-y: auto;
-  padding: 5px 0;
-}
 
 .stream-msg-item {
   color: #c9d1d9;
@@ -5508,22 +5430,29 @@ const handleOpenHtmlLink = () => {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: rgba(22,27,34,0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid #30363d;
-  padding: 12px;
+  background: linear-gradient(135deg, rgba(74, 158, 255, 0.15) 0%, rgba(34, 197, 94, 0.12) 100%);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  border-radius: 8px;
+  margin: 8px 12px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .mobile-selected-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  font-size: 14px;
-  color: #c9d1d9;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #ffffff;
+  border-left: 4px solid #4a9eff;
 }
 
 .mobile-selected-info .selected-icon {
@@ -5545,14 +5474,17 @@ const handleOpenHtmlLink = () => {
 }
 
 .mobile-action-buttons .action-btn {
-  padding: 8px 12px;
-  background: #2a2f3a;
-  border: 1px solid #3a3f4a;
-  color: #c9d1d9;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #3a3f4a 0%, #2a2f3a 100%);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
   flex: 0 1 auto;
   min-width: fit-content;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
 }
 
 .mobile-action-buttons .action-btn:disabled { 
@@ -5561,21 +5493,41 @@ const handleOpenHtmlLink = () => {
 }
 
 .mobile-action-buttons .action-btn.primary { 
-  background: #238636; 
-  border-color: #2ea043; 
-  color: #fff; 
+  background: linear-gradient(135deg, #4a9eff 0%, #0366d6 100%);
+  border-color: #4a9eff; 
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(74, 158, 255, 0.4);
 }
 
 .mobile-action-buttons .action-btn.danger { 
-  background: #da3633; 
+  background: linear-gradient(135deg, #f85149 0%, #da3633 100%);
   border-color: #f85149; 
-  color: #fff; 
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(248, 81, 73, 0.4);
 }
 
 .mobile-action-buttons .action-btn.secondary { 
-  background: #6a737d; 
+  background: linear-gradient(135deg, #8b949e 0%, #6a737d 100%);
   border-color: #8b949e; 
-  color: #fff; 
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(139, 148, 158, 0.3);
+}
+
+.mobile-action-buttons .action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-action-buttons .action-btn.primary:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.5);
+}
+
+.mobile-action-buttons .action-btn.danger:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(248, 81, 73, 0.5);
+}
+
+.mobile-action-buttons .action-btn.secondary:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(139, 148, 158, 0.4);
 }
 
 
@@ -5869,26 +5821,6 @@ const handleOpenHtmlLink = () => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.mobile-log-counter {
-  margin-left: auto;
-  font-size: 11px;
-  color: #4a9eff;
-  opacity: 0.9;
-  font-weight: 400;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.generating-hint-mini {
-  color: #888;
-  font-size: 11px;
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .input-emoji {
   font-size: 16px;

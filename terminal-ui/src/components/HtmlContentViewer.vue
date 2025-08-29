@@ -3,16 +3,7 @@
     <!-- 工具栏 -->
     <div class="viewer-toolbar">
       <div class="toolbar-left">
-        <el-button-group>
-          <el-button @click="viewMode = 'render'" :type="viewMode === 'render' ? 'primary' : ''">
-            <el-icon><View /></el-icon>
-            预览
-          </el-button>
-          <el-button @click="viewMode = 'code'" :type="viewMode === 'code' ? 'primary' : ''">
-            <el-icon><Document /></el-icon>
-            源码
-          </el-button>
-        </el-button-group>
+        <!-- 移除源码按钮，只保留预览模式 -->
       </div>
       <div class="toolbar-right">
         <el-button @click="handleRefresh" :loading="isLoading">
@@ -25,7 +16,7 @@
         </el-button>
         <el-button @click="handleCopy">
           <el-icon><CopyDocument /></el-icon>
-          {{ props.isMobile ? '新窗口浏览' : '复制源码' }}
+          {{ props.isMobile ? '新窗口浏览' : '复制链接' }}
         </el-button>
         <el-button v-if="!props.isMobile" @click="handleFullscreen">
           <el-icon><FullScreen /></el-icon>
@@ -57,10 +48,6 @@
         ></iframe>
       </div>
 
-      <!-- 源码模式 -->
-      <div v-else-if="viewMode === 'code'" class="code-mode">
-        <pre class="html-code"><code>{{ formattedHtml }}</code></pre>
-      </div>
     </div>
 
     <!-- 缩放控制 - 移动端总是显示 -->
@@ -548,46 +535,6 @@ const processedHtml = computed(() => {
   }
 })
 
-// 格式化的HTML（用于源码显示）
-const formattedHtml = computed(() => {
-  if (!props.htmlContent) return ''
-  
-  // 简单的格式化，实际项目中可以使用专门的格式化库
-  try {
-    // 基础缩进处理
-    let formatted = props.htmlContent
-      .replace(/></g, '>\n<')
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line)
-      .join('\n')
-    
-    // 添加缩进
-    let indentLevel = 0
-    const lines = formatted.split('\n')
-    const formattedLines = []
-    
-    for (const line of lines) {
-      // 闭合标签减少缩进
-      if (line.match(/^<\/\w/)) {
-        indentLevel = Math.max(0, indentLevel - 1)
-      }
-      
-      // 添加缩进
-      formattedLines.push('  '.repeat(indentLevel) + line)
-      
-      // 开始标签增加缩进（排除自闭合标签）
-      if (line.match(/^<\w[^>]*[^\/]>$/) && !line.match(/^<(br|hr|img|input|meta|link)/i)) {
-        indentLevel++
-      }
-    }
-    
-    return formattedLines.join('\n')
-  } catch (e) {
-    console.error('Format HTML error:', e)
-    return props.htmlContent
-  }
-})
 
 // iframe样式
 const iframeStyle = computed(() => {
@@ -696,16 +643,17 @@ const handleRefresh = async () => {
   }
 }
 
-// 复制HTML内容或打开新窗口
+// 复制链接或打开新窗口
 const handleCopy = async () => {
   if (props.isMobile) {
     // 移动端打开新窗口浏览
     emit('openLink')
   } else {
-    // 桌面端复制源码
+    // 桌面端复制页面链接
     try {
-      await navigator.clipboard.writeText(props.htmlContent)
-      ElMessage.success('HTML源码已复制到剪贴板')
+      const currentUrl = window.location.href
+      await navigator.clipboard.writeText(currentUrl)
+      ElMessage.success('页面链接已复制到剪贴板')
     } catch (e) {
       ElMessage.error('复制失败: ' + e.message)
     }
@@ -1088,22 +1036,6 @@ onUnmounted(() => {
   min-height: 100%;
 }
 
-.code-mode {
-  height: 100%;
-  overflow: auto;
-}
-
-.html-code {
-  margin: 0;
-  padding: 20px;
-  background: #2d2d2d;
-  color: #f8f8f2;
-  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  white-space: pre;
-  overflow-x: auto;
-}
 
 .scale-controls {
   position: absolute;

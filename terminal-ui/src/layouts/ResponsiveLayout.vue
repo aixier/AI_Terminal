@@ -17,6 +17,8 @@
     <!-- 移动端布局: 全屏单窗口 + 底部Tab导航 -->
     <template v-else-if="isMobile">
       <div class="mobile-layout">
+        <!-- 全局任务状态栏 -->
+        <slot name="global-task-status" />
         <!-- debug banner removed -->
         
         <!-- 移动端视图容器 -->
@@ -262,6 +264,7 @@ const onLayoutTransition = (el, done) => {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  padding-top: var(--global-task-status-height, 0);
   padding-bottom: calc(var(--spacing-mobile-tabbar, 60px) + var(--spacing-mobile-safe-area, env(safe-area-inset-bottom)));
   -webkit-overflow-scrolling: touch;
 }

@@ -1352,9 +1352,14 @@ const sendChatMessage = async () => {
 const generateCardForChat = async (messageId) => {
   if (!currentTopic.value.trim() || isGenerating.value) return
   
-  // 直接使用selectedTemplate.value作为索引
-  const templateIndex = selectedTemplate.value || 0
-  const templateObj = templates.value[templateIndex] || templates.value[0]
+  // 检查模板是否有效
+  if (selectedTemplate.value === null || selectedTemplate.value === undefined || !templates.value[selectedTemplate.value]) {
+    // 如果没有选择模板或模板无效，使用第一个模板
+    selectedTemplate.value = 0
+  }
+  
+  // 获取模板信息
+  const templateObj = templates.value[selectedTemplate.value]
   const templateName = templateObj?.fileName || 'daily-knowledge-card-template.md'
   
   // 保存当前模板名称
@@ -1399,7 +1404,7 @@ const generateCardForChat = async (messageId) => {
       requestBody.reference = customReference.value.trim()
     }
     
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/generate-card/stream`, {
+    const response = await fetch('/api/generate/card/stream', {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody)
@@ -1442,7 +1447,7 @@ const generateCardForChat = async (messageId) => {
               // 实时更新AI消息内容
               updateAIMessage(messageId, {
                 content: fullContent,
-                title: templateObj.title || '生成结果'
+                title: templateObj?.name || '生成结果'
               })
             }
             
@@ -1468,7 +1473,7 @@ const generateCardForChat = async (messageId) => {
     updateAIMessage(messageId, {
       isGenerating: false,
       content: fullContent,
-      title: templateObj.title || '生成结果',
+      title: templateObj?.name || '生成结果',
       resultData: {
         content: fullContent,
         template: templateName,

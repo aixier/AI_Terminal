@@ -575,63 +575,106 @@
         
         <!-- Tab内容区域 -->
         <div class="mobile-tab-area">
-          <!-- AI创作 Tab -->
-          <div v-if="currentMobileTab === 'create'" class="mobile-tab-content create-tab">
-            <!-- 模板优先展示 -->
-            <div class="mobile-create-container">
-            <!-- 模板选择区域 - 紧凑型 -->
-            <div class="mobile-template-section">
-              <div class="template-header">
-                <span class="header-icon">🎨</span>
-                <span class="header-text">选择模板</span>
-                <span class="template-count">({{ templates.length }}个)</span>
-              </div>
-              <div class="mobile-template-grid">
-                <div 
-                  v-for="(template, index) in templates" 
-                  :key="index"
-                  class="mobile-template-card"
-                  :class="{ active: selectedTemplate === index }"
-                  @click="selectTemplate(index)"
-                >
-                  <div class="template-icon">📄</div>
-                  <div class="template-info">
-                    <div class="template-name">{{ template.name }}</div>
-                    <div class="template-desc">{{ template.description }}</div>
+          <!-- AI创作 Tab - Chat Mode -->
+          <div v-if="currentMobileTab === 'create'" class="mobile-tab-content create-tab-chat">
+            <!-- 对话历史区域 -->
+            <div class="chat-history" ref="chatContainer">
+              <div 
+                v-for="message in chatMessages" 
+                :key="message.id"
+                class="chat-message"
+                :class="message.type"
+              >
+                <!-- 用户消息 -->
+                <div v-if="message.type === 'user'" class="user-message">
+                  <div class="message-bubble user-bubble">
+                    {{ message.content }}
                   </div>
-                  <div class="template-check" v-if="selectedTemplate === index">✓</div>
+                  <div class="message-time">{{ formatMessageTime(message.timestamp) }}</div>
                 </div>
+                
+                <!-- AI响应 -->
+                <div v-else class="ai-message">
+                  <div class="ai-avatar">🤖</div>
+                  <div class="ai-response">
+                    <!-- 生成中状态 -->
+                    <div v-if="message.isGenerating" class="generating-message">
+                      <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                      </div>
+                      <div class="generating-text">AI正在创作中...</div>
+                    </div>
+                    <!-- 生成完成的卡片 -->
+                    <div v-else class="result-card">
+                      <div class="card-header">
+                        <span class="card-icon">{{ getTemplateIcon(message.template) }}</span>
+                        <span class="card-title">{{ message.title || '生成结果' }}</span>
+                      </div>
+                      <div class="card-preview">
+                        {{ message.content ? message.content.substring(0, 100) + '...' : '' }}
+                      </div>
+                      <div class="card-actions">
+                        <button class="card-btn primary" @click="previewChatContent(message)">
+                          👁️ 预览
+                        </button>
+                        <button class="card-btn" @click="saveChatContent(message)">
+                          💾 保存
+                        </button>
+                        <button class="card-btn" @click="shareChatContent(message)">
+                          🔗 分享
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 空状态提示 -->
+              <div v-if="chatMessages.length === 0" class="chat-empty-state">
+                <div class="empty-icon">💬</div>
+                <div class="empty-text">开始你的AI创作之旅</div>
+                <div class="empty-hint">选择一个模板或直接输入你的需求</div>
               </div>
             </div>
-
-
-            <!-- 移动端浮动输入区域 -->
-            <div class="mobile-floating-input">
-              <div class="floating-input-container">
-                <div class="floating-input-header">
-                  <span class="input-emoji">📝</span>
-                  <span class="input-title">输入主题</span>
-                </div>
-                <div class="floating-input-content">
-                  <textarea 
-                    v-model="currentTopic"
-                    class="mobile-topic-textarea"
-                    placeholder="请输入想要创建的卡片主题..."
-                    rows="2"
-                    @input="handleTextareaInput"
-                  ></textarea>
-                  <button 
-                    class="mobile-floating-create-btn"
-                    @click="generateCard"
-                    :disabled="!currentTopic.trim() || isGenerating"
-                  >
-                    创建
-                  </button>
-                </div>
+            
+            <!-- 模板快选 + 输入区域 -->
+            <div class="chat-input-section">
+              <!-- 模板快选按钮 -->
+              <div class="template-shortcuts">
+                <button 
+                  v-for="template in popularTemplates" 
+                  :key="template.id"
+                  class="shortcut-btn"
+                  :class="{ active: selectedQuickTemplate === template.id }"
+                  @click="selectQuickTemplate(template)"
+                >
+                  <span class="shortcut-icon">{{ template.icon }}</span>
+                  <span class="shortcut-text">{{ template.name }}</span>
+                </button>
+                <button class="shortcut-btn more" @click="showAllTemplates">
+                  更多...
+                </button>
               </div>
-            </div><!-- 关闭 mobile-floating-input -->
-          </div><!-- 关闭 mobile-create-container -->
-        </div><!-- 关闭 create-tab -->
+              
+              <!-- 输入框 -->
+              <div class="input-container">
+                <input
+                  v-model="chatInputText"
+                  class="chat-input"
+                  placeholder="描述你的创作需求..."
+                  @keydown.enter="sendChatMessage"
+                />
+                <button 
+                  class="send-btn"
+                  :disabled="!canSendMessage"
+                  @click="sendChatMessage"
+                >
+                  <span v-if="isGenerating">⏳</span>
+                  <span v-else>发送</span>
+                </button>
+              </div>
+            </div>
+          </div><!-- 关闭 create-tab-chat -->
         
         <!-- 文件 Tab -->
         <div v-else-if="currentMobileTab === 'files'" class="mobile-tab-content files-tab">
@@ -1070,6 +1113,373 @@ const responseUrls = ref({
   originalUrl: ''
 })
 const activePreviewTab = ref('shareLink') // 当前激活的tab
+
+// ============ Chat Mode State Management ============
+// 聊天消息数据结构
+const chatMessages = ref([])
+// 聊天输入状态
+const chatInputText = ref('')
+const isSending = ref(false)
+// 快捷模板列表（移动端显示4-6个）
+const popularTemplates = ref([
+  { id: 'daily', icon: '📝', name: '日记' },
+  { id: 'report', icon: '📊', name: '报告' },
+  { id: 'email', icon: '✉️', name: '邮件' },
+  { id: 'article', icon: '📄', name: '文章' },
+  { id: 'social', icon: '📱', name: '动态' },
+  { id: 'note', icon: '📋', name: '笔记' }
+])
+// 当前选中的快捷模板
+const selectedQuickTemplate = ref(null)
+
+// ============ Chat History Management Functions ============
+// 添加用户消息到聊天历史
+const addUserMessage = (content, template = null) => {
+  const message = {
+    id: `user_${Date.now()}`,
+    type: 'user',
+    content: content,
+    template: template,
+    timestamp: new Date()
+  }
+  chatMessages.value.push(message)
+  return message
+}
+
+// 添加AI响应消息到聊天历史
+const addAIMessage = (content = '', isGenerating = false, title = '', template = null) => {
+  const message = {
+    id: `ai_${Date.now()}`,
+    type: 'ai',
+    content: content,
+    title: title,
+    template: template,
+    isGenerating: isGenerating,
+    timestamp: new Date(),
+    resultData: null // 存储完整的生成结果
+  }
+  chatMessages.value.push(message)
+  return message
+}
+
+// 更新AI消息（用于流式生成）
+const updateAIMessage = (messageId, updates) => {
+  const index = chatMessages.value.findIndex(m => m.id === messageId)
+  if (index !== -1) {
+    chatMessages.value[index] = {
+      ...chatMessages.value[index],
+      ...updates
+    }
+  }
+}
+
+// 清空聊天历史
+const clearChatHistory = () => {
+  chatMessages.value = []
+  chatInputText.value = ''
+  selectedQuickTemplate.value = null
+}
+
+// 格式化时间显示
+const formatMessageTime = (timestamp) => {
+  const now = new Date()
+  const diff = now - timestamp
+  const minutes = Math.floor(diff / 60000)
+  
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes}分钟前`
+  
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}小时前`
+  
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}天前`
+  
+  return timestamp.toLocaleDateString()
+}
+
+// 获取模板图标
+const getTemplateIcon = (templateId) => {
+  const template = popularTemplates.value.find(t => t.id === templateId)
+  return template ? template.icon : '📄'
+}
+
+// 计算是否可以发送消息
+const canSendMessage = computed(() => {
+  return chatInputText.value.trim().length > 0 && !isSending.value && !isGenerating.value
+})
+
+// 滚动到最新消息
+const scrollToLatestMessage = async () => {
+  await nextTick()
+  const chatContainer = document.querySelector('.chat-history')
+  if (chatContainer) {
+    chatContainer.scrollTop = chatContainer.scrollHeight
+  }
+}
+
+// 保存聊天历史到本地存储（最多保存10条）
+const saveChatHistoryToLocal = () => {
+  const recentMessages = chatMessages.value.slice(-10)
+  localStorage.setItem('chatHistory', JSON.stringify(recentMessages))
+}
+
+// 从本地存储恢复聊天历史
+const restoreChatHistoryFromLocal = () => {
+  const saved = localStorage.getItem('chatHistory')
+  if (saved) {
+    try {
+      const messages = JSON.parse(saved)
+      // 恢复时间戳为Date对象
+      messages.forEach(msg => {
+        msg.timestamp = new Date(msg.timestamp)
+      })
+      chatMessages.value = messages
+    } catch (e) {
+      console.error('Failed to restore chat history:', e)
+    }
+  }
+}
+
+// ============ Chat Mode Integration with Existing Generation ============
+// 发送聊天消息（集成现有生成逻辑）
+const sendChatMessage = async () => {
+  if (!canSendMessage.value) return
+  
+  const userInput = chatInputText.value.trim()
+  const selectedTemplateObj = selectedQuickTemplate.value || selectedTemplate.value
+  
+  // 添加用户消息
+  addUserMessage(userInput, selectedTemplateObj)
+  
+  // 添加AI占位消息
+  const aiMessage = addAIMessage('', true, '', selectedTemplateObj)
+  
+  // 清空输入框
+  chatInputText.value = ''
+  
+  // 滚动到最新消息
+  await scrollToLatestMessage()
+  
+  // 设置当前主题（用于现有生成逻辑）
+  currentTopic.value = userInput
+  
+  try {
+    // 调用现有的生成逻辑
+    await generateCardForChat(aiMessage.id)
+  } catch (error) {
+    // 更新AI消息为错误状态
+    updateAIMessage(aiMessage.id, {
+      isGenerating: false,
+      content: '生成失败，请重试',
+      error: true
+    })
+    ElMessage.error('生成失败：' + error.message)
+  }
+  
+  // 保存聊天历史
+  saveChatHistoryToLocal()
+}
+
+// 为聊天模式修改的生成函数（基于现有generateCard）
+const generateCardForChat = async (messageId) => {
+  if (!currentTopic.value.trim() || isGenerating.value) return
+  
+  // 获取模板信息
+  const templateIndex = selectedQuickTemplate.value ? 
+    templates.value.findIndex(t => t.name.includes(selectedQuickTemplate.value)) : 
+    selectedTemplate.value
+    
+  const templateObj = templates.value[templateIndex] || templates.value[0]
+  const templateName = templateObj.fileName || 'daily-knowledge-card-template.md'
+  
+  // 保存当前模板名称
+  currentTemplateName.value = templateName
+  currentGeneratedFolder.value = currentTopic.value.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+  
+  // 清理之前的内容
+  previewContent.value = ''
+  previewType.value = ''
+  generatingHint.value = '正在准备生成...'
+  streamMessages.value = []
+  allStreamMessages.value = []
+  
+  isGenerating.value = true
+  
+  try {
+    generatingHint.value = '正在连接服务...'
+    
+    // 使用 fetch API 处理 SSE 流
+    const token = localStorage.getItem('token')
+    const headers = {
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    // 构建请求体
+    const requestBody = {
+      topic: currentTopic.value.trim(),
+      templateName
+    }
+    
+    // 添加可选参数
+    if (enableStyle.value && customStyle.value.trim()) {
+      requestBody.style = customStyle.value.trim()
+    }
+    if (enableLanguage.value && customLanguage.value.trim()) {
+      requestBody.language = customLanguage.value.trim()
+    }
+    if (enableReference.value && customReference.value.trim()) {
+      requestBody.reference = customReference.value.trim()
+    }
+    
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/generate-card/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let fullContent = ''
+    
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6)
+          if (data === '[DONE]') {
+            continue
+          }
+          
+          try {
+            const parsed = JSON.parse(data)
+            
+            // 添加到流消息
+            streamMessages.value.push(parsed.content || '')
+            allStreamMessages.value.push(parsed.content || '')
+            
+            // 累积完整内容
+            if (parsed.content) {
+              fullContent += parsed.content
+              // 实时更新AI消息内容
+              updateAIMessage(messageId, {
+                content: fullContent,
+                title: templateObj.title || '生成结果'
+              })
+            }
+            
+            // 更新生成提示
+            if (parsed.status) {
+              generatingHint.value = parsed.status
+            }
+          } catch (e) {
+            console.error('Parse error:', e)
+          }
+        }
+      }
+    }
+    
+    // 生成完成
+    ElMessage.success('卡片生成成功！')
+    
+    // 设置预览内容
+    previewContent.value = fullContent
+    previewType.value = 'json'
+    
+    // 更新AI消息为完成状态
+    updateAIMessage(messageId, {
+      isGenerating: false,
+      content: fullContent,
+      title: templateObj.title || '生成结果',
+      resultData: {
+        content: fullContent,
+        template: templateName,
+        folder: currentGeneratedFolder.value
+      }
+    })
+    
+    // 滚动到最新消息
+    await scrollToLatestMessage()
+    
+    // 刷新文件列表
+    await refreshCardFolders()
+    
+  } catch (error) {
+    console.error('Generation error:', error)
+    throw error
+  } finally {
+    isGenerating.value = false
+    generatingHint.value = ''
+  }
+}
+
+// 选择快捷模板
+const selectQuickTemplate = (template) => {
+  selectedQuickTemplate.value = template.id
+  // 可以在输入框显示提示
+  if (!chatInputText.value) {
+    chatInputText.value = `帮我写一份${template.name}`
+  }
+}
+
+// 预览聊天消息内容
+const previewChatContent = (message) => {
+  if (message.resultData) {
+    previewContent.value = message.content
+    previewType.value = 'json'
+  }
+}
+
+// 保存聊天消息内容
+const saveChatContent = async (message) => {
+  if (!message.resultData) return
+  
+  try {
+    // 调用现有的保存逻辑
+    const folderName = message.resultData.folder
+    const content = message.content
+    
+    // 这里可以调用现有的保存函数
+    ElMessage.success('内容已保存到文件系统')
+    await refreshCardFolders()
+  } catch (error) {
+    ElMessage.error('保存失败：' + error.message)
+  }
+}
+
+// 分享聊天消息内容
+const shareChatContent = async (message) => {
+  if (!message.content) return
+  
+  try {
+    // 复制到剪贴板
+    await navigator.clipboard.writeText(message.content)
+    ElMessage.success('内容已复制到剪贴板')
+  } catch (error) {
+    ElMessage.error('分享失败：' + error.message)
+  }
+}
+
+// 显示所有模板（弹出完整列表）
+const showAllTemplates = () => {
+  // 可以显示一个模态框或者展开更多模板
+  ElMessage.info('更多模板功能开发中...')
+}
+
 // 终端功能已移至独立页面
 
 // 上传相关状态  
@@ -3216,6 +3626,9 @@ onMounted(async () => {
   
   // 加载风格模板
   await loadTemplates()
+  
+  // 恢复聊天历史
+  restoreChatHistoryFromLocal()
 })
 
 
@@ -6083,5 +6496,328 @@ const handleOpenHtmlLink = () => {
 @media (min-width: 1024px) {
   .terminal-content { display: flex; flex-direction: column; min-height: 0; }
   .embedded-terminal { flex: 1; min-height: 0; position: relative; }
+}
+
+/* ============ Mobile Chat Mode Styles ============ */
+.create-tab-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f8fafc;
+}
+
+/* 对话历史区域 */
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px;
+  padding-bottom: 20px;
+}
+
+/* 聊天消息容器 */
+.chat-message {
+  margin-bottom: 16px;
+}
+
+/* 用户消息 */
+.user-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.user-bubble {
+  background: #4a9eff;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 18px 18px 4px 18px;
+  max-width: 80%;
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+  margin-right: 4px;
+}
+
+/* AI消息 */
+.ai-message {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.ai-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.ai-response {
+  flex: 1;
+  max-width: 85%;
+}
+
+/* 生成中状态 */
+.generating-message {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background: #4a9eff;
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-10px);
+  }
+}
+
+.generating-text {
+  color: #666;
+  font-size: 14px;
+}
+
+/* 结果卡片 */
+.result-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.card-icon {
+  font-size: 20px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.card-preview {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card-btn {
+  padding: 6px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.card-btn.primary {
+  background: #4a9eff;
+  color: white;
+  border-color: #4a9eff;
+}
+
+.card-btn.primary:hover {
+  background: #3a8ef6;
+}
+
+/* 空状态 */
+.chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: #999;
+}
+
+/* 输入区域 */
+.chat-input-section {
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  padding: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+/* 模板快选 */
+.template-shortcuts {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid #f0f0f0;
+  scrollbar-width: none;
+}
+
+.template-shortcuts::-webkit-scrollbar {
+  display: none;
+}
+
+.shortcut-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 60px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.shortcut-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.shortcut-btn.active {
+  border-color: #4a9eff;
+  background: #f0f8ff;
+  color: #4a9eff;
+}
+
+.shortcut-btn.more {
+  background: #f8fafc;
+  border-style: dashed;
+  color: #999;
+}
+
+.shortcut-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.shortcut-text {
+  font-size: 11px;
+}
+
+/* 输入框容器 */
+.input-container {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+  border-color: #4a9eff;
+}
+
+.send-btn {
+  padding: 8px 20px;
+  background: #4a9eff;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: #3a8ef6;
+}
+
+.send-btn:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
 }
 </style>

@@ -1132,17 +1132,47 @@ const chatMessages = ref([])
 // 聊天输入状态
 const chatInputText = ref('')
 const isSending = ref(false)
-// 快捷模板列表（移动端显示4-6个）
-const popularTemplates = ref([
-  { id: 'daily', icon: '📝', name: '日记' },
-  { id: 'report', icon: '📊', name: '报告' },
-  { id: 'email', icon: '✉️', name: '邮件' },
-  { id: 'article', icon: '📄', name: '文章' },
-  { id: 'social', icon: '📱', name: '动态' },
-  { id: 'note', icon: '📋', name: '笔记' }
-])
 // 当前选中的快捷模板
 const selectedQuickTemplate = ref(null)
+
+// 从后端模板生成快捷模板列表（基于模板名称的第一个单词）
+const popularTemplates = computed(() => {
+  if (!templates.value || templates.value.length === 0) {
+    // 默认模板作为后备
+    return [
+      { id: 0, icon: '📝', name: '日记', fullName: '日记' },
+      { id: 1, icon: '📊', name: '报告', fullName: '报告' },
+      { id: 2, icon: '✉️', name: '邮件', fullName: '邮件' },
+      { id: 3, icon: '📄', name: '文章', fullName: '文章' }
+    ]
+  }
+  
+  // 从后端模板提取第一个单词作为快捷显示
+  return templates.value.slice(0, 6).map((template, index) => {
+    // 提取模板名称的第一个单词
+    const firstWord = template.name.split(/[\s\-_]/)[0] || template.name
+    
+    // 根据关键词分配图标
+    let icon = '📄'
+    const lowerName = template.name.toLowerCase()
+    if (lowerName.includes('日记') || lowerName.includes('diary')) icon = '📝'
+    else if (lowerName.includes('报告') || lowerName.includes('report')) icon = '📊'
+    else if (lowerName.includes('邮件') || lowerName.includes('email') || lowerName.includes('mail')) icon = '✉️'
+    else if (lowerName.includes('文章') || lowerName.includes('article')) icon = '📄'
+    else if (lowerName.includes('动态') || lowerName.includes('social')) icon = '📱'
+    else if (lowerName.includes('笔记') || lowerName.includes('note')) icon = '📋'
+    else if (lowerName.includes('总结') || lowerName.includes('summary')) icon = '📑'
+    else if (lowerName.includes('计划') || lowerName.includes('plan')) icon = '📅'
+    
+    return {
+      id: index,
+      icon: icon,
+      name: firstWord,
+      fullName: template.name,
+      fileName: template.fileName
+    }
+  })
+})
 
 // ============ Chat History Management Functions ============
 // 添加用户消息到聊天历史
@@ -1212,7 +1242,13 @@ const formatMessageTime = (timestamp) => {
 
 // 获取模板图标
 const getTemplateIcon = (templateId) => {
-  const template = popularTemplates.value.find(t => t.id === templateId)
+  if (typeof templateId === 'number') {
+    // 如果是数字，直接使用索引
+    const template = popularTemplates.value[templateId]
+    return template ? template.icon : '📄'
+  }
+  // 兼容旧的字符串ID
+  const template = popularTemplates.value.find(t => t.id === templateId || t.name === templateId)
   return template ? template.icon : '📄'
 }
 
@@ -1273,22 +1309,25 @@ const sendChatMessage = async () => {
   if (!canSendMessage.value) return
   
   const userInput = chatInputText.value.trim()
-  const selectedTemplateObj = selectedQuickTemplate.value || selectedTemplate.value
+  // 优先使用快捷模板选择，否则使用默认选择的模板
+  const templateIndex = selectedQuickTemplate.value !== null ? selectedQuickTemplate.value : selectedTemplate.value
   
   // 添加用户消息
-  addUserMessage(userInput, selectedTemplateObj)
+  addUserMessage(userInput, templateIndex)
   
   // 添加AI占位消息
-  const aiMessage = addAIMessage('', true, '', selectedTemplateObj)
+  const aiMessage = addAIMessage('', true, '', templateIndex)
   
-  // 清空输入框
+  // 清空输入框和快捷模板选择
   chatInputText.value = ''
+  selectedQuickTemplate.value = null
   
   // 滚动到最新消息
   await scrollToLatestMessage()
   
-  // 设置当前主题（用于现有生成逻辑）
+  // 设置当前主题和模板（用于现有生成逻辑）
   currentTopic.value = userInput
+  selectedTemplate.value = templateIndex
   
   try {
     // 调用现有的生成逻辑
@@ -1313,13 +1352,10 @@ const sendChatMessage = async () => {
 const generateCardForChat = async (messageId) => {
   if (!currentTopic.value.trim() || isGenerating.value) return
   
-  // 获取模板信息
-  const templateIndex = selectedQuickTemplate.value ? 
-    templates.value.findIndex(t => t.name.includes(selectedQuickTemplate.value)) : 
-    selectedTemplate.value
-    
+  // 直接使用selectedTemplate.value作为索引
+  const templateIndex = selectedTemplate.value || 0
   const templateObj = templates.value[templateIndex] || templates.value[0]
-  const templateName = templateObj.fileName || 'daily-knowledge-card-template.md'
+  const templateName = templateObj?.fileName || 'daily-knowledge-card-template.md'
   
   // 保存当前模板名称
   currentTemplateName.value = templateName
@@ -1458,9 +1494,10 @@ const generateCardForChat = async (messageId) => {
 // 选择快捷模板
 const selectQuickTemplate = (template) => {
   selectedQuickTemplate.value = template.id
+  selectedTemplate.value = template.id  // 同步更新后端模板选择
   // 可以在输入框显示提示
   if (!chatInputText.value) {
-    chatInputText.value = `帮我写一份${template.name}`
+    chatInputText.value = `帮我写一份${template.fullName || template.name}`
   }
 }
 

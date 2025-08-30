@@ -260,13 +260,13 @@ const onLayoutTransition = (el, done) => {
 
 .mobile-view-container {
   flex: 1;
-  height: calc(100dvh - var(--spacing-mobile-tabbar, 60px));
-  overflow-y: auto;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden; /* 改为hidden，让内部组件自己控制滚动 */
   position: relative;
   padding-top: var(--global-task-status-height, 0);
-  padding-bottom: calc(var(--spacing-mobile-tabbar, 60px) + var(--spacing-mobile-safe-area, env(safe-area-inset-bottom)));
-  -webkit-overflow-scrolling: touch;
+  /* 移除padding-bottom，让内部组件自己处理 */
+  display: flex;
+  flex-direction: column;
 }
 
 .mobile-tab-navigation-placeholder {

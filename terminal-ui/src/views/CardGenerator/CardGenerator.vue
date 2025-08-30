@@ -84,13 +84,15 @@
     <!-- Mobile Layout -->
     <template #mobile-layout>
       <div class="mobile-view-content">
-        <!-- 移动端顶部用户信息栏 -->
-        <UserHeader
-          :username="currentUsername"
-          :is-connected="isConnected"
-          :is-mobile="true"
-          @logout="handleLogout"
-        />
+        <!-- 移动端顶部用户信息栏 (固定在顶部) -->
+        <div class="mobile-header-fixed">
+          <UserHeader
+            :username="currentUsername"
+            :is-connected="isConnected"
+            :is-mobile="true"
+            @logout="handleLogout"
+          />
+        </div>
         
         <!-- Tab内容区域 -->
         <div class="mobile-tab-area">
@@ -802,16 +804,28 @@ onUnmounted(() => {
 .mobile-view-content {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
 }
 
 /* Mobile user header styles moved to UserHeader.vue */
 
+/* 固定头部容器 */
+.mobile-header-fixed {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .mobile-tab-area {
   flex: 1;
-  overflow: hidden;
-  margin-bottom: 60px; /* 为底部导航栏预留空间 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* 不需要 margin-bottom，因为 ResponsiveLayout 已经处理了底部导航栏的空间 */
 }
 
 /* Share dialog styles moved to ShareDialog.vue */

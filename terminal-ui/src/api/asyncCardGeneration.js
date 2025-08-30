@@ -206,6 +206,8 @@ export const generateCardAsync = async (params, options = {}) => {
         throw new Error(submitResult.message || '提交生成请求失败')
       }
       
+      // submitResult 已经是 response.data (由axios拦截器处理)
+      // 后端返回格式: { code: 200, success: true, data: { taskId, ... } }
       taskId = submitResult.data.taskId
       folderName = submitResult.data.folderName
       topic = submitResult.data.topic

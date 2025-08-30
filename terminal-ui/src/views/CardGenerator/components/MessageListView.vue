@@ -72,7 +72,7 @@
                   <span class="card-title">{{ message.title || '生成结果' }}</span>
                 </div>
                 <div class="card-preview">
-                  {{ message.content ? message.content.substring(0, 100) + '...' : '' }}
+                  {{ typeof message.content === 'string' ? message.content.substring(0, 100) + '...' : '' }}
                 </div>
                 <div class="card-actions">
                   <button class="card-btn primary" @click="$emit('preview-content', message)">

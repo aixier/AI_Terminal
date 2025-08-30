@@ -171,9 +171,9 @@ const scrollToBottom = () => {
           
           // 如果消息底部没有完全显示，继续滚动
           if (messageBottom > currentScroll + containerHeight) {
-            messagesContainer.value.scrollTop = messageBottom - containerHeight + 20 // 额外20px边距
+            messagesContainer.value.scrollTop = messageBottom - containerHeight + 50 // 增加到50px边距，确保卡片底部操作按钮可见
           }
-        }, 200) // 给内容渲染留出时间
+        }, 300) // 稍微延长等待时间，确保内容完全渲染
       } else {
         // 备用方案：直接设置scrollTop
         messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
@@ -332,12 +332,21 @@ nextTick(() => {
   padding: 20px 20px 100px 20px; /* 底部增加更多内边距 */
   scroll-behavior: smooth;
   min-height: 100%; /* 确保容器至少占满父元素高度 */
+  position: relative; /* 添加相对定位 */
 }
 
 /* 移动端样式 */
 .message-list-view.mobile .messages-container {
-  padding: 16px 12px 200px 12px; /* 增加底部空间，确保最后的消息能完全显示 */
-  min-height: 100vh; /* 至少一个视口高度，允许向上滚动看到空白 */
+  padding: 16px 12px 280px 12px; /* 大幅增加底部空间，确保卡片完全显示 */
+  min-height: calc(100vh + 200px); /* 增加额外高度，允许更多滚动空间 */
+}
+
+/* 在消息容器底部添加额外的空白区域 */
+.message-list-view.mobile .messages-container::after {
+  content: '';
+  display: block;
+  height: 100px; /* 额外的底部空间 */
+  width: 100%;
 }
 
 .message-item {

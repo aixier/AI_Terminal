@@ -390,7 +390,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   z-index: 1000;
-  padding: 8px 10px; /* 减少内边距 */
+  padding: 6px 10px; /* 进一步减少上下内边距 */
   background: white;
   border-top: 1px solid #e0e0e0;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
@@ -400,7 +400,7 @@ onMounted(() => {
 .template-shortcuts {
   display: flex;
   gap: 6px;
-  margin-bottom: 8px; /* 减少底部间距 */
+  margin-bottom: 6px; /* 进一步减少底部间距 */
   flex-wrap: nowrap; /* 不换行，保持在一行 */
   align-items: center;
 }
@@ -575,7 +575,7 @@ onMounted(() => {
 
 .action-buttons.mobile {
   justify-content: center;
-  margin-top: 6px; /* 减少顶部间距 */
+  margin-top: 4px; /* 进一步减少顶部间距 */
 }
 
 .action-btn {

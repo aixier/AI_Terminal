@@ -192,8 +192,20 @@ onUpdated(() => {
 // 判断是否为HTML消息
 const isHtmlMessage = (message) => {
   // 检查消息是否包含HTML内容
-  if (message.resultData && message.resultData.content) {
-    return true // API响应格式
+  if (message.resultData) {
+    // 1. 有HTML内容
+    if (message.resultData.content) {
+      return true
+    }
+    // 2. 有HTML文件列表（恢复的消息可能只有文件列表）
+    if (message.resultData.allFiles && 
+        message.resultData.allFiles.some(file => file.fileType === 'html')) {
+      return true
+    }
+    // 3. 类型为html
+    if (message.resultData.type === 'html') {
+      return true
+    }
   }
   if (message.content && typeof message.content === 'string' && 
       (message.content.includes('<html') || message.content.includes('<!DOCTYPE'))) {

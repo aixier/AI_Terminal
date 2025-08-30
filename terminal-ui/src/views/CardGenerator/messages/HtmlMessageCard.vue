@@ -349,40 +349,69 @@ const handleIframeLoad = () => {
   console.log('[debug0.01] iframe加载完成')
   isLoading.value = false
   
-  // 自动调整iframe高度以适应内容
+  // 延迟一下让内容完全渲染
+  setTimeout(() => {
+    adjustIframeHeight()
+  }, 100)
+}
+
+const adjustIframeHeight = () => {
   if (previewFrame.value && previewFrame.value.contentWindow) {
     try {
       const doc = previewFrame.value.contentWindow.document
       console.log('[debug0.01] iframe文档内容长度:', doc.documentElement.innerHTML?.length || 0)
       
-      // 获取内容实际高度
-      const height = Math.max(
+      // 获取内容实际高度（添加延迟确保内容渲染完成）
+      let height = Math.max(
         doc.body.scrollHeight,
         doc.body.offsetHeight,
         doc.documentElement.clientHeight,
         doc.documentElement.scrollHeight,
         doc.documentElement.offsetHeight
       )
+      
       console.log('[debug0.01] 计算的iframe高度:', height)
       
-      // 设置高度，最小150px，最大为视口的45%
-      const viewportHeight = window.innerHeight * 0.45
-      const finalHeight = Math.max(150, Math.min(height, viewportHeight))
-      previewFrame.value.style.height = `${finalHeight}px`
+      // 如果高度为0，设置默认高度
+      if (height === 0) {
+        console.log('[debug0.01] 高度为0，使用默认高度')
+        height = 400
+      }
       
-      // 如果内容是知识卡片类型（包含grid布局），给予适当高度但不要太高
+      // 移动端：设置固定高度并允许内部滚动
+      const isMobile = window.innerWidth < 768
+      if (isMobile) {
+        // 移动端固定高度，内容可以在iframe内滚动
+        previewFrame.value.style.height = '400px'
+        previewFrame.value.style.overflow = 'auto'
+        previewFrame.value.style.webkitOverflowScrolling = 'touch'
+      } else {
+        // 桌面端：设置高度，最小250px，最大为视口的60%  
+        const viewportHeight = window.innerHeight * 0.6
+        const finalHeight = Math.max(250, Math.min(height, viewportHeight))
+        previewFrame.value.style.height = `${finalHeight}px`
+      }
+      
+      // 如果内容是知识卡片类型（包含grid布局），确保有足够高度
       if (doc.body.innerHTML.includes('grid') || doc.body.innerHTML.includes('card-container')) {
-        // 知识卡片适度高度
-        const cardHeight = Math.min(height, viewportHeight)
-        previewFrame.value.style.height = `${Math.max(250, cardHeight)}px`
+        if (isMobile) {
+          previewFrame.value.style.height = '450px'
+        } else {
+          const cardHeight = Math.min(height, window.innerHeight * 0.6)
+          previewFrame.value.style.height = `${Math.max(350, cardHeight)}px`
+        }
       }
     } catch (error) {
       console.error('[debug0.01] 调整iframe高度失败:', error)
       // 失败时设置默认高度
-      previewFrame.value.style.height = '250px'
+      previewFrame.value.style.height = '400px'
     }
   } else {
     console.log('[debug0.01] iframe引用不存在')
+    // 设置默认高度
+    if (previewFrame.value) {
+      previewFrame.value.style.height = '400px'
+    }
   }
 }
 
@@ -531,14 +560,15 @@ onMounted(async () => {
   width: 100%; /* 占满宽度 */
   margin: 0; /* 无边距 */
   padding: 0; /* 无内边距 */
-  min-height: 150px; /* 最小高度150px */
-  height: 250px; /* 默认高度大幅降低 */
-  max-height: 45vh; /* 最大高度为视口的45% */
+  min-height: 300px; /* 增加最小高度到300px */
+  height: 400px; /* 增加默认高度到400px */
+  max-height: 60vh; /* 增加最大高度为视口的60% */
   border: none;
   background: #ffffff;
   display: block;
   border-radius: 4px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05); /* 轻微边框效果 */
+  overflow: auto; /* 允许滚动 */
   /* Safari/iOS 兼容性修复 */
   -webkit-overflow-scrolling: touch;
   -webkit-transform: translateZ(0); /* 启用硬件加速 */

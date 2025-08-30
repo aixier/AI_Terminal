@@ -466,9 +466,34 @@ watch(processedHtml, (newHtml) => {
   console.log('[debug0.01] processedHtml变化，新内容长度:', newHtml?.length || 0)
 })
 
-onMounted(() => {
+// 监听API获取的内容变化
+watch(htmlContentFromApi, (newContent) => {
+  if (newContent) {
+    console.log('[debug0.01] API内容更新，长度:', newContent.length)
+    nextTick(() => {
+      refreshPreview()
+    })
+  }
+})
+
+onMounted(async () => {
   console.log('[debug0.01] HtmlMessageCard组件已挂载')
   console.log('[debug0.01] actualHtmlContent长度:', actualHtmlContent.value?.length || 0)
+  
+  // 如果没有HTML内容，但有文件信息，尝试从后端获取
+  if (!actualHtmlContent.value && props.resultData && props.resultData.allFiles) {
+    console.log('[debug0.01] 没有HTML内容，尝试从后端获取')
+    isLoadingContent.value = true
+    const content = await fetchHtmlContentByFilePath()
+    if (content) {
+      console.log('[debug0.01] 成功获取HTML内容，长度:', content.length)
+      htmlContentFromApi.value = content
+    } else {
+      console.log('[debug0.01] 无法从后端获取HTML内容')
+    }
+    isLoadingContent.value = false
+  }
+  
   // 延迟刷新预览，确保DOM已就绪
   nextTick(() => {
     refreshPreview()

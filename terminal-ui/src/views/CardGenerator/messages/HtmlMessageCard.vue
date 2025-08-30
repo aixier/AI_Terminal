@@ -106,41 +106,144 @@ const viewMode = ref('preview')
 const isLoading = ref(true)
 const previewFrame = ref(null)
 
+// 备用方案：通过文件路径从后端获取HTML内容
+const fetchHtmlContentByFilePath = async () => {
+  try {
+    console.log('[HtmlMessageCard] 尝试从后端获取HTML文件')
+    console.log('[HtmlMessageCard] resultData:', props.resultData)
+    
+    const username = localStorage.getItem('username') || 'default'
+    
+    let relativePath = null
+    
+    // 方法1：从 resultData.allFiles 中找到 HTML 文件
+    if (props.resultData && props.resultData.allFiles) {
+      const htmlFile = props.resultData.allFiles.find(file => file.fileType === 'html')
+      if (htmlFile && htmlFile.fileName) {
+        // 使用 topic 和 fileName 构建路径
+        const sanitizedTopic = props.resultData.sanitizedTopic || props.resultData.topic?.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+        relativePath = `card/${sanitizedTopic}/${htmlFile.fileName}`
+        console.log('[HtmlMessageCard] 从 allFiles 构建路径:', relativePath)
+      }
+    }
+    
+    // 方法2：从 resultData.fileName 构建路径
+    if (!relativePath && props.resultData && props.resultData.fileName && props.resultData.fileName.endsWith('.html')) {
+      const sanitizedTopic = props.resultData.sanitizedTopic || props.resultData.topic?.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+      relativePath = `card/${sanitizedTopic}/${props.resultData.fileName}`
+      console.log('[HtmlMessageCard] 从 fileName 构建路径:', relativePath)
+    }
+    
+    // 方法3：后备方案，使用传入的参数
+    if (!relativePath) {
+      const fileName = actualFileName.value
+      const topic = displayTopic.value
+      if (fileName && fileName.endsWith('.html')) {
+        const sanitizedTopic = topic.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+        relativePath = `card/${sanitizedTopic}/${fileName}`
+        console.log('[HtmlMessageCard] 使用后备方案构建路径:', relativePath)
+      }
+    }
+    
+    if (!relativePath) {
+      console.warn('[HtmlMessageCard] 无法构建有效的文件路径')
+      return null
+    }
+    
+    console.log('[HtmlMessageCard] 使用用户名:', username)
+    console.log('[HtmlMessageCard] 最终路径:', relativePath)
+    
+    const response = await fetch(`/api/workspace/${username}/file/${encodeURIComponent(relativePath)}`)
+    
+    if (response.ok) {
+      const data = await response.json()
+      console.log('[HtmlMessageCard] 成功获取HTML文件，长度:', data.content?.length)
+      return data.content
+    } else {
+      console.warn('[HtmlMessageCard] 获取HTML文件失败:', response.status, response.statusText)
+      return null
+    }
+  } catch (error) {
+    console.error('[HtmlMessageCard] 获取HTML文件出错:', error)
+    return null
+  }
+}
+
+// 响应式HTML内容（支持异步加载）
+const htmlContentFromApi = ref('')
+const isLoadingContent = ref(false)
+
 // 计算实际的HTML内容
 const actualHtmlContent = computed(() => {
-  // 优先使用API响应数据
-  if (props.resultData && props.resultData.content) {
-    // 如果content是对象并且包含HTML内容
-    if (typeof props.resultData.content === 'object' && props.resultData.content.html) {
-      return props.resultData.content.html
-    }
-    // 如果content直接是HTML字符串
-    if (typeof props.resultData.content === 'string') {
-      return props.resultData.content
-    }
+  console.log('[HtmlMessageCard] 渲染数据调试信息:')
+  console.log('props.resultData:', props.resultData)
+  console.log('props.htmlContent:', props.htmlContent)
+  console.log('props.topic:', props.topic)
+  
+  // 如果已经通过API获取到内容，使用它
+  if (htmlContentFromApi.value) {
+    console.log('[HtmlMessageCard] 使用API获取的HTML内容')
+    return htmlContentFromApi.value
   }
+  
+  // 优先使用API响应数据
+  if (props.resultData) {
+    console.log('[HtmlMessageCard] 检查 resultData.content:', props.resultData.content)
+    
+    // 如果有content且是有效的HTML内容
+    if (props.resultData.content) {
+      console.log('[HtmlMessageCard] resultData.content类型:', typeof props.resultData.content)
+      console.log('[HtmlMessageCard] resultData.content前200字符:', 
+        typeof props.resultData.content === 'string' 
+          ? props.resultData.content.substring(0, 200) + '...'
+          : 'Not a string'
+      )
+      
+      // 如果content是对象并且包含HTML内容
+      if (typeof props.resultData.content === 'object' && props.resultData.content.html) {
+        console.log('[HtmlMessageCard] 使用 resultData.content.html')
+        return props.resultData.content.html
+      }
+      // 如果content直接是HTML字符串并且看起来是有效的HTML
+      if (typeof props.resultData.content === 'string') {
+        // 检查是否是有效的HTML内容
+        if (props.resultData.content.includes('<!DOCTYPE') || props.resultData.content.includes('<html')) {
+          console.log('[HtmlMessageCard] 使用 resultData.content (HTML string)')
+          return props.resultData.content
+        }
+      }
+    }
+    
+    // 如果没有content或content无效，但有resultData（说明需要从API获取）
+    console.log('[HtmlMessageCard] resultData存在但content无效，尝试从API获取文件')
+    tryFetchHtmlFile()
+    return props.htmlContent // 临时返回，等待异步加载
+  }
+  
   // 兼容旧格式
+  console.log('[HtmlMessageCard] 使用后备方案 props.htmlContent')
   return props.htmlContent
 })
 
-// 获取卡片名称（使用content作为标题）
-const displayTopic = computed(() => {
-  // 根据需求：使用content作为卡片信息名称
-  if (props.resultData && props.resultData.content) {
-    // 如果content是HTML，提取前50个字符作为标题
-    if (typeof props.resultData.content === 'string') {
-      const plainText = props.resultData.content.replace(/<[^>]*>/g, '').trim()
-      return plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText
-    }
-    if (typeof props.resultData.content === 'object' && props.resultData.content.html) {
-      const plainText = props.resultData.content.html.replace(/<[^>]*>/g, '').trim()
-      return plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText
-    }
+// 尝试获取HTML文件
+const tryFetchHtmlFile = async () => {
+  if (isLoadingContent.value) return // 防止重复请求
+  
+  isLoadingContent.value = true
+  const content = await fetchHtmlContentByFilePath()
+  if (content) {
+    htmlContentFromApi.value = content
   }
-  // 后备方案
+  isLoadingContent.value = false
+}
+
+// 获取卡片名称（使用topic作为标题）
+const displayTopic = computed(() => {
+  // 优先使用topic作为卡片标题
   if (props.resultData && props.resultData.topic) {
     return props.resultData.topic
   }
+  // 后备方案
   return props.topic || 'HTML卡片'
 })
 
@@ -167,7 +270,8 @@ const processedHtml = computed(() => {
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #e2e8f0;
+            background-color: #2d3748;
             padding: 20px;
             margin: 0;
           }
@@ -317,8 +421,8 @@ onMounted(() => {
   position: relative;
   width: 100%;
   min-height: 200px;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: #2d3748;
+  border: 1px solid #4a5568;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -328,7 +432,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: #999;
+  color: #e2e8f0;
 }
 
 .preview-loading span {
@@ -339,15 +443,15 @@ onMounted(() => {
   width: 100%;
   min-height: 200px;
   border: none;
-  background: #fff;
+  background: #2d3748;
 }
 
 .html-code {
   width: 100%;
   max-height: 500px;
   overflow: auto;
-  background: #f8f8f8;
-  border: 1px solid #e0e0e0;
+  background: #2d3748;
+  border: 1px solid #4a5568;
   border-radius: 4px;
 }
 
@@ -357,6 +461,7 @@ onMounted(() => {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   line-height: 1.5;
+  color: #e2e8f0;
 }
 
 .code-block code {

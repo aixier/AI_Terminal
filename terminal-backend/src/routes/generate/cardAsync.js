@@ -164,13 +164,14 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         }
         console.log(`[Async Card API] ==========================================`)
         
+        // 定义模板路径
+        const templatePath = isDocker 
+          ? path.join('/app/data/public_template', templateName)
+          : path.join(dataPath, 'public_template', templateName)
+        
         // 构建提示词
         let prompt
         if (isFolder) {
-          const templatePath = isDocker 
-            ? path.join('/app/data/public_template', templateName)
-            : path.join(dataPath, 'public_template', templateName)
-          
           const claudePath = path.join(templatePath, 'CLAUDE.md')
           
           if (templateName === 'cardplanet-Sandra-json') {
@@ -225,9 +226,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           }
         } else {
           // 单文件模式（.md文件）
-          const templatePath = isDocker 
-            ? path.join('/app/data/public_template', templateName)
-            : path.join(dataPath, 'public_template', templateName)
+          // templatePath 已在上面定义
           
           // 原有的提示词
           prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${backgroundUserCardPath}]：${topic}`
@@ -325,11 +324,11 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           const metadata = new SessionMetadata(targetUser.username, topic, templateName, '/api/generate/card/async', taskId)
           
           // 设置请求参数
-          if (style || language || reference) {
+          if (style || language || referenceContent) {
             metadata.setUserParameters({ 
               style, 
               language, 
-              reference
+              reference: referenceContent
             })
           }
           

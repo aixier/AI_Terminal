@@ -13,8 +13,8 @@
         :is-generating="isGenerating"
         :is-generating-html="Object.values(isGeneratingHtml).some(Boolean)"
         :generating-hint="generatingHint"
-        :stream-count="streamMessages.length"
-        :total-chars="totalChars"
+        :stream-count="0"
+        :total-chars="0"
       />
     </template>
     
@@ -180,7 +180,7 @@ import UserHeader from './components/UserHeader.vue'
 import MobileNavigation from './components/MobileNavigation.vue'
 
 // Import composables
-import { useCardGeneration } from './composables/useCardGeneration'
+import { useAsyncCardGeneration } from './composables/useAsyncCardGeneration.js'
 import { useFileOperations } from './composables/useFileOperations'
 import { useChatHistory } from './composables/useChatHistory'
 
@@ -194,14 +194,16 @@ import ContextMenu from '../../components/ContextMenu.vue'
 // Import services and APIs
 import sseService from '../../services/sseService'
 import terminalAPI from '../../api/terminal'
-import axios from 'axios'
 
 // Router
 const router = useRouter()
 
 // ============ Initialization State ============
 const showInitializer = ref(true)
-const currentUsername = ref(localStorage.getItem('username') || 'Guest')
+const currentUsername = computed(() => localStorage.getItem('username') || '')
+
+// ============ Generation Mode ============
+// 仅使用异步模式
 
 // ============ Page Navigation State ============
 const activeDesktopTab = ref('ai-creation')
@@ -285,15 +287,18 @@ const contextMenu = ref({
 // Share state moved to PortfolioPage.vue
 
 // ============ Use Composables ============
+// 异步生成composable
 const { 
   isGenerating, 
-  generatingHint, 
-  streamMessages, 
-  totalChars,
-  startGeneration, 
-  processStream, 
-  stopGeneration 
-} = useCardGeneration()
+  generatingStatus: generatingHint, 
+  pollingAttempts,
+  pollingProgress,
+  estimatedTimeLeft,
+  formatTimeLeft,
+  startAsyncGeneration, 
+  stopGeneration,
+  refreshStatus
+} = useAsyncCardGeneration()
 
 const { 
   downloadFile, 
@@ -453,7 +458,7 @@ const handleToggleFolder = (folderId) => {
   console.log('Toggle folder:', folderId)
   
   // 在移动端点击作品集文件夹时自动刷新文件列表
-  if (isMobile.value && activeTab.value === 'portfolio') {
+  if (isMobile.value && activeMobileTab.value === 'portfolio') {
     console.log('Mobile portfolio folder toggle - refreshing folders')
     refreshCardFolders()
   }
@@ -494,13 +499,23 @@ const handleSendMessage = async (messageData) => {
   } else {
     // 新格式：从ChatInputPanel传来的对象
     message = messageData.message
-    currentTemplate = messageData.template
+    currentTemplate = messageData.template  // 完整模板对象，用于显示
     style = messageData.style
     language = messageData.language
     reference = messageData.reference
   }
   
   if (!message || isGenerating.value) return
+  
+  // 检查用户是否已登录（需要有token）
+  const token = localStorage.getItem('token')
+  const username = localStorage.getItem('username')
+  
+  if (!token || !username) {
+    ElMessage.warning('请先登录后再使用AI创作功能')
+    router.push('/login')
+    return
+  }
   
   addUserMessage(message, currentTemplate)
   const aiMessage = addAIMessage('', true, '', currentTemplate)
@@ -509,10 +524,10 @@ const handleSendMessage = async (messageData) => {
   // 构建完整的API参数
   const params = {
     topic: message,
-    templateName: currentTemplate 
+    templateName: messageData.templateName || (currentTemplate 
       ? currentTemplate.fileName 
-      : 'daily-knowledge-card-template.md',
-    token: currentUsername.value  // 页面调用必传
+      : 'daily-knowledge-card-template.md'),  // 默认使用快速模板
+    token: token  // 使用实际的token
   }
   
   // 添加可选参数（只在有值时传递）
@@ -521,69 +536,33 @@ const handleSendMessage = async (messageData) => {
   if (reference) params.reference = reference
   
   console.log('[CardGenerator] API params:', params)
+  console.log('[CardGenerator] Using token:', token)
+  console.log('[CardGenerator] Using async generation mode')
   
-  const response = await startGeneration(params)
-  if (response) {
-    await processStream(response, 
-      (chunk) => {
-        updateMessage(aiMessage.id, {
-          content: (aiMessage.content || '') + chunk
-        })
-      },
-      (allChunks) => {
-        // 打印完整的流式响应数据，确认格式
-        console.log('[CardGenerator] 完整流式响应数据:', allChunks)
-        console.log('[CardGenerator] 合并后的内容:', allChunks.join(''))
-        
-        // 尝试解析最后一个chunk看是否是JSON格式的完整响应
-        const lastChunk = allChunks[allChunks.length - 1]
-        console.log('[CardGenerator] 最后一个chunk:', lastChunk)
-        
-        let parsedResponse = null
-        let finalResultData = null
-        
-        try {
-          parsedResponse = JSON.parse(lastChunk)
-          console.log('[CardGenerator] 解析的JSON响应:', parsedResponse)
-          
-          // 按照API文档格式解析：data.content是真正的内容
-          if (parsedResponse && parsedResponse.data) {
-            finalResultData = {
-              type: 'html',
-              content: parsedResponse.data.content,
-              topic: parsedResponse.data.topic,
-              fileName: parsedResponse.data.fileName,
-              templateName: parsedResponse.data.templateName,
-              generationTime: parsedResponse.data.generationTime,
-              apiId: parsedResponse.data.apiId
-            }
-            console.log('[CardGenerator] 格式化后的resultData:', finalResultData)
-          }
-        } catch (e) {
-          console.log('[CardGenerator] 非JSON格式，直接作为HTML内容')
-        }
-        
-        // 如果没有解析成功，使用原有逻辑作为后备
-        if (!finalResultData) {
-          finalResultData = {
-            type: 'html',
-            content: allChunks.join(''),
-            fileName: `generated_${Date.now()}.html`
-          }
-        }
-        
-        updateMessage(aiMessage.id, {
-          isGenerating: false,
-          resultData: finalResultData
-        })
-        refreshCardFolders()
-      }
-    )
-  } else {
+  // 使用异步模式生成
+  const result = await startAsyncGeneration(params)
+  if (result) {
+    const finalResultData = {
+      type: result.type,
+      content: result.content,
+      topic: result.topic,
+      fileName: result.fileName,
+      templateName: params.templateName,
+      allFiles: result.allFiles,
+      generatedAt: result.generatedAt
+    }
+    
     updateMessage(aiMessage.id, {
       isGenerating: false,
-      error: true,
-      content: '生成失败，请重试'
+      resultData: finalResultData
+    })
+    refreshCardFolders()
+  } else {
+    // 异步生成失败
+    updateMessage(aiMessage.id, {
+      isGenerating: false,
+      content: '生成失败，请重试',
+      error: true
     })
   }
 }

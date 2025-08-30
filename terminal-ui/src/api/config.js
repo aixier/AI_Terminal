@@ -88,4 +88,13 @@ service.interceptors.response.use(
 // 导出API基础URL (动态获取)
 export const API_BASE_URL = () => getApiBaseUrl()
 
+// 导出配置对象
+export const config = {
+  apiUrl: getApiBaseUrl(),
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+}
+
 export default service

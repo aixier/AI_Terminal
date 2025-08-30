@@ -30,9 +30,10 @@
           class="template-btn"
           :class="{ active: selectedTemplate && selectedTemplate.id === template.id }"
           @click="selectTemplate(template)"
-          :title="template.name"
+          :title="template.description || template.name"
         >
-          <span class="template-name">{{ getTemplateDisplayName(template.name) }}</span>
+          <span class="template-name">{{ template.name }}</span>
+          <span v-if="template.outputCount > 1" class="template-badge">{{ template.outputCount }}</span>
         </button>
       </template>
     </div>
@@ -193,9 +194,20 @@ const canSend = computed(() => {
   return !props.isGenerating && props.inputText.trim().length > 0
 })
 
-// 显示的模板列表
+// 显示的模板列表 - 只显示快速和精细两个模板
 const displayTemplates = computed(() => {
-  return templates.value.slice(0, props.maxTemplates)
+  // 筛选出快速（daily-knowledge-card）和精细（cardplanet-Sandra-json）模板
+  const quickAndDetailTemplates = templates.value.filter(t => 
+    t.fileName === 'daily-knowledge-card-template.md' || 
+    t.fileName === 'cardplanet-Sandra-json'
+  )
+  
+  // 按照特定顺序排序：快速在前，精细在后
+  return quickAndDetailTemplates.sort((a, b) => {
+    if (a.fileName === 'daily-knowledge-card-template.md') return -1
+    if (b.fileName === 'daily-knowledge-card-template.md') return 1
+    return 0
+  })
 })
 
 // 获取模板显示名称（提取第一个连续字母串）
@@ -226,7 +238,8 @@ const sendMessage = () => {
     // 构建完整的消息参数对象
     const messageData = {
       message: props.inputText.trim(),
-      template: selectedTemplate.value,
+      template: selectedTemplate.value,  // 包含完整模板信息，用于显示
+      templateName: selectedTemplate.value?.fileName,  // 模板文件名，用于API调用
       // 可选参数
       style: enableStyle.value ? styleValue.value : undefined,
       language: enableLanguage.value ? languageValue.value : undefined,
@@ -282,20 +295,30 @@ const loadTemplates = async () => {
       if (templateFiles.length > 0) {
         templates.value = templateFiles.map((template, index) => {
           const icon = getTemplateIcon(template.fileName, template.type)
-          console.log(`[ChatInputPanel] Template ${template.fileName} (${template.type}) -> icon: ${icon}`)
+          console.log(`[ChatInputPanel] Template mapping:`, {
+            fileName: template.fileName,
+            displayName: template.displayName,
+            description: template.description,
+            type: template.type,
+            outputCount: template.outputCount
+          })
           return {
-            id: index,
+            id: template.fileName,  // 使用fileName作为唯一ID
             name: template.displayName || template.fileName.replace('.md', ''),
             fileName: template.fileName,
             type: template.type,
+            description: template.description || '',
+            outputType: template.outputType || 'json',
+            outputCount: template.outputCount || 1,
             icon: icon
           }
         })
         templateLoadError.value = null
         
-        // 默认选中第一个模板
+        // 默认选中快速模板（daily-knowledge-card-template.md）
         if (templates.value.length > 0) {
-          selectedTemplate.value = templates.value[0]
+          const quickTemplate = templates.value.find(t => t.fileName === 'daily-knowledge-card-template.md')
+          selectedTemplate.value = quickTemplate || templates.value[0]
           console.log('[ChatInputPanel] Default selected template:', selectedTemplate.value)
         }
         
@@ -416,6 +439,21 @@ onMounted(() => {
 
 .template-name {
   font-weight: 500;
+}
+
+.template-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 6px;
+  background: #ff6b6b;
+  color: white;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.template-btn.active .template-badge {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* 移动端模板样式 */

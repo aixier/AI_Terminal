@@ -326,12 +326,185 @@ POST /api/generate/card/stream
 
 **响应：** Server-Sent Events流
 
-**事件类型：**
-- `start`: 开始生成
-- `status`: 状态更新
-- `progress`: 进度更新
-- `success`: 生成成功
-- `error`: 生成失败
+**事件类型及Schema：**
+
+#### `folder_created` - 文件夹创建事件
+```json
+{
+  "folderName": "sanitized_topic_name",
+  "folderPath": "/path/to/folder",
+  "folderCreated": true,
+  "folderExisted": false,
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `status` - 状态更新事件
+```json
+{
+  "step": "generating_prompt_parameters | executing_claude | claude_executed | waiting_file_generation | processing_metadata | generating_additional_files",
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `parameter_progress` - 参数生成进度
+```json
+{
+  "param": "all",
+  "status": "generating",
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `parameters` - 参数生成完成
+```json
+{
+  "style": "生成的风格参数",
+  "language": "生成的语言参数", 
+  "reference": "参考内容摘要...",
+  "cover": "封面类型", // 仅cardplanet-Sandra-cover和cardplanet-Sandra-json模板
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `log` - 日志消息
+```json
+{
+  "message": "日志消息内容",
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `start` - 开始生成
+```json
+{
+  "topic": "原始主题",
+  "sanitizedTopic": "清理后的主题名",
+  "templatePath": "/path/to/template",
+  "userCardPath": "/path/to/user/card",
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `command` - 执行命令
+```json
+{
+  "prompt": "完整的提示词内容",
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `session` - 会话信息
+```json
+{
+  "apiId": "session_id",
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `output` - 实时输出
+```json
+{
+  "data": "Claude输出的实时内容",
+  "timestamp": 1756478120942,
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `success` - 生成成功
+```json
+{
+  "topic": "原始主题",
+  "sanitizedTopic": "清理后的主题名",
+  "templateName": "模板名称",
+  "fileName": "主文件名",
+  "filePath": "/path/to/main/file",
+  "generationTime": 120000,
+  "content": "主文件内容（HTML或JSON对象）",
+  "apiId": "session_id",
+  "allFiles": [ // 多文件模板时包含
+    {
+      "fileName": "file1.html",
+      "path": "/path/to/file1",
+      "fileType": "html"
+    },
+    {
+      "fileName": "file2.json", 
+      "path": "/path/to/file2",
+      "fileType": "json"
+    }
+  ],
+  "pageinfo": { /* JSON数据 */ }, // 仅cardplanet-Sandra-json模板
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `four_file_generation` - 四文件生成结果（仅daily模板）
+```json
+{
+  "success": true,
+  "files": ["file1.json", "file2.html", "file3.md", "file4.txt"],
+  "errors": [], // success为false时包含错误信息
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `metadata_saved` - 元数据保存完成
+```json
+{
+  "metaFilePath": "metadata_filename.json",
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `cleanup` - 资源清理完成
+```json
+{
+  "apiId": "session_id",
+  "totalRequestTime": 125000,
+  "memoryUsage": {
+    "rss": 123456789,
+    "heapTotal": 67890123,
+    "heapUsed": 45678901,
+    "external": 12345678
+  },
+  "requestId": "stream_123456789_abc"
+}
+```
+
+#### `error` - 错误事件
+```json
+{
+  "message": "错误描述",
+  "errorCode": "E001_CONCURRENT_LIMIT | E002_RESOURCE_UNAVAILABLE | E003_TIMEOUT | E004_CLAUDE_API_ERROR | E005_FILE_GENERATION_ERROR | E006_PARAMETER_GENERATION_ERROR | E007_TEMPLATE_NOT_FOUND",
+  "stage": "parameter_generation | execution | file_generation", // 可选，指示错误发生的阶段
+  "apiId": "session_id", // 可选
+  "totalRequestTime": 125000, // 可选
+  "activeStreamsCount": 3, // 可选
+  "templateName": "模板名", // 可选，模板相关错误时包含
+  "templatePath": "/path/to/template", // 可选，模板相关错误时包含
+  "details": "详细错误信息", // 可选
+  "requestId": "stream_123456789_abc"
+}
+```
+
+**事件流程示例：**
+1. `folder_created` - 创建文件夹
+2. `status` (generating_prompt_parameters) - 开始生成参数
+3. `parameter_progress` - 参数生成进度
+4. `parameters` - 参数生成完成
+5. `start` - 开始主要生成过程
+6. `command` - 执行Claude命令
+7. `session` - 会话建立
+8. `status` (executing_claude) - 执行Claude
+9. `output` (多次) - 实时输出内容
+10. `status` (claude_executed) - Claude执行完成
+11. `status` (waiting_file_generation) - 等待文件生成
+12. `log` (多次) - 文件检测日志
+13. `success` - 生成成功
+14. `status` (processing_metadata) - 处理元数据
+15. `metadata_saved` - 元数据保存完成
+16. `cleanup` - 清理完成
 
 ### 5.3 获取模板列表
 ```

@@ -5,22 +5,37 @@ export function useFileOperations() {
   // 下载文件
   const downloadFile = async (file, folder) => {
     try {
-      const response = await fetch(`/api/files/download`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          folderId: folder.id,
-          fileName: file.name
-        })
-      })
+      console.log('[downloadFile] Starting download for:', { file, folder })
       
-      if (!response.ok) {
-        throw new Error('下载失败')
+      // 验证参数
+      if (!file || !file.name || !file.path) {
+        throw new Error('文件信息不完整')
       }
       
-      const blob = await response.blob()
+      const username = localStorage.getItem('username') || 'default'
+      
+      // 将绝对路径转换为相对于workspace的路径
+      let relativePath = file.path
+      const workspacePrefix = `/app/data/users/${username}/workspace/`
+      if (relativePath.startsWith(workspacePrefix)) {
+        relativePath = relativePath.substring(workspacePrefix.length)
+      }
+      
+      console.log('[downloadFile] Using relative path:', relativePath)
+      
+      // 获取文件内容
+      const response = await fetch(`/api/workspace/${username}/file/${encodeURIComponent(relativePath)}`)
+      
+      if (!response.ok) {
+        throw new Error(`获取文件失败: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // 创建下载
+      const blob = new Blob([data.content], { 
+        type: getContentType(file.name)
+      })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -37,6 +52,22 @@ export function useFileOperations() {
     }
   }
   
+  // 获取文件MIME类型
+  const getContentType = (fileName) => {
+    const ext = fileName.toLowerCase().split('.').pop()
+    const mimeTypes = {
+      'html': 'text/html',
+      'htm': 'text/html',
+      'json': 'application/json',
+      'md': 'text/markdown',
+      'txt': 'text/plain',
+      'css': 'text/css',
+      'js': 'application/javascript',
+      'pdf': 'application/pdf'
+    }
+    return mimeTypes[ext] || 'text/plain'
+  }
+  
   // 删除文件
   const deleteFile = async (file, folder) => {
     try {
@@ -50,19 +81,28 @@ export function useFileOperations() {
         }
       )
       
-      const response = await fetch(`/api/files/delete`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          folderId: folder.id,
-          fileName: file.name
-        })
+      // 验证参数
+      if (!file || !file.path) {
+        throw new Error('文件信息不完整')
+      }
+      
+      const username = localStorage.getItem('username') || 'default'
+      
+      // 将绝对路径转换为相对于workspace的路径
+      let relativePath = file.path
+      const workspacePrefix = `/app/data/users/${username}/workspace/`
+      if (relativePath.startsWith(workspacePrefix)) {
+        relativePath = relativePath.substring(workspacePrefix.length)
+      }
+      
+      console.log('[deleteFile] Using relative path:', relativePath)
+      
+      const response = await fetch(`/api/workspace/${username}/file/${encodeURIComponent(relativePath)}`, {
+        method: 'DELETE'
       })
       
       if (!response.ok) {
-        throw new Error('删除失败')
+        throw new Error(`删除失败: ${response.status}`)
       }
       
       ElMessage.success('删除成功')
@@ -108,8 +148,16 @@ export function useFileOperations() {
   const previewHtmlFile = async (file) => {
     try {
       const username = localStorage.getItem('username') || 'default'
-      // Convert absolute path to relative path from workspace
-      const relativePath = file.path.replace(`/app/data/users/${username}/workspace/`, '')
+      
+      // 将绝对路径转换为相对于workspace的路径
+      let relativePath = file.path
+      const workspacePrefix = `/app/data/users/${username}/workspace/`
+      if (relativePath.startsWith(workspacePrefix)) {
+        relativePath = relativePath.substring(workspacePrefix.length)
+      }
+      
+      console.log('[previewHtmlFile] Using relative path:', relativePath)
+      
       const response = await fetch(`/api/workspace/${username}/file/${encodeURIComponent(relativePath)}`)
       
       if (!response.ok) {
@@ -137,8 +185,16 @@ export function useFileOperations() {
   const getFileContent = async (file) => {
     try {
       const username = localStorage.getItem('username') || 'default'
-      // Convert absolute path to relative path from workspace
-      const relativePath = file.path.replace(`/app/data/users/${username}/workspace/`, '')
+      
+      // 将绝对路径转换为相对于workspace的路径
+      let relativePath = file.path
+      const workspacePrefix = `/app/data/users/${username}/workspace/`
+      if (relativePath.startsWith(workspacePrefix)) {
+        relativePath = relativePath.substring(workspacePrefix.length)
+      }
+      
+      console.log('[getFileContent] Using relative path:', relativePath)
+      
       const response = await fetch(`/api/workspace/${username}/file/${encodeURIComponent(relativePath)}`)
       
       if (!response.ok) {

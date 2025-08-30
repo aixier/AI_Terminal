@@ -19,11 +19,13 @@ router.get('/', async (_req, res) => {
     
     const items = await fs.readdir(templatesPath, { withFileTypes: true })
     const registeredTemplates = await getAllTemplates()
+    console.log('[Templates API] Registered templates:', Object.keys(registeredTemplates))
     const templates = []
     
     for (const item of items) {
-      const fileName = item.isDirectory() ? item.name : item.name
+      const fileName = item.name
       const templateInfo = registeredTemplates[fileName]
+      console.log(`[Templates API] Looking up: ${fileName}, Found:`, templateInfo?.name || 'not found')
       
       if (item.isDirectory()) {
         // 文件夹模板

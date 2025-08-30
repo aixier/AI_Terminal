@@ -5,8 +5,11 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// 模板注册文件路径
-const REGISTRY_PATH = path.join(__dirname, '../../data/template-registry.jsonl')
+// 模板注册文件路径 - 支持Docker和本地环境
+const isDocker = process.env.NODE_ENV === 'production' || process.env.DATA_PATH
+const REGISTRY_PATH = isDocker 
+  ? '/app/data/template-registry.jsonl'
+  : path.join(__dirname, '../../data/template-registry.jsonl')
 
 // 缓存模板信息
 let templateCache = null
@@ -25,6 +28,7 @@ async function loadTemplateRegistry() {
   }
   
   try {
+    console.log('[TemplateRegistry] Loading from:', REGISTRY_PATH)
     const content = await fs.readFile(REGISTRY_PATH, 'utf-8')
     const lines = content.trim().split('\n').filter(line => line.trim())
     
@@ -33,6 +37,7 @@ async function loadTemplateRegistry() {
       try {
         const template = JSON.parse(line)
         templates[template.id] = template
+        console.log(`[TemplateRegistry] Loaded template: ${template.id} -> ${template.name}`)
       } catch (err) {
         console.error('Error parsing template registry line:', line, err)
       }
@@ -40,9 +45,14 @@ async function loadTemplateRegistry() {
     
     templateCache = templates
     lastLoadTime = now
+    console.log('[TemplateRegistry] Total templates loaded:', Object.keys(templates).length)
     return templates
   } catch (error) {
-    console.error('Error loading template registry:', error)
+    console.error('[TemplateRegistry] Error loading template registry from', REGISTRY_PATH, ':', error.message)
+    // 不返回默认配置，返回空对象或抛出错误
+    console.error('[TemplateRegistry] CRITICAL: Template registry file not found or cannot be read')
+    console.error('[TemplateRegistry] Expected path:', REGISTRY_PATH)
+    // 返回空对象，让前端知道没有加载到模板
     return {}
   }
 }

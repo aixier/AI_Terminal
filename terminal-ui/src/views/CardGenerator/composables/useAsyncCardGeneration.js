@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { generateCardAsync } from '../../../api/index.js'
+import { generateCardAsync } from '../../../api/asyncCardGeneration.js'
 
 export function useAsyncCardGeneration() {
   const isGenerating = ref(false)

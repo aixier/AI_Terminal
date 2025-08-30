@@ -9,6 +9,7 @@ import fs from 'fs/promises'
 import axios from 'axios'
 import { SessionMetadata } from './sessionMetadata.js'
 import { downloadAndSaveHtml } from './htmlProcessor.js'
+import { repairJsonContent } from '../../../utils/jsonRepair.js'
 
 /**
  * JSON字符串清理函数 - 修复常见的JSON格式问题
@@ -332,9 +333,37 @@ export async function generateFourFiles(params) {
     try {
       const jsonData = await fs.readFile(jsonFilePath, 'utf-8')
       
-      // 修复常见的JSON格式问题
+      // 先尝试使用内置的清理函数
       const sanitizedJsonData = sanitizeJsonString(jsonData)
-      jsonContent = JSON.parse(sanitizedJsonData)
+      
+      try {
+        // 尝试直接解析
+        jsonContent = JSON.parse(sanitizedJsonData)
+        console.log('[FileGenerator] JSON parsed successfully with built-in sanitizer')
+      } catch (parseError) {
+        // 解析失败，使用jsonRepair模块修复
+        console.log('[FileGenerator] JSON parse failed, attempting repair:', parseError.message)
+        
+        const repairResult = await repairJsonContent(jsonData, {
+          templateName: 'daily-knowledge-card-template',
+          description: 'Knowledge card JSON',
+          requiredFields: ['theme', 'copy', 'cards'],
+          timeout: 60000,
+          retries: 1
+        })
+        
+        if (repairResult.success) {
+          console.log('[FileGenerator] JSON repaired successfully')
+          jsonContent = repairResult.data
+          
+          // 保存修复后的JSON到文件
+          const repairedJsonString = JSON.stringify(jsonContent, null, 2)
+          await fs.writeFile(jsonFilePath, repairedJsonString, 'utf-8')
+          console.log('[FileGenerator] Repaired JSON saved back to file')
+        } else {
+          throw new Error(`JSON repair failed: ${repairResult.error}`)
+        }
+      }
       
       // 记录JSON文件
       await metadata.addFile(path.basename(jsonFilePath), jsonFilePath, 'json')
@@ -347,7 +376,7 @@ export async function generateFourFiles(params) {
       console.log('[FileGenerator] JSON file validated successfully')
       
     } catch (error) {
-      throw new Error(`Failed to read JSON file: ${error.message}`)
+      throw new Error(`Failed to read/repair JSON file: ${error.message}`)
     }
     
     // 2. 调用外部API生成HTML

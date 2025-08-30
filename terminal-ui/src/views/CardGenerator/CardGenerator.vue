@@ -798,6 +798,8 @@ onUnmounted(() => {
   flex: 1;
   padding: 20px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 移动端样式 */

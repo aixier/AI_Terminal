@@ -139,6 +139,8 @@ const handleShareContent = (message) => {
 .messages-area {
   flex: 1;
   overflow: hidden;
+  position: relative;
+  min-height: 0; /* 确保flex布局正常工作 */
 }
 
 .input-area {

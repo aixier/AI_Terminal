@@ -1,20 +1,20 @@
 <template>
   <div class="chat-input-panel" :class="{ mobile: isMobile }">
-    <!-- 高级选项按钮（右上角） -->
-    <div class="advanced-toggle-container">
-      <button 
-        class="advanced-toggle-btn" 
-        @click="showAdvancedOptions = !showAdvancedOptions"
-        :title="showAdvancedOptions ? '隐藏高级选项' : '显示高级选项'"
-      >
-        高级选项
-      </button>
-    </div>
-    
-    <!-- 模板快选按钮 -->
-    <div v-if="showTemplates" class="template-shortcuts">
+    <!-- 模板快选按钮和高级选项在同一行 -->
+    <div v-if="showTemplates || isMobile" class="template-shortcuts">
+      <!-- 高级选项按钮（移动端放在最左边） -->
+      <div v-if="isMobile" class="advanced-toggle-container">
+        <button 
+          class="advanced-toggle-btn" 
+          @click="showAdvancedOptions = !showAdvancedOptions"
+          :title="showAdvancedOptions ? '隐藏高级选项' : '显示高级选项'"
+        >
+          ⚙️
+        </button>
+      </div>
+      
       <!-- 模板加载错误提示 -->
-      <div v-if="!isTemplateAvailable" class="template-error">
+      <div v-if="showTemplates && !isTemplateAvailable" class="template-error">
         <span class="error-icon">⚠️</span>
         <span class="error-text">{{ templateLoadError || '模板加载失败' }}</span>
         <button class="retry-btn" @click="loadTemplates" title="重试加载">
@@ -23,7 +23,7 @@
       </div>
       
       <!-- 模板按钮列表 -->
-      <template v-else>
+      <template v-else-if="showTemplates">
         <button 
           v-for="template in displayTemplates" 
           :key="template.id"
@@ -35,6 +35,17 @@
           {{ template.name }}
         </button>
       </template>
+    </div>
+    
+    <!-- 桌面端高级选项按钮（右上角） -->
+    <div v-if="!isMobile" class="advanced-toggle-container desktop">
+      <button 
+        class="advanced-toggle-btn" 
+        @click="showAdvancedOptions = !showAdvancedOptions"
+        :title="showAdvancedOptions ? '隐藏高级选项' : '显示高级选项'"
+      >
+        高级选项
+      </button>
     </div>
     
     <!-- 输入区域 -->
@@ -333,6 +344,11 @@ onMounted(() => {
 
 /* 高级选项按钮容器（右上角） */
 .advanced-toggle-container {
+  display: inline-flex; /* 改为inline-flex，与模板按钮在同一行 */
+}
+
+/* 桌面端高级选项按钮位置 */
+.advanced-toggle-container.desktop {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -340,10 +356,10 @@ onMounted(() => {
 }
 
 .advanced-toggle-btn {
-  background: #f5f5f5;
+  background: transparent;
   border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 6px 12px;
+  border-radius: 16px;
+  padding: 5px 10px; /* 减少padding */
   font-size: 12px;
   color: #666;
   cursor: pointer;
@@ -357,36 +373,46 @@ onMounted(() => {
   color: #333;
 }
 
+/* 移动端高级选项按钮样式 */
+.chat-input-panel.mobile .advanced-toggle-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
 .chat-input-panel.mobile {
   position: fixed;
   bottom: 60px; /* 底部导航栏高度 */
   left: 0;
   right: 0;
   z-index: 1000;
-  padding: 12px;
+  padding: 8px 10px; /* 减少内边距 */
   background: white;
   border-top: 1px solid #e0e0e0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
 /* 模板快选 */
 .template-shortcuts {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 6px;
+  margin-bottom: 8px; /* 减少底部间距 */
+  flex-wrap: nowrap; /* 不换行，保持在一行 */
+  align-items: center;
 }
 
 .template-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 4px;
+  padding: 6px 10px; /* 减少按钮内边距 */
   background: #f8f9fa;
   border: 1px solid #e9ecef;
-  border-radius: 20px;
+  border-radius: 16px;
   color: #495057;
   font-size: 13px;
   cursor: pointer;
@@ -414,16 +440,17 @@ onMounted(() => {
 
 /* 移动端模板样式 */
 .chat-input-panel.mobile .template-btn {
-  padding: 6px 10px;
-  font-size: 11px;
-  min-width: 60px;
+  padding: 5px 8px; /* 进一步减少移动端按钮padding */
+  font-size: 12px;
+  min-width: auto;
   justify-content: center;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row; /* 改为横向排列 */
+  gap: 3px;
+  white-space: nowrap;
 }
 
 .chat-input-panel.mobile .template-icon {
-  font-size: 16px;
+  font-size: 14px; /* 减小图标尺寸 */
 }
 
 /* 模板错误提示 */
@@ -474,21 +501,23 @@ onMounted(() => {
 
 .input-row {
   display: flex;
-  gap: 12px;
-  align-items: flex-end;
+  gap: 8px; /* 减少间距 */
+  align-items: center; /* 垂直居中对齐 */
 }
 
 .input-textarea {
   flex: 1;
   resize: none;
   border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 12px 16px;
+  border-radius: 8px;
+  padding: 8px 10px; /* 减少内边距 */
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.4; /* 减少行高 */
   outline: none;
   transition: border-color 0.2s;
   font-family: inherit;
+  min-height: 36px; /* 设置最小高度 */
+  max-height: 100px; /* 限制最大高度 */
 }
 
 .input-textarea:focus {
@@ -531,9 +560,10 @@ onMounted(() => {
 
 /* 移动端发送按钮 */
 .chat-input-panel.mobile .send-button {
-  padding: 12px 16px;
-  min-width: 70px;
+  padding: 8px 12px; /* 减少发送按钮padding */
+  min-width: 60px;
   justify-content: center;
+  height: 36px; /* 固定高度与输入框匹配 */
 }
 
 /* 操作按钮 */
@@ -545,7 +575,7 @@ onMounted(() => {
 
 .action-buttons.mobile {
   justify-content: center;
-  margin-top: 8px;
+  margin-top: 6px; /* 减少顶部间距 */
 }
 
 .action-btn {

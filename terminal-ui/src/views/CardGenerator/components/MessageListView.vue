@@ -154,13 +154,30 @@ const getTemplateIcon = (template) => {
 const scrollToBottom = () => {
   nextTick(() => {
     if (messagesContainer.value) {
-      // 使用 scrollIntoView 确保最后一条消息可见
-      const lastMessage = messagesContainer.value.lastElementChild
+      // 获取最后一条消息
+      const messages = messagesContainer.value.querySelectorAll('.message-item')
+      const lastMessage = messages[messages.length - 1]
+      
       if (lastMessage) {
+        // 使用 scrollIntoView 确保整个消息（包括底部）完全可见
         lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' })
+        
+        // 额外滚动一点距离，确保消息底部完全露出
+        setTimeout(() => {
+          const containerHeight = messagesContainer.value.clientHeight
+          const scrollHeight = messagesContainer.value.scrollHeight
+          const currentScroll = messagesContainer.value.scrollTop
+          const messageBottom = lastMessage.offsetTop + lastMessage.offsetHeight
+          
+          // 如果消息底部没有完全显示，继续滚动
+          if (messageBottom > currentScroll + containerHeight) {
+            messagesContainer.value.scrollTop = messageBottom - containerHeight + 20 // 额外20px边距
+          }
+        }, 200) // 给内容渲染留出时间
+      } else {
+        // 备用方案：直接设置scrollTop
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
       }
-      // 备用方案：直接设置scrollTop
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
     }
   })
 }
@@ -172,6 +189,8 @@ watch(() => props.messages, (newMessages, oldMessages) => {
     scrollToBottom()
     // 对于某些情况，需要延迟执行以确保DOM更新完成
     setTimeout(scrollToBottom, 100)
+    // 对于卡片消息，可能需要更长时间渲染
+    setTimeout(scrollToBottom, 500)
   }
 }, { deep: true, immediate: true })
 
@@ -310,13 +329,15 @@ nextTick(() => {
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px 20px 100px 20px; /* 底部增加更多内边距 */
   scroll-behavior: smooth;
+  min-height: 100%; /* 确保容器至少占满父元素高度 */
 }
 
 /* 移动端样式 */
 .message-list-view.mobile .messages-container {
-  padding: 16px 12px 120px 12px; /* 底部留空间给chat组件 */
+  padding: 16px 12px 200px 12px; /* 增加底部空间，确保最后的消息能完全显示 */
+  min-height: 100vh; /* 至少一个视口高度，允许向上滚动看到空白 */
 }
 
 .message-item {
@@ -554,7 +575,7 @@ nextTick(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 200px;
+  min-height: 60vh; /* 增加空状态高度，提供更多滚动空间 */
   color: #999;
   text-align: center;
 }

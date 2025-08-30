@@ -295,9 +295,12 @@ const {
   pollingProgress,
   estimatedTimeLeft,
   formatTimeLeft,
+  currentTaskId,
   startAsyncGeneration, 
   stopGeneration,
-  refreshStatus
+  refreshStatus,
+  recoverGenerationState,
+  clearGenerationState
 } = useAsyncCardGeneration()
 
 const { 
@@ -332,6 +335,40 @@ const initialize = async () => {
   await refreshCardFolders()
   restoreChatHistory()
   setupSSEConnection()
+  
+  // 恢复生成状态（如果有）
+  await recoverGenerationStateOnLoad()
+}
+
+// 恢复生成状态
+const recoverGenerationStateOnLoad = async () => {
+  try {
+    console.log('[CardGenerator] 检查是否有未完成的生成任务...')
+    const result = await recoverGenerationState()
+    
+    if (result) {
+      console.log('[CardGenerator] 恢复的生成结果:', result)
+      
+      // 如果任务已完成，添加到消息列表
+      if (result.allFiles || result.files) {
+        const aiMessage = {
+          type: 'ai',
+          content: '任务已完成（从上次会话恢复）',
+          resultData: result,
+          isGenerating: false,
+          timestamp: new Date()
+        }
+        addAIMessage(aiMessage)
+        ElMessage.success('之前的生成任务已完成')
+      } else {
+        // 任务仍在进行中，UI会自动更新
+        ElMessage.info('正在恢复之前的生成任务...')
+      }
+    }
+  } catch (error) {
+    console.error('[CardGenerator] 恢复生成状态失败:', error)
+    // 静默失败，不影响用户体验
+  }
 }
 
 // ============ Template Methods ============

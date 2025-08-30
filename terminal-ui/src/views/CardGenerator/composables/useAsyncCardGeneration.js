@@ -1,6 +1,9 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { generateCardAsync } from '../../../api/asyncCardGeneration.js'
+import { generateCardAsync, checkAsyncTaskStatus } from '../../../api/asyncCardGeneration.js'
+
+// 本地存储的key
+const GENERATION_STATE_KEY = 'ai_card_generation_state'
 
 export function useAsyncCardGeneration() {
   const isGenerating = ref(false)
@@ -8,6 +11,7 @@ export function useAsyncCardGeneration() {
   const pollingAttempts = ref(0)
   const maxAttempts = ref(150) // 5分钟超时
   const pollingInterval = ref(2000) // 2秒间隔
+  const currentTaskId = ref(null) // 当前任务ID
   
   let pollingTimer = null
   
@@ -53,8 +57,15 @@ export function useAsyncCardGeneration() {
       
       console.log('[AsyncCardGeneration] 开始异步生成:', params)
       
-      // 使用统一的API
+      // 使用统一的API，并获取taskId
+      let taskId = null
       const result = await generateCardAsync(params, {
+        onTaskCreated: (id) => {
+          taskId = id
+          currentTaskId.value = id
+          // 保存状态到本地存储
+          saveGenerationState(id, params)
+        },
         onProgress: (progressInfo) => {
           pollingAttempts.value = progressInfo.attempt
           const progress = Math.round(progressInfo.progress)
@@ -96,6 +107,7 @@ export function useAsyncCardGeneration() {
       
       isGenerating.value = false
       generatingStatus.value = '生成完成'
+      clearGenerationState() // 生成完成后清除状态
       
       console.log('[AsyncCardGeneration] 最终结果:', finalResult)
       return finalResult
@@ -111,6 +123,102 @@ export function useAsyncCardGeneration() {
   
   
   /**
+   * 保存生成状态到本地存储
+   */
+  const saveGenerationState = (taskId, params) => {
+    if (!taskId) return
+    
+    const state = {
+      taskId,
+      params,
+      timestamp: Date.now(),
+      status: generatingStatus.value
+    }
+    
+    try {
+      localStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(state))
+      console.log('[AsyncCardGeneration] 保存生成状态:', state)
+    } catch (error) {
+      console.error('[AsyncCardGeneration] 保存状态失败:', error)
+    }
+  }
+  
+  /**
+   * 清除保存的生成状态
+   */
+  const clearGenerationState = () => {
+    try {
+      localStorage.removeItem(GENERATION_STATE_KEY)
+      currentTaskId.value = null
+      console.log('[AsyncCardGeneration] 清除生成状态')
+    } catch (error) {
+      console.error('[AsyncCardGeneration] 清除状态失败:', error)
+    }
+  }
+  
+  /**
+   * 恢复生成状态（页面刷新后）
+   */
+  const recoverGenerationState = async () => {
+    try {
+      const savedState = localStorage.getItem(GENERATION_STATE_KEY)
+      if (!savedState) return null
+      
+      const state = JSON.parse(savedState)
+      
+      // 检查状态是否过期（超过10分钟）
+      const now = Date.now()
+      const age = now - state.timestamp
+      if (age > 10 * 60 * 1000) {
+        console.log('[AsyncCardGeneration] 状态已过期，清除')
+        clearGenerationState()
+        return null
+      }
+      
+      console.log('[AsyncCardGeneration] 恢复生成状态:', state)
+      
+      // 检查任务状态
+      const statusResult = await checkAsyncTaskStatus(state.taskId)
+      
+      if (statusResult.status === 'completed') {
+        // 任务已完成
+        clearGenerationState()
+        return statusResult.result
+      } else if (statusResult.status === 'processing') {
+        // 任务仍在进行中，恢复轮询
+        currentTaskId.value = state.taskId
+        isGenerating.value = true
+        generatingStatus.value = statusResult.message || '恢复生成中...'
+        
+        // 继续轮询
+        const result = await generateCardAsync(state.params, {
+          taskId: state.taskId, // 传入已有的taskId
+          onProgress: (progressInfo) => {
+            pollingAttempts.value = progressInfo.attempt
+            const progress = Math.round(progressInfo.progress)
+            generatingStatus.value = `恢复中 - ${progressInfo.detail || `检查状态 ${progress}%`}`
+          },
+          onStatusChange: (status) => {
+            generatingStatus.value = status.message
+          }
+        })
+        
+        clearGenerationState()
+        isGenerating.value = false
+        return result
+      } else {
+        // 任务失败或不存在
+        clearGenerationState()
+        return null
+      }
+    } catch (error) {
+      console.error('[AsyncCardGeneration] 恢复状态失败:', error)
+      clearGenerationState()
+      return null
+    }
+  }
+  
+  /**
    * 停止生成（取消轮询）
    */
   const stopGeneration = () => {
@@ -121,6 +229,7 @@ export function useAsyncCardGeneration() {
     isGenerating.value = false
     generatingStatus.value = ''
     pollingAttempts.value = 0
+    clearGenerationState() // 清除保存的状态
     ElMessage.info('已停止生成')
   }
   
@@ -160,10 +269,13 @@ export function useAsyncCardGeneration() {
     pollingProgress,
     estimatedTimeLeft,
     formatTimeLeft,
+    currentTaskId,
     
     // 方法
     startAsyncGeneration,
     stopGeneration,
-    refreshStatus
+    refreshStatus,
+    recoverGenerationState,
+    clearGenerationState
   }
 }

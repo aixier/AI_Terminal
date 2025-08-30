@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref, nextTick, watch } from 'vue'
+import { defineProps, defineEmits, ref, nextTick, watch, onMounted, onUpdated } from 'vue'
 import HtmlMessageCard from '../messages/HtmlMessageCard.vue'
 
 const props = defineProps({
@@ -154,15 +154,40 @@ const getTemplateIcon = (template) => {
 const scrollToBottom = () => {
   nextTick(() => {
     if (messagesContainer.value) {
+      // 使用 scrollIntoView 确保最后一条消息可见
+      const lastMessage = messagesContainer.value.lastElementChild
+      if (lastMessage) {
+        lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      }
+      // 备用方案：直接设置scrollTop
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
     }
   })
 }
 
 // 监听消息变化，自动滚动到底部
-watch(() => props.messages, () => {
+watch(() => props.messages, (newMessages, oldMessages) => {
+  // 当有新消息时滚动
+  if (newMessages.length > 0) {
+    scrollToBottom()
+    // 对于某些情况，需要延迟执行以确保DOM更新完成
+    setTimeout(scrollToBottom, 100)
+  }
+}, { deep: true, immediate: true })
+
+// 组件挂载时滚动到底部
+onMounted(() => {
   scrollToBottom()
-}, { deep: true })
+})
+
+// 组件更新后也尝试滚动（用于处理异步内容加载）
+onUpdated(() => {
+  // 检查是否有生成中的消息
+  const hasGenerating = props.messages.some(msg => msg.isGenerating)
+  if (hasGenerating || props.messages.length > 0) {
+    scrollToBottom()
+  }
+})
 
 // 判断是否为HTML消息
 const isHtmlMessage = (message) => {

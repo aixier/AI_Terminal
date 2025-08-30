@@ -144,35 +144,86 @@ export const pollGenerationStatus = async (topic, options = {}) => {
 }
 
 /**
+ * 4.5. 根据taskId检查任务状态
+ * @param {string} taskId - 任务ID
+ * @returns {Promise<Object>} 任务状态
+ */
+export const checkAsyncTaskStatus = async (taskId) => {
+  console.log('[AsyncCardAPI] 检查任务状态:', taskId)
+  
+  try {
+    // 从taskId中提取topic（假设格式为 task_timestamp_topic）
+    // 或者调用一个新的API endpoint
+    const result = await service.get(`/generate/async/status/${taskId}`)
+    
+    console.log('[AsyncCardAPI] 任务状态结果:', result)
+    return result
+  } catch (error) {
+    console.error('[AsyncCardAPI] 检查任务状态失败:', error)
+    return {
+      status: 'error',
+      message: error.message
+    }
+  }
+}
+
+/**
  * 完整的异步卡片生成流程
  * @param {Object} params - 生成参数
  * @param {Object} options - 配置选项
  * @param {Function} [options.onProgress] - 进度回调
  * @param {Function} [options.onStatusChange] - 状态变化回调
+ * @param {Function} [options.onTaskCreated] - 任务创建回调
+ * @param {string} [options.taskId] - 恢复已有任务
  * @returns {Promise<Object>} 生成结果
  */
 export const generateCardAsync = async (params, options = {}) => {
-  const { onProgress, onStatusChange } = options
+  const { onProgress, onStatusChange, onTaskCreated, taskId: existingTaskId } = options
   
   try {
-    // 步骤1: 提交生成请求
-    if (onStatusChange) onStatusChange({ step: 'submitting', message: '提交生成请求...' })
+    let taskId, folderName, topic
     
-    const submitResult = await submitAsyncGeneration(params)
-    
-    if (!submitResult.success) {
-      throw new Error(submitResult.message || '提交生成请求失败')
-    }
-    
-    const { taskId, folderName, topic } = submitResult.data
-    
-    if (onStatusChange) {
-      onStatusChange({ 
-        step: 'submitted', 
-        message: `任务已提交 (${taskId})`,
-        taskId,
-        folderName
-      })
+    // 如果有已存在的taskId，跳过提交步骤
+    if (existingTaskId) {
+      taskId = existingTaskId
+      folderName = params.topic // 使用params中的topic作为folderName
+      topic = params.topic
+      
+      if (onStatusChange) {
+        onStatusChange({ 
+          step: 'recovering', 
+          message: `恢复任务 (${taskId})`,
+          taskId,
+          folderName
+        })
+      }
+    } else {
+      // 步骤1: 提交生成请求
+      if (onStatusChange) onStatusChange({ step: 'submitting', message: '提交生成请求...' })
+      
+      const submitResult = await submitAsyncGeneration(params)
+      
+      if (!submitResult.success) {
+        throw new Error(submitResult.message || '提交生成请求失败')
+      }
+      
+      taskId = submitResult.data.taskId
+      folderName = submitResult.data.folderName
+      topic = submitResult.data.topic
+      
+      // 回调通知taskId已创建
+      if (onTaskCreated) {
+        onTaskCreated(taskId)
+      }
+      
+      if (onStatusChange) {
+        onStatusChange({ 
+          step: 'submitted', 
+          message: `任务已提交 (${taskId})`,
+          taskId,
+          folderName
+        })
+      }
     }
     
     // 步骤2: 轮询检查状态

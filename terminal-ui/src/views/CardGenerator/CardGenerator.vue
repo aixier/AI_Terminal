@@ -597,6 +597,8 @@ const handleSendMessage = async (messageData) => {
   console.log('[CardGenerator] Using token:', token)
   console.log('[CardGenerator] Using async generation mode')
   console.log('[CardGenerator] AI Message ID:', aiMessage.id)
+  console.log('[CardGenerator] AI Message isGenerating:', aiMessage.isGenerating)
+  console.log('[CardGenerator] All messages after add:', chatMessages.value)
   
   // 使用异步模式生成，传入messageId
   const result = await startAsyncGeneration(params, aiMessage.id)

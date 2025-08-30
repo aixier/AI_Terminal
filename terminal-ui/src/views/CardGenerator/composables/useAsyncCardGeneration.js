@@ -161,11 +161,14 @@ export function useAsyncCardGeneration(updateMessageCallback = null) {
     
     // 通过回调函数更新消息中的生成状态
     if (updateMessageCallback && messageId) {
+      console.log('[AsyncCardGeneration] 准备保存生成状态到消息:', messageId)
+      console.log('[AsyncCardGeneration] - state:', state)
+      console.log('[AsyncCardGeneration] - 调用updateMessageCallback前')
       updateMessageCallback(messageId, {
         generationState: state
+        // 注意：不要覆盖isGenerating状态
       })
-      console.log('[AsyncCardGeneration] 保存生成状态到消息:', messageId)
-      console.log('[AsyncCardGeneration] - state:', state)
+      console.log('[AsyncCardGeneration] - 调用updateMessageCallback后')
     } else {
       console.log('[AsyncCardGeneration] 无法保存状态：缺少messageId或updateMessageCallback')
     }
@@ -180,8 +183,8 @@ export function useAsyncCardGeneration(updateMessageCallback = null) {
       // 清除消息中的生成状态
       if (updateMessageCallback && messageId) {
         updateMessageCallback(messageId, {
-          generationState: null,
-          isGenerating: false
+          generationState: null
+          // 不在这里设置isGenerating，让调用方决定
         })
       }
       console.log('[AsyncCardGeneration] 清除生成状态')

@@ -50,10 +50,13 @@ export function useChatHistory() {
   const updateMessage = (messageId, updates) => {
     const index = messages.value.findIndex(m => m.id === messageId)
     if (index !== -1) {
+      console.log('[useChatHistory] 更新消息前:', messageId, messages.value[index])
+      console.log('[useChatHistory] 更新内容:', updates)
       messages.value[index] = {
         ...messages.value[index],
         ...updates
       }
+      console.log('[useChatHistory] 更新消息后:', messages.value[index])
       // 始终保存更新，确保状态变化被持久化
       saveToLocal()
     }

@@ -14,8 +14,8 @@ AI Terminal Backend 是一个功能强大的Web终端后端服务，支持AI卡�
 - ⚡ 简化的Claude命令执行接口
 
 **版本信息：**
-- **当前版本**: v3.10.33
-- **更新日期**: 2025-08-19
+- **当前版本**: v4.1.0
+- **更新日期**: 2025-08-30
 - **API 版本**: v1.0
 
 ---
@@ -594,6 +594,131 @@ console.log('Claude回复:', result.output);
 curl -X POST http://localhost:6000/api/generate/cc \
   -H "Content-Type: application/json" \
   -d '{"prompt": "什么是元宇宙？", "timeout": 10000}'
+```
+
+### 5.6 异步卡片生成 ⭐ 新增 (v4.1.0)
+```
+POST /api/generate/async
+```
+
+**描述：** 异步生成卡片，立即返回任务ID，支持后台处理和轮询查询
+
+**请求体：**
+```json
+{
+  "topic": "AI与未来教育",
+  "template": "daily-knowledge-card-template.md",
+  "content": "探讨人工智能在教育领域的应用",
+  "timeout": 120000
+}
+```
+
+**参数说明：**
+- `topic`: 卡片主题（必需）
+- `template`: 使用的模板ID（必需）
+- `content`: 生成内容的详细描述（可选）
+- `timeout`: 超时时间，单位毫秒（可选，默认120000）
+
+**响应：**
+```json
+{
+  "code": 200,
+  "success": true,
+  "taskId": "task_1756522696428",
+  "topic": "AI与未来教育",
+  "sanitizedTopic": "AI与未来教育",
+  "message": "任务已创建，请使用taskId查询状态"
+}
+```
+
+### 5.7 查询异步任务状态 ⭐ 新增 (v4.1.0)
+```
+GET /api/generate/async/status/:taskId
+```
+
+**描述：** 查询异步生成任务的执行状态
+
+**响应（进行中）：**
+```json
+{
+  "code": 200,
+  "success": true,
+  "status": "processing",
+  "taskId": "task_1756522696428",
+  "progress": {
+    "json": 1,
+    "html": 0,
+    "expected": 1
+  },
+  "message": "正在生成HTML文件"
+}
+```
+
+**响应（已完成）：**
+```json
+{
+  "code": 200,
+  "success": true,
+  "status": "completed",
+  "taskId": "task_1756522696428",
+  "result": {
+    "topic": "AI与未来教育",
+    "sanitizedTopic": "AI与未来教育",
+    "allFiles": [
+      {
+        "fileName": "知识卡片_AI与未来教育_2025-08-30T02-47-51.json",
+        "fileType": "json",
+        "filePath": "card/AI与未来教育/知识卡片_AI与未来教育_2025-08-30T02-47-51.json"
+      },
+      {
+        "fileName": "知识卡片_AI与未来教育_2025-08-30T02-47-51.html",
+        "fileType": "html",
+        "filePath": "card/AI与未来教育/知识卡片_AI与未来教育_2025-08-30T02-47-51.html"
+      }
+    ],
+    "executionTime": 15234
+  }
+}
+```
+
+### 5.8 模板注册系统 ⭐ 新增 (v4.1.0)
+
+**模板注册文件格式（JSONL）：**
+```json
+{"id":"daily-knowledge-card-template.md","version":"1.0","description":"知识卡片生成，包含4种样式","name":"快速","outputType":"html","outputCount":1,"triggerFile":"json","waitForTrigger":true}
+{"id":"cardplanet-Sandra-json","version":"1.0","description":"卡片星球设计风格，双文件输出","name":"精细","outputType":"html","outputCount":1,"triggerFile":null,"waitForTrigger":false}
+```
+
+**模板配置说明：**
+- `id`: 模板唯一标识符
+- `name`: 显示名称
+- `description`: 模板描述
+- `outputType`: 输出文件类型 (html/json)
+- `outputCount`: 预期生成的文件数量
+- `triggerFile`: 触发文件类型 (json/html/null)
+- `waitForTrigger`: 是否等待触发文件生成
+
+### 5.9 获取模板快捷按钮 ⭐ 新增 (v4.1.0)
+```
+GET /api/generate/templates/buttons
+```
+
+**描述：** 获取模板快捷按钮配置，用于前端UI展示
+
+**响应：**
+```json
+{
+  "code": 200,
+  "success": true,
+  "data": [
+    {
+      "id": "daily-knowledge-card-template.md",
+      "name": "快速",
+      "description": "知识卡片生成，包含4种样式",
+      "icon": "🌐"
+    }
+  ]
+}
 ```
 
 ---

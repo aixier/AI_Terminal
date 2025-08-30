@@ -375,14 +375,21 @@ const adjustIframeHeight = () => {
       // 如果高度为0，设置默认高度
       if (height === 0) {
         console.log('[debug0.01] 高度为0，使用默认高度')
-        height = 400
+        height = 320
       }
       
-      // 移动端：设置固定高度并允许内部滚动
+      // 移动端：设置3:4比例高度
       const isMobile = window.innerWidth < 768
       if (isMobile) {
-        // 移动端固定高度，内容可以在iframe内滚动
-        previewFrame.value.style.height = '400px'
+        // 移动端使用3:4比例（宽度:高度 = 3:4，即高度 = 宽度 * 4/3）
+        // 获取卡片容器的实际宽度
+        const cardWidth = previewFrame.value.offsetWidth || window.innerWidth * 0.9
+        const proportionalHeight = Math.round(cardWidth * 4 / 3) // 3:4比例
+        const maxHeight = window.innerHeight * 0.5 // 最大不超过视口高度的50%
+        const minHeight = 280 // 最小高度
+        
+        const finalHeight = Math.max(minHeight, Math.min(proportionalHeight, maxHeight))
+        previewFrame.value.style.height = `${finalHeight}px`
         previewFrame.value.style.overflow = 'auto'
         previewFrame.value.style.webkitOverflowScrolling = 'touch'
       } else {
@@ -391,26 +398,16 @@ const adjustIframeHeight = () => {
         const finalHeight = Math.max(250, Math.min(height, viewportHeight))
         previewFrame.value.style.height = `${finalHeight}px`
       }
-      
-      // 如果内容是知识卡片类型（包含grid布局），确保有足够高度
-      if (doc.body.innerHTML.includes('grid') || doc.body.innerHTML.includes('card-container')) {
-        if (isMobile) {
-          previewFrame.value.style.height = '450px'
-        } else {
-          const cardHeight = Math.min(height, window.innerHeight * 0.6)
-          previewFrame.value.style.height = `${Math.max(350, cardHeight)}px`
-        }
-      }
     } catch (error) {
       console.error('[debug0.01] 调整iframe高度失败:', error)
       // 失败时设置默认高度
-      previewFrame.value.style.height = '400px'
+      previewFrame.value.style.height = '320px'
     }
   } else {
     console.log('[debug0.01] iframe引用不存在')
     // 设置默认高度
     if (previewFrame.value) {
-      previewFrame.value.style.height = '400px'
+      previewFrame.value.style.height = '320px'
     }
   }
 }
@@ -560,9 +557,9 @@ onMounted(async () => {
   width: 100%; /* 占满宽度 */
   margin: 0; /* 无边距 */
   padding: 0; /* 无内边距 */
-  min-height: 300px; /* 增加最小高度到300px */
-  height: 400px; /* 增加默认高度到400px */
-  max-height: 60vh; /* 增加最大高度为视口的60% */
+  min-height: 280px; /* 最小高度280px */
+  height: 320px; /* 默认高度（适配3:4比例） */
+  max-height: 50vh; /* 最大高度为视口的50% */
   border: none;
   background: #ffffff;
   display: block;

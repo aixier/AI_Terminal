@@ -18,7 +18,12 @@ router.get('/', async (_req, res) => {
       : path.join(dataPath, 'public_template')
     
     const items = await fs.readdir(templatesPath, { withFileTypes: true })
-    const registeredTemplates = await getAllTemplates()
+    const registeredTemplatesArray = await getAllTemplates()
+    // 转换为以id为key的对象，方便查找
+    const registeredTemplates = {}
+    registeredTemplatesArray.forEach(t => {
+      registeredTemplates[t.id] = t
+    })
     console.log('[Templates API] Registered templates:', Object.keys(registeredTemplates))
     const templates = []
     

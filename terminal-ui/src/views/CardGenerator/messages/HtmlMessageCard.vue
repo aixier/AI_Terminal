@@ -5,35 +5,25 @@
     :timestamp="timestamp"
     :show-actions="true"
     :can-download="true"
-    :title="displayTopic"
+    :title="cardTitle"
     @copy="handleCopy"
     @download="handleDownload"
   >
     <div class="html-preview-container">
-      <div class="preview-toolbar">
-        <el-radio-group v-model="viewMode" size="small">
-          <el-radio-button label="preview">预览</el-radio-button>
-          <el-radio-button label="code">代码</el-radio-button>
-        </el-radio-group>
-      </div>
-      
-      <div v-if="viewMode === 'preview'" class="html-preview">
-        <div v-if="isLoading" class="preview-loading">
+      <!-- 移除预览/源码切换按钮，直接显示预览 -->
+      <div class="html-preview">
+        <div v-show="isLoading" class="preview-loading">
           <el-icon class="is-loading"><Loading /></el-icon>
           <span>加载中...</span>
         </div>
         <iframe
-          v-else
+          v-show="!isLoading"
           ref="previewFrame"
           :srcdoc="processedHtml"
           class="preview-iframe"
           @load="handleIframeLoad"
           sandbox="allow-scripts allow-same-origin"
         ></iframe>
-      </div>
-      
-      <div v-else class="html-code">
-        <pre class="code-block"><code v-html="highlightedCode"></code></pre>
       </div>
     </div>
     
@@ -64,15 +54,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { ElButton, ElRadioGroup, ElRadioButton, ElIcon, ElMessage } from 'element-plus'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ElButton, ElIcon, ElMessage } from 'element-plus'
 import { Refresh, FullScreen, CopyDocument, Download, Loading } from '@element-plus/icons-vue'
 import MessageCard from './MessageCard.vue'
-import hljs from 'highlight.js/lib/core'
-import xml from 'highlight.js/lib/languages/xml'
-import 'highlight.js/styles/github.css'
-
-hljs.registerLanguage('html', xml)
+// 移除highlight.js相关导入，不再需要代码高亮
 
 const props = defineProps({
   // API响应数据
@@ -102,15 +88,15 @@ const props = defineProps({
 
 const emit = defineEmits(['copy', 'download', 'fullscreen'])
 
-const viewMode = ref('preview')
-const isLoading = ref(true)
+// 移除viewMode，直接使用预览模式
+const isLoading = ref(false) // 初始设为false，因为使用v-show
 const previewFrame = ref(null)
 
 // 备用方案：通过文件路径从后端获取HTML内容
 const fetchHtmlContentByFilePath = async () => {
   try {
-    console.log('[HtmlMessageCard] 尝试从后端获取HTML文件')
-    console.log('[HtmlMessageCard] resultData:', props.resultData)
+    console.log('[debug0.01][HtmlMessageCard] 开始从后端获取HTML文件')
+    console.log('[debug0.01] resultData:', props.resultData)
     
     const username = localStorage.getItem('username') || 'default'
     
@@ -123,7 +109,8 @@ const fetchHtmlContentByFilePath = async () => {
         // 使用 topic 和 fileName 构建路径
         const sanitizedTopic = props.resultData.sanitizedTopic || props.resultData.topic?.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
         relativePath = `card/${sanitizedTopic}/${htmlFile.fileName}`
-        console.log('[HtmlMessageCard] 从 allFiles 构建路径:', relativePath)
+        console.log('[debug0.01] 从 allFiles 构建路径:', relativePath)
+        console.log('[debug0.01] HTML文件信息:', htmlFile)
       }
     }
     
@@ -131,7 +118,7 @@ const fetchHtmlContentByFilePath = async () => {
     if (!relativePath && props.resultData && props.resultData.fileName && props.resultData.fileName.endsWith('.html')) {
       const sanitizedTopic = props.resultData.sanitizedTopic || props.resultData.topic?.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
       relativePath = `card/${sanitizedTopic}/${props.resultData.fileName}`
-      console.log('[HtmlMessageCard] 从 fileName 构建路径:', relativePath)
+      console.log('[debug0.01] 从 fileName 构建路径:', relativePath)
     }
     
     // 方法3：后备方案，使用传入的参数
@@ -141,30 +128,30 @@ const fetchHtmlContentByFilePath = async () => {
       if (fileName && fileName.endsWith('.html')) {
         const sanitizedTopic = topic.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
         relativePath = `card/${sanitizedTopic}/${fileName}`
-        console.log('[HtmlMessageCard] 使用后备方案构建路径:', relativePath)
+        console.log('[debug0.01] 使用后备方案构建路径:', relativePath)
       }
     }
     
     if (!relativePath) {
-      console.warn('[HtmlMessageCard] 无法构建有效的文件路径')
+      console.warn('[debug0.01] 无法构建有效的文件路径')
       return null
     }
     
-    console.log('[HtmlMessageCard] 使用用户名:', username)
-    console.log('[HtmlMessageCard] 最终路径:', relativePath)
+    console.log('[debug0.01] 请求参数 - 用户名:', username)
+    console.log('[debug0.01] 请求参数 - 路径:', relativePath)
     
     const response = await fetch(`/api/workspace/${username}/file/${encodeURIComponent(relativePath)}`)
     
     if (response.ok) {
       const data = await response.json()
-      console.log('[HtmlMessageCard] 成功获取HTML文件，长度:', data.content?.length)
+      console.log('[debug0.01] 返回结果 - 成功获取HTML文件，长度:', data.content?.length)
       return data.content
     } else {
-      console.warn('[HtmlMessageCard] 获取HTML文件失败:', response.status, response.statusText)
+      console.warn('[debug0.01] 返回结果 - 获取失败:', response.status, response.statusText)
       return null
     }
   } catch (error) {
-    console.error('[HtmlMessageCard] 获取HTML文件出错:', error)
+    console.error('[debug0.01] 返回结果 - 出错:', error)
     return null
   }
 }
@@ -175,91 +162,130 @@ const isLoadingContent = ref(false)
 
 // 计算实际的HTML内容
 const actualHtmlContent = computed(() => {
-  console.log('[HtmlMessageCard] 渲染数据调试信息:')
-  console.log('props.resultData:', props.resultData)
-  console.log('props.htmlContent:', props.htmlContent)
-  console.log('props.topic:', props.topic)
+  console.log('[debug0.01][HtmlMessageCard] 计算HTML内容')
+  console.log('[debug0.01] props.resultData:', props.resultData)
+  console.log('[debug0.01] props.htmlContent 长度:', props.htmlContent?.length)
+  console.log('[debug0.01] props.topic:', props.topic)
+  console.log('[debug0.01] props.fileName:', props.fileName)
   
   // 如果已经通过API获取到内容，使用它
   if (htmlContentFromApi.value) {
-    console.log('[HtmlMessageCard] 使用API获取的HTML内容')
+    console.log('[debug0.01] 使用API获取的HTML内容，长度:', htmlContentFromApi.value.length)
     return htmlContentFromApi.value
   }
   
   // 优先使用API响应数据
   if (props.resultData) {
-    console.log('[HtmlMessageCard] 检查 resultData.content:', props.resultData.content)
+    console.log('[debug0.01] 检查 resultData 结构:', {
+      hasContent: !!props.resultData.content,
+      contentType: typeof props.resultData.content,
+      hasAllFiles: !!props.resultData.allFiles,
+      allFilesLength: props.resultData.allFiles?.length
+    })
     
-    // 如果有content且是有效的HTML内容
-    if (props.resultData.content) {
-      console.log('[HtmlMessageCard] resultData.content类型:', typeof props.resultData.content)
-      console.log('[HtmlMessageCard] resultData.content前200字符:', 
-        typeof props.resultData.content === 'string' 
-          ? props.resultData.content.substring(0, 200) + '...'
-          : 'Not a string'
-      )
-      
-      // 如果content是对象并且包含HTML内容
-      if (typeof props.resultData.content === 'object' && props.resultData.content.html) {
-        console.log('[HtmlMessageCard] 使用 resultData.content.html')
-        return props.resultData.content.html
-      }
-      // 如果content直接是HTML字符串并且看起来是有效的HTML
-      if (typeof props.resultData.content === 'string') {
-        // 检查是否是有效的HTML内容
-        if (props.resultData.content.includes('<!DOCTYPE') || props.resultData.content.includes('<html')) {
-          console.log('[HtmlMessageCard] 使用 resultData.content (HTML string)')
-          return props.resultData.content
-        }
+    // 优先使用 resultData.content（如果是有效的HTML字符串）
+    if (props.resultData.content && typeof props.resultData.content === 'string') {
+      const contentStr = props.resultData.content
+      if (contentStr.includes('<!DOCTYPE') || contentStr.includes('<html')) {
+        console.log('[debug0.01] 使用 resultData.content (HTML), 长度:', contentStr.length)
+        return contentStr
       }
     }
     
-    // 如果没有content或content无效，但有resultData（说明需要从API获取）
-    console.log('[HtmlMessageCard] resultData存在但content无效，尝试从API获取文件')
+    // 其次从 allFiles 中获取 HTML 内容
+    if (props.resultData.allFiles && props.resultData.allFiles.length > 0) {
+      const htmlFile = props.resultData.allFiles.find(file => file.fileType === 'html')
+      if (htmlFile) {
+        console.log('[debug0.01] 找到 HTML 文件:', htmlFile.fileName)
+        // 如果 htmlFile 有 content 属性，直接使用
+        if (htmlFile.content && typeof htmlFile.content === 'string') {
+          console.log('[debug0.01] 使用 allFiles 中的 HTML 内容, 长度:', htmlFile.content.length)
+          return htmlFile.content
+        }
+        // 如果没有 content，需要从 API 获取
+        console.log('[debug0.01] HTML 文件没有 content 属性，需要从 API 获取')
+        tryFetchHtmlFile()
+      }
+    }
+    
+    // 如果没有找到有效的HTML内容，尝试从API获取
+    console.log('[debug0.01] 未找到有效HTML内容，尝试从API获取')
     tryFetchHtmlFile()
-    return props.htmlContent // 临时返回，等待异步加载
   }
   
   // 兼容旧格式
-  console.log('[HtmlMessageCard] 使用后备方案 props.htmlContent')
-  return props.htmlContent
+  if (props.htmlContent) {
+    console.log('[debug0.01] 使用 props.htmlContent, 长度:', props.htmlContent.length)
+    return props.htmlContent
+  }
+  
+  console.log('[debug0.01] 没有找到任何HTML内容')
+  return ''
 })
 
 // 尝试获取HTML文件
 const tryFetchHtmlFile = async () => {
   if (isLoadingContent.value) return // 防止重复请求
   
+  console.log('[debug0.01][HtmlMessageCard] 开始异步获取HTML文件')
   isLoadingContent.value = true
   const content = await fetchHtmlContentByFilePath()
   if (content) {
+    console.log('[debug0.01][HtmlMessageCard] 异步获取成功，内容长度:', content.length)
     htmlContentFromApi.value = content
+  } else {
+    console.log('[debug0.01][HtmlMessageCard] 异步获取失败')
   }
   isLoadingContent.value = false
 }
 
-// 获取卡片名称（使用topic作为标题）
-const displayTopic = computed(() => {
-  // 优先使用topic作为卡片标题
-  if (props.resultData && props.resultData.topic) {
-    return props.resultData.topic
+// 获取完整的卡片标题（topic + 文件名）
+const cardTitle = computed(() => {
+  const topic = props.resultData?.topic || props.topic || ''
+  const fileName = actualFileName.value
+  if (topic && fileName) {
+    return `${topic} - ${fileName}`
   }
-  // 后备方案
-  return props.topic || 'HTML卡片'
+  return topic || fileName || 'HTML卡片'
+})
+
+// 保留displayTopic用于其他地方引用
+const displayTopic = computed(() => {
+  return props.resultData?.topic || props.topic || 'HTML卡片'
 })
 
 // 获取文件名
 const actualFileName = computed(() => {
+  // 优先从 allFiles 中获取 HTML 文件名
+  if (props.resultData && props.resultData.allFiles) {
+    const htmlFile = props.resultData.allFiles.find(file => file.fileType === 'html')
+    if (htmlFile && htmlFile.fileName) {
+      console.log('[debug0.01] 使用 allFiles 中的文件名:', htmlFile.fileName)
+      return htmlFile.fileName
+    }
+  }
+  // 其次使用 resultData.fileName
   if (props.resultData && props.resultData.fileName) {
+    console.log('[debug0.01] 使用 resultData.fileName:', props.resultData.fileName)
     return props.resultData.fileName
   }
+  // 最后使用默认值
+  console.log('[debug0.01] 使用默认文件名:', props.fileName)
   return props.fileName
 })
 
 const processedHtml = computed(() => {
-  if (!actualHtmlContent.value) return ''
+  const content = actualHtmlContent.value
+  console.log('[debug0.01] processedHtml - 输入内容长度:', content?.length || 0)
+  
+  if (!content) {
+    console.log('[debug0.01] processedHtml - 内容为空')
+    return ''
+  }
   
   // 如果HTML内容不包含完整的文档结构，添加基础结构
-  if (!actualHtmlContent.value.includes('<!DOCTYPE') && !actualHtmlContent.value.includes('<html')) {
+  if (!content.includes('<!DOCTYPE') && !content.includes('<html')) {
+    console.log('[debug0.01] processedHtml - 添加HTML结构包装')
     return `
       <!DOCTYPE html>
       <html lang="zh-CN">
@@ -278,38 +304,60 @@ const processedHtml = computed(() => {
         </style>
       </head>
       <body>
-        ${actualHtmlContent.value}
+        ${content}
       </body>
       </html>
     `
   }
-  return actualHtmlContent.value
+  
+  console.log('[debug0.01] processedHtml - 返回原始HTML内容')
+  return content
 })
 
-const highlightedCode = computed(() => {
-  if (!actualHtmlContent.value) return ''
-  try {
-    return hljs.highlight(actualHtmlContent.value, { language: 'html' }).value
-  } catch (error) {
-    console.error('Code highlighting failed:', error)
-    return actualHtmlContent.value
-  }
-})
+// 移除highlightedCode，不再需要代码视图
 
 const refreshPreview = () => {
-  isLoading.value = true
-  if (previewFrame.value) {
-    previewFrame.value.srcdoc = processedHtml.value
+  console.log('[debug0.01] refreshPreview 被调用')
+  const htmlContent = processedHtml.value
+  console.log('[debug0.01] 设置iframe srcdoc，内容长度:', htmlContent?.length || 0)
+  
+  if (!htmlContent) {
+    console.log('[debug0.01] 没有HTML内容，跳过刷新')
+    isLoading.value = false
+    return
   }
+  
+  isLoading.value = true
+  
+  // 使用nextTick确保DOM已更新
+  nextTick(() => {
+    if (previewFrame.value) {
+      previewFrame.value.srcdoc = htmlContent
+      console.log('[debug0.01] iframe srcdoc 已设置')
+      // 如果iframe没有触发load事件，3秒后强制隐藏loading
+      setTimeout(() => {
+        if (isLoading.value) {
+          console.log('[debug0.01] 强制隐藏loading')
+          isLoading.value = false
+        }
+      }, 3000)
+    } else {
+      console.log('[debug0.01] previewFrame.value 不存在')
+      isLoading.value = false
+    }
+  })
 }
 
 const handleIframeLoad = () => {
+  console.log('[debug0.01] iframe加载完成')
   isLoading.value = false
   
   // 自动调整iframe高度
   if (previewFrame.value && previewFrame.value.contentWindow) {
     try {
       const doc = previewFrame.value.contentWindow.document
+      console.log('[debug0.01] iframe文档内容长度:', doc.documentElement.innerHTML?.length || 0)
+      
       const height = Math.max(
         doc.body.scrollHeight,
         doc.body.offsetHeight,
@@ -317,10 +365,13 @@ const handleIframeLoad = () => {
         doc.documentElement.scrollHeight,
         doc.documentElement.offsetHeight
       )
+      console.log('[debug0.01] 计算的iframe高度:', height)
       previewFrame.value.style.height = `${Math.min(height + 20, 600)}px`
     } catch (error) {
-      console.error('Failed to adjust iframe height:', error)
+      console.error('[debug0.01] 调整iframe高度失败:', error)
     }
+  } else {
+    console.log('[debug0.01] iframe引用不存在')
   }
 }
 
@@ -389,16 +440,28 @@ const handleFullscreen = () => {
   emit('fullscreen')
 }
 
-watch(viewMode, (newMode) => {
-  if (newMode === 'preview') {
-    isLoading.value = true
+// 监听HTML内容变化，自动刷新预览
+watch(actualHtmlContent, (newContent) => {
+  console.log('[debug0.01] actualHtmlContent变化，新内容长度:', newContent?.length || 0)
+  if (newContent) {
+    nextTick(() => {
+      refreshPreview()
+    })
   }
 })
 
+// 监听processedHtml变化
+watch(processedHtml, (newHtml) => {
+  console.log('[debug0.01] processedHtml变化，新内容长度:', newHtml?.length || 0)
+})
+
 onMounted(() => {
-  if (viewMode.value === 'preview') {
+  console.log('[debug0.01] HtmlMessageCard组件已挂载')
+  console.log('[debug0.01] actualHtmlContent长度:', actualHtmlContent.value?.length || 0)
+  // 延迟刷新预览，确保DOM已就绪
+  nextTick(() => {
     refreshPreview()
-  }
+  })
 })
 </script>
 
@@ -407,15 +470,7 @@ onMounted(() => {
   width: 100%;
 }
 
-.preview-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding: 8px;
-  background: #f5f5f5;
-  border-radius: 4px;
-}
+/* 移除preview-toolbar样式 */
 
 .html-preview {
   position: relative;
@@ -446,28 +501,7 @@ onMounted(() => {
   background: #2d3748;
 }
 
-.html-code {
-  width: 100%;
-  max-height: 500px;
-  overflow: auto;
-  background: #2d3748;
-  border: 1px solid #4a5568;
-  border-radius: 4px;
-}
-
-.code-block {
-  margin: 0;
-  padding: 16px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #e2e8f0;
-}
-
-.code-block code {
-  background: transparent;
-  padding: 0;
-}
+/* 移除html-code和code-block样式 */
 
 :deep(.is-loading) {
   animation: rotating 2s linear infinite;

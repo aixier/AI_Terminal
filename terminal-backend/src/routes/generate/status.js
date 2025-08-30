@@ -27,8 +27,8 @@ router.get('/:topic', authenticateUserOrDefault, async (req, res) => {
       // 尝试从元数据获取模板信息
       let templateName = null
       try {
-        const userCardBasePath = userService.getUserCardBasePath(username)
-        const folders = await getAllFoldersMetadata(userCardBasePath)
+        const { cardPath } = userService.getUserWorkspacePath(username)
+        const folders = await getAllFoldersMetadata(cardPath)
         const folderInfo = folders?.[topic]
         templateName = folderInfo?.templateName
       } catch (err) {
@@ -45,7 +45,11 @@ router.get('/:topic', authenticateUserOrDefault, async (req, res) => {
       }
       
       // 使用模板注册信息检查完成状态
+      console.log('[Status API] Template name:', templateName)
+      console.log('[Status API] JSON files:', jsonFiles)
+      console.log('[Status API] HTML files:', htmlFiles)
       const completionCheck = await checkGenerationCompletion(templateName, jsonFiles, htmlFiles)
+      console.log('[Status API] Completion check:', completionCheck)
       
       if (completionCheck.isCompleted) {
         res.json({

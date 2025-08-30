@@ -87,7 +87,7 @@ export function useAsyncCardGeneration() {
       const finalResult = {
         type: 'html',
         content: result.htmlFile?.content || result.primaryFile?.content,
-        fileName: result.htmlFile?.name || result.primaryFile?.name,
+        fileName: result.htmlFile?.fileName || result.primaryFile?.fileName,
         topic: result.topic,
         allFiles: result.files,
         generatedAt: result.generatedAt,

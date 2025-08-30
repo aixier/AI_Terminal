@@ -152,11 +152,13 @@ export async function checkGenerationCompletion(templateId, jsonFiles = [], html
     }
   }
   
-  // 默认逻辑
+  // 默认逻辑 - 当没有找到模板配置时，要求至少有1个HTML文件
+  console.log('[TemplateRegistry] Warning: No template config found, using default logic')
+  const isCompleted = htmlFiles.length > 0
   return {
-    isCompleted: jsonFiles.length > 0 || htmlFiles.length > 0,
-    progress: { json: jsonFiles.length, html: htmlFiles.length },
-    message: '生成中'
+    isCompleted,
+    progress: { json: jsonFiles.length, html: htmlFiles.length, expected: 1 },
+    message: isCompleted ? '生成完成' : '正在生成中'
   }
 }
 

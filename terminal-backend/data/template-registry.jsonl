@@ -1,2 +1,2 @@
-{"id":"daily-knowledge-card-template.md","version":"1.0","description":"知识卡片生成，包含4种样式","name":"快速","outputType":"html","outputCount":4,"triggerFile":"json","waitForTrigger":true}
+{"id":"daily-knowledge-card-template.md","version":"1.0","description":"知识卡片生成，包含4种样式","name":"快速","outputType":"html","outputCount":1,"triggerFile":"json","waitForTrigger":true}
 {"id":"cardplanet-Sandra-json","version":"1.0","description":"卡片星球设计风格，双文件输出","name":"精细","outputType":"html","outputCount":1,"triggerFile":null,"waitForTrigger":false}

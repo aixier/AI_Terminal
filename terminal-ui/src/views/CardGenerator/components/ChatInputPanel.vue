@@ -32,8 +32,7 @@
           @click="selectTemplate(template)"
           :title="template.description || template.name"
         >
-          <span class="template-name">{{ template.name }}</span>
-          <span v-if="template.outputCount > 1" class="template-badge">{{ template.outputCount }}</span>
+          {{ template.name }}
         </button>
       </template>
     </div>
@@ -256,32 +255,7 @@ const toggleTemplates = () => {
   showTemplates.value = !showTemplates.value
 }
 
-// 根据模板文件名和类型获取图标
-const getTemplateIcon = (fileName, type) => {
-  if (type === 'folder') {
-    // 文件夹类型模板图标
-    if (fileName.includes('card')) return '🎴'
-    if (fileName.includes('blog') || fileName.includes('article')) return '📝'
-    if (fileName.includes('report')) return '📊'
-    if (fileName.includes('story') || fileName.includes('novel')) return '📚'
-    if (fileName.includes('email') || fileName.includes('mail')) return '📧'
-    if (fileName.includes('diary') || fileName.includes('journal')) return '📔'
-    return '📁'
-  } else {
-    // 文件类型模板图标
-    const name = fileName.toLowerCase()
-    if (name.includes('card')) return '🎴'
-    if (name.includes('blog') || name.includes('article')) return '📝'
-    if (name.includes('report')) return '📊'
-    if (name.includes('story') || name.includes('novel')) return '📚'
-    if (name.includes('email') || name.includes('mail')) return '📧'
-    if (name.includes('diary') || name.includes('journal')) return '📔'
-    if (name.includes('news')) return '📰'
-    if (name.includes('letter')) return '💌'
-    if (name.includes('resume') || name.includes('cv')) return '📄'
-    return '📝'
-  }
-}
+// 函数已移除，不再需要图标
 
 // 加载模板
 const loadTemplates = async () => {
@@ -294,7 +268,6 @@ const loadTemplates = async () => {
       const templateFiles = response.data.templates || []
       if (templateFiles.length > 0) {
         templates.value = templateFiles.map((template, index) => {
-          const icon = getTemplateIcon(template.fileName, template.type)
           console.log(`[ChatInputPanel] Template mapping:`, {
             fileName: template.fileName,
             displayName: template.displayName,
@@ -309,8 +282,8 @@ const loadTemplates = async () => {
             type: template.type,
             description: template.description || '',
             outputType: template.outputType || 'json',
-            outputCount: template.outputCount || 1,
-            icon: icon
+            outputCount: template.outputCount || 1
+            // 不再添加icon字段
           }
         })
         templateLoadError.value = null
@@ -437,24 +410,7 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.template-name {
-  font-weight: 500;
-}
-
-.template-badge {
-  display: inline-block;
-  margin-left: 4px;
-  padding: 2px 6px;
-  background: #ff6b6b;
-  color: white;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: bold;
-}
-
-.template-btn.active .template-badge {
-  background: rgba(255, 255, 255, 0.3);
-}
+/* 模板名称和徽章样式已移除 */
 
 /* 移动端模板样式 */
 .chat-input-panel.mobile .template-btn {

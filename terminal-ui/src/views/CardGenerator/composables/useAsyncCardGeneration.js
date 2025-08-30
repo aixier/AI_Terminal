@@ -9,8 +9,8 @@ export function useAsyncCardGeneration() {
   const isGenerating = ref(false)
   const generatingStatus = ref('')
   const pollingAttempts = ref(0)
-  const maxAttempts = ref(150) // 5分钟超时
-  const pollingInterval = ref(2000) // 2秒间隔
+  const maxAttempts = ref(100) // 100次轮询（配合6秒间隔 = 10分钟超时）
+  const pollingInterval = ref(6000) // 6秒间隔
   const currentTaskId = ref(null) // 当前任务ID
   
   let pollingTimer = null
@@ -87,6 +87,11 @@ export function useAsyncCardGeneration() {
           } else {
             generatingStatus.value = `检查生成状态 (${progressInfo.attempt}/${progressInfo.maxAttempts}) - ${progress}%`
           }
+          
+          // 持续更新本地存储中的轮询次数
+          if (currentTaskId.value) {
+            saveGenerationState(currentTaskId.value, params)
+          }
         },
         onStatusChange: (status) => {
           generatingStatus.value = status.message
@@ -132,7 +137,9 @@ export function useAsyncCardGeneration() {
       taskId,
       params,
       timestamp: Date.now(),
-      status: generatingStatus.value
+      status: generatingStatus.value,
+      pollingAttempts: pollingAttempts.value, // 保存当前轮询次数
+      maxAttempts: maxAttempts.value // 保存最大尝试次数
     }
     
     try {
@@ -166,16 +173,9 @@ export function useAsyncCardGeneration() {
       
       const state = JSON.parse(savedState)
       
-      // 检查状态是否过期（超过10分钟）
-      const now = Date.now()
-      const age = now - state.timestamp
-      if (age > 10 * 60 * 1000) {
-        console.log('[AsyncCardGeneration] 状态已过期，清除')
-        clearGenerationState()
-        return null
-      }
-      
+      // 不再检查时间过期，让轮询超时机制处理
       console.log('[AsyncCardGeneration] 恢复生成状态:', state)
+      console.log('[AsyncCardGeneration] 状态保存时间:', new Date(state.timestamp).toLocaleString())
       
       // 检查任务状态
       const statusResult = await checkAsyncTaskStatus(state.taskId)
@@ -214,13 +214,27 @@ export function useAsyncCardGeneration() {
         isGenerating.value = true
         generatingStatus.value = statusResult.message || '恢复生成中...'
         
-        // 继续轮询
+        // 恢复之前的轮询次数，从断开时的位置继续
+        const savedAttempts = state.pollingAttempts || 0
+        const savedMaxAttempts = state.maxAttempts || 100
+        pollingAttempts.value = savedAttempts
+        maxAttempts.value = savedMaxAttempts
+        
+        console.log(`[AsyncCardGeneration] 从第 ${savedAttempts} 次继续轮询，最大 ${savedMaxAttempts} 次`)
+        
+        // 继续轮询，传入已有的尝试次数
         const result = await generateCardAsync(state.params, {
           taskId: state.taskId, // 传入已有的taskId
+          startAttempt: savedAttempts, // 传入起始尝试次数
+          maxAttempts: savedMaxAttempts - savedAttempts, // 剩余尝试次数
           onProgress: (progressInfo) => {
-            pollingAttempts.value = progressInfo.attempt
+            // 累加保存的次数
+            pollingAttempts.value = savedAttempts + progressInfo.attempt
             const progress = Math.round(progressInfo.progress)
-            generatingStatus.value = `恢复中 - ${progressInfo.detail || `检查状态 ${progress}%`}`
+            generatingStatus.value = `恢复中 (${pollingAttempts.value}/${savedMaxAttempts}) - ${progressInfo.detail || `检查状态 ${progress}%`}`
+            
+            // 更新本地存储中的轮询次数
+            saveGenerationState(state.taskId, state.params)
           },
           onStatusChange: (status) => {
             generatingStatus.value = status.message

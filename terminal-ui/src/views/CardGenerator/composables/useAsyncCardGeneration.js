@@ -179,12 +179,36 @@ export function useAsyncCardGeneration() {
       
       // 检查任务状态
       const statusResult = await checkAsyncTaskStatus(state.taskId)
+      console.log('[AsyncCardGeneration] 任务状态检查结果:', statusResult)
       
       if (statusResult.status === 'completed') {
         // 任务已完成
         clearGenerationState()
-        return statusResult.result
-      } else if (statusResult.status === 'processing') {
+        
+        // 构造返回结果格式
+        const result = {
+          type: 'html',
+          topic: statusResult.topic,
+          allFiles: statusResult.files?.html?.map(fileName => ({
+            fileName,
+            fileType: 'html'
+          })) || [],
+          generatedAt: statusResult.metadata?.completedAt || new Date().toISOString(),
+          totalFiles: statusResult.files?.total || 0
+        }
+        
+        // 添加JSON文件
+        if (statusResult.files?.json) {
+          statusResult.files.json.forEach(fileName => {
+            result.allFiles.push({
+              fileName,
+              fileType: 'json'
+            })
+          })
+        }
+        
+        return result
+      } else if (statusResult.status === 'processing' || statusResult.status === 'generating') {
         // 任务仍在进行中，恢复轮询
         currentTaskId.value = state.taskId
         isGenerating.value = true

@@ -152,9 +152,8 @@ export const checkAsyncTaskStatus = async (taskId) => {
   console.log('[AsyncCardAPI] 检查任务状态:', taskId)
   
   try {
-    // 从taskId中提取topic（假设格式为 task_timestamp_topic）
-    // 或者调用一个新的API endpoint
-    const result = await service.get(`/generate/async/status/${taskId}`)
+    // 使用新的taskId状态路由
+    const result = await service.get(`/generate/status/task/${taskId}`)
     
     console.log('[AsyncCardAPI] 任务状态结果:', result)
     return result

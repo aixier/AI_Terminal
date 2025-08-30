@@ -1,54 +1,51 @@
 <template>
   <MessageCard 
-    type="html"
+    type="file"
     :content="actualHtmlContent"
     :timestamp="timestamp"
     :show-actions="true"
     :can-download="true"
     :title="cardTitle"
+    :subtitle="displayTopic"
     @copy="handleCopy"
     @download="handleDownload"
   >
-    <div class="html-preview-container">
-      <!-- 移除预览/源码切换按钮，直接显示预览 -->
-      <div class="html-preview">
-        <div v-show="isLoading" class="preview-loading">
-          <el-icon class="is-loading"><Loading /></el-icon>
-          <span>加载中...</span>
-        </div>
-        <iframe
-          v-show="!isLoading"
-          ref="previewFrame"
-          :srcdoc="processedHtml"
-          class="preview-iframe"
-          @load="handleIframeLoad"
-          sandbox="allow-scripts allow-same-origin"
-        ></iframe>
-      </div>
+    <!-- 简化层级，直接显示预览 -->
+    <div v-show="isLoading" class="preview-loading">
+      <el-icon class="is-loading"><Loading /></el-icon>
+      <span>加载中...</span>
     </div>
+    <iframe
+      v-show="!isLoading"
+      ref="previewFrame"
+      :srcdoc="processedHtml"
+      class="preview-iframe"
+      @load="handleIframeLoad"
+      sandbox="allow-scripts allow-same-origin"
+    ></iframe>
     
     <template #actions>
       <el-button 
         size="small"
         @click="handleFullscreen"
         :icon="FullScreen"
-      >
-        全屏预览
-      </el-button>
+        circle
+        title="全屏预览"
+      />
       <el-button 
         size="small"
         @click="handleDownload"
         :icon="Download"
-      >
-        下载
-      </el-button>
+        circle
+        title="下载HTML"
+      />
       <el-button 
         size="small"
         @click="refreshPreview"
         :icon="Refresh"
-      >
-        刷新
-      </el-button>
+        circle
+        title="刷新预览"
+      />
     </template>
   </MessageCard>
 </template>
@@ -239,14 +236,14 @@ const tryFetchHtmlFile = async () => {
   isLoadingContent.value = false
 }
 
-// 获取完整的卡片标题（topic + 文件名）
+// 获取卡片标题 - 只显示文件名
 const cardTitle = computed(() => {
-  const topic = props.resultData?.topic || props.topic || ''
   const fileName = actualFileName.value
-  if (topic && fileName) {
-    return `${topic} - ${fileName}`
+  // 如果文件名太长，截取显示
+  if (fileName && fileName.length > 30) {
+    return fileName.substring(0, 27) + '...'
   }
-  return topic || fileName || 'HTML卡片'
+  return fileName || 'HTML预览'
 })
 
 // 保留displayTopic用于其他地方引用
@@ -352,12 +349,13 @@ const handleIframeLoad = () => {
   console.log('[debug0.01] iframe加载完成')
   isLoading.value = false
   
-  // 自动调整iframe高度
+  // 自动调整iframe高度以适应内容
   if (previewFrame.value && previewFrame.value.contentWindow) {
     try {
       const doc = previewFrame.value.contentWindow.document
       console.log('[debug0.01] iframe文档内容长度:', doc.documentElement.innerHTML?.length || 0)
       
+      // 获取内容实际高度
       const height = Math.max(
         doc.body.scrollHeight,
         doc.body.offsetHeight,
@@ -366,9 +364,22 @@ const handleIframeLoad = () => {
         doc.documentElement.offsetHeight
       )
       console.log('[debug0.01] 计算的iframe高度:', height)
-      previewFrame.value.style.height = `${Math.min(height + 20, 600)}px`
+      
+      // 设置高度，最小150px，最大为视口的45%
+      const viewportHeight = window.innerHeight * 0.45
+      const finalHeight = Math.max(150, Math.min(height, viewportHeight))
+      previewFrame.value.style.height = `${finalHeight}px`
+      
+      // 如果内容是知识卡片类型（包含grid布局），给予适当高度但不要太高
+      if (doc.body.innerHTML.includes('grid') || doc.body.innerHTML.includes('card-container')) {
+        // 知识卡片适度高度
+        const cardHeight = Math.min(height, viewportHeight)
+        previewFrame.value.style.height = `${Math.max(250, cardHeight)}px`
+      }
     } catch (error) {
       console.error('[debug0.01] 调整iframe高度失败:', error)
+      // 失败时设置默认高度
+      previewFrame.value.style.height = '250px'
     }
   } else {
     console.log('[debug0.01] iframe引用不存在')
@@ -466,44 +477,51 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.html-preview-container {
-  width: 100%;
-}
-
-/* 移除preview-toolbar样式 */
-
-.html-preview {
-  position: relative;
-  width: 100%;
-  min-height: 200px;
-  background: #2d3748;
-  border: 1px solid #4a5568;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
+/* 直接应用到iframe和loading，完全去除边距 */
 .preview-loading {
+  width: 100%; /* 占满宽度 */
+  margin: 0; /* 无边距 */
+  padding: 0; /* 无内边距 */
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 200px;
-  color: #e2e8f0;
+  min-height: 150px; /* 进一步降低最小高度 */
+  height: 250px; /* 降低固定高度 */
+  color: #666;
+  background: #f8f9fa;
+  border-radius: 4px;
 }
 
 .preview-loading span {
   margin-left: 8px;
+  font-size: 14px;
 }
 
 .preview-iframe {
-  width: 100%;
-  min-height: 200px;
+  width: 100%; /* 占满宽度 */
+  margin: 0; /* 无边距 */
+  padding: 0; /* 无内边距 */
+  min-height: 150px; /* 最小高度150px */
+  height: 250px; /* 默认高度大幅降低 */
+  max-height: 45vh; /* 最大高度为视口的45% */
   border: none;
-  background: #2d3748;
+  background: #ffffff;
+  display: block;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05); /* 轻微边框效果 */
 }
 
-/* 移除html-code和code-block样式 */
+/* 优化圆形按钮样式 */
+:deep(.el-button.is-circle) {
+  width: 32px;
+  height: 32px;
+  padding: 8px;
+}
 
+/* 让加载动画更明显 */
 :deep(.is-loading) {
+  font-size: 24px;
+  color: #409eff;
   animation: rotating 2s linear infinite;
 }
 

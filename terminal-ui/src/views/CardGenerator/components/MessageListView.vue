@@ -336,6 +336,15 @@ nextTick(() => {
   max-width: 80%;
 }
 
+/* 移除ai-response内部div之间的间距 */
+.ai-response > div {
+  margin: 0;
+}
+
+.ai-response > div + div {
+  margin-top: 0;
+}
+
 /* 生成中状态 */
 .generating-message {
   background: #f8f9fa;
@@ -434,6 +443,14 @@ nextTick(() => {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 当result-card包含HtmlMessageCard时，移除padding避免双重边距 */
+.result-card:has(.message-card) {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
 }
 
 .card-header {

@@ -57,13 +57,24 @@ export function useAsyncCardGeneration() {
       
       console.log('[AsyncCardGeneration] 开始异步生成:', params)
       
+      // 生成临时taskId，立即保存状态
+      let taskId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      currentTaskId.value = taskId
+      
+      // 立即保存初始状态
+      saveGenerationState(taskId, params)
+      console.log('[AsyncCardGeneration] 保存初始状态，临时taskId:', taskId)
+      
       // 使用统一的API，并获取taskId
-      let taskId = null
       const result = await generateCardAsync(params, {
         onTaskCreated: (id) => {
+          console.log('[AsyncCardGeneration] 收到真实taskId:', id, '替换临时taskId:', taskId)
+          // 清除临时状态
+          clearGenerationState()
+          // 更新为真实taskId
           taskId = id
           currentTaskId.value = id
-          // 保存状态到本地存储
+          // 保存真实状态
           saveGenerationState(id, params)
         },
         onProgress: (progressInfo) => {
@@ -96,6 +107,10 @@ export function useAsyncCardGeneration() {
         onStatusChange: (status) => {
           generatingStatus.value = status.message
           console.log('[AsyncCardGeneration] 状态变化:', status)
+          // 状态变化时也保存
+          if (currentTaskId.value) {
+            saveGenerationState(currentTaskId.value, params)
+          }
         }
       })
       

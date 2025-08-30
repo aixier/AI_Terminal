@@ -378,15 +378,15 @@ const adjustIframeHeight = () => {
         height = 320
       }
       
-      // 移动端：设置3:4比例高度
+      // 移动端：设置4:3比例高度
       const isMobile = window.innerWidth < 768
       if (isMobile) {
-        // 移动端使用3:4比例（宽度:高度 = 3:4，即高度 = 宽度 * 4/3）
+        // 移动端使用4:3比例（宽度:高度 = 4:3，即高度 = 宽度 * 3/4）
         // 获取卡片容器的实际宽度
         const cardWidth = previewFrame.value.offsetWidth || window.innerWidth * 0.9
-        const proportionalHeight = Math.round(cardWidth * 4 / 3) // 3:4比例
-        const maxHeight = window.innerHeight * 0.5 // 最大不超过视口高度的50%
-        const minHeight = 280 // 最小高度
+        const proportionalHeight = Math.round(cardWidth * 3 / 4) // 4:3比例
+        const maxHeight = window.innerHeight * 0.4 // 最大不超过视口高度的40%
+        const minHeight = 240 // 最小高度
         
         const finalHeight = Math.max(minHeight, Math.min(proportionalHeight, maxHeight))
         previewFrame.value.style.height = `${finalHeight}px`
@@ -557,9 +557,9 @@ onMounted(async () => {
   width: 100%; /* 占满宽度 */
   margin: 0; /* 无边距 */
   padding: 0; /* 无内边距 */
-  min-height: 280px; /* 最小高度280px */
-  height: 320px; /* 默认高度（适配3:4比例） */
-  max-height: 50vh; /* 最大高度为视口的50% */
+  min-height: 240px; /* 最小高度240px */
+  height: 280px; /* 默认高度（适配4:3比例） */
+  max-height: 40vh; /* 最大高度为视口的40% */
   border: none;
   background: #ffffff;
   display: block;

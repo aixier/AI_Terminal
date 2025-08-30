@@ -555,4 +555,23 @@ nextTick(() => {
   font-size: 11px;
   padding: 5px 10px;
 }
+
+/* iOS Safari 兼容性修复 */
+@supports (-webkit-touch-callout: none) {
+  .messages-container {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+  }
+  
+  .result-card {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+  
+  /* 修复iOS上的卡片显示问题 */
+  .message-list-view.mobile .result-card {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
 </style>

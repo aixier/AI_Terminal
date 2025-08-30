@@ -477,6 +477,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* iOS Safari 全局兼容性修复 */
+* {
+  -webkit-tap-highlight-color: transparent; /* 移除点击高亮 */
+}
+
 /* 直接应用到iframe和loading，完全去除边距 */
 .preview-loading {
   width: 100%; /* 占满宽度 */
@@ -509,6 +514,10 @@ onMounted(() => {
   display: block;
   border-radius: 4px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05); /* 轻微边框效果 */
+  /* Safari/iOS 兼容性修复 */
+  -webkit-overflow-scrolling: touch;
+  -webkit-transform: translateZ(0); /* 启用硬件加速 */
+  transform: translateZ(0);
 }
 
 /* 优化圆形按钮样式 */
@@ -531,6 +540,23 @@ onMounted(() => {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* iOS设备特殊处理 */
+@supports (-webkit-touch-callout: none) {
+  .preview-iframe {
+    min-height: 200px; /* iOS上增加最小高度 */
+    position: relative;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* iPhone横屏模式优化 */
+@media screen and (max-width: 812px) and (orientation: landscape) {
+  .preview-iframe {
+    max-height: 35vh; /* 横屏时降低最大高度 */
   }
 }
 </style>

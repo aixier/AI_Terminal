@@ -720,6 +720,8 @@ defineExpose({
     justify-content: space-between;
     align-items: center;
     background: transparent;
+    gap: 8px; /* 添加间距 */
+    padding-right: 5px; /* 给右侧留出一点空间 */
   }
   
   .char-count {
@@ -728,9 +730,13 @@ defineExpose({
   }
   
   .send-btn {
-    padding: 6px 16px;
+    padding: 6px 12px;
     font-size: 13px;
-    min-width: 80px;
+    min-width: 70px;
+    flex-shrink: 0; /* 防止按钮被压缩 */
+    white-space: nowrap; /* 防止文字换行 */
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
   }
   

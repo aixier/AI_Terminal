@@ -20,7 +20,7 @@ export function useChatHistory() {
   }
   
   // 添加AI消息
-  const addAIMessage = (content = '', isGenerating = false, title = '', template = null) => {
+  const addAIMessage = (content = '', isGenerating = false, title = '', template = null, generationState = null) => {
     const message = {
       id: `ai_${Date.now()}`,
       type: 'ai',
@@ -30,7 +30,15 @@ export function useChatHistory() {
       template,
       timestamp: new Date(),
       error: false,
-      resultData: null
+      resultData: null,
+      // 添加生成状态信息
+      generationState: generationState ? {
+        taskId: generationState.taskId,
+        params: generationState.params,
+        pollingAttempts: generationState.pollingAttempts || 0,
+        maxAttempts: generationState.maxAttempts || 100,
+        status: generationState.status
+      } : null
     }
     messages.value.push(message)
     // 始终保存，包括生成中的消息，以防切换tab时丢失状态
@@ -122,6 +130,21 @@ export function useChatHistory() {
     }
   }
   
+  // 获取未完成的生成任务
+  const getUnfinishedGeneration = () => {
+    // 从后往前查找，找到最新的正在生成的消息
+    for (let i = messages.value.length - 1; i >= 0; i--) {
+      const msg = messages.value[i]
+      if (msg.type === 'ai' && msg.isGenerating && msg.generationState) {
+        return {
+          message: msg,
+          state: msg.generationState
+        }
+      }
+    }
+    return null
+  }
+  
   return {
     messages,
     addUserMessage,
@@ -131,6 +154,7 @@ export function useChatHistory() {
     clearHistory,
     restoreFromLocal,
     getLastUserMessage,
-    getSessionStats
+    getSessionStats,
+    getUnfinishedGeneration
   }
 }

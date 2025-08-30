@@ -287,7 +287,17 @@ const contextMenu = ref({
 // Share state moved to PortfolioPage.vue
 
 // ============ Use Composables ============
-// 异步生成composable
+const {
+  messages: chatMessages,
+  addUserMessage,
+  addAIMessage,
+  updateMessage,
+  clearHistory: clearChatHistory,
+  restoreFromLocal: restoreChatHistory,
+  getUnfinishedGeneration
+} = useChatHistory()
+
+// 异步生成composable - 传入updateMessage回调
 const { 
   isGenerating, 
   generatingStatus: generatingHint, 
@@ -301,7 +311,7 @@ const {
   refreshStatus,
   recoverGenerationState,
   clearGenerationState
-} = useAsyncCardGeneration()
+} = useAsyncCardGeneration(updateMessage)
 
 const { 
   downloadFile, 
@@ -309,15 +319,6 @@ const {
   previewHtmlFile,
   getFileContent 
 } = useFileOperations()
-
-const {
-  messages: chatMessages,
-  addUserMessage,
-  addAIMessage,
-  updateMessage,
-  clearHistory: clearChatHistory,
-  restoreFromLocal: restoreChatHistory
-} = useChatHistory()
 
 // ============ Chat State ============
 const chatInputText = ref('')
@@ -344,21 +345,29 @@ const initialize = async () => {
 const recoverGenerationStateOnLoad = async () => {
   try {
     console.log('[CardGenerator] 检查是否有未完成的生成任务...')
-    const result = await recoverGenerationState()
+    
+    // 从聊天历史中获取未完成的生成任务
+    const unfinishedGeneration = getUnfinishedGeneration()
+    
+    if (!unfinishedGeneration) {
+      console.log('[CardGenerator] 没有未完成的生成任务')
+      return
+    }
+    
+    console.log('[CardGenerator] 发现未完成的生成任务:', unfinishedGeneration)
+    const result = await recoverGenerationState(unfinishedGeneration)
     
     if (result) {
       console.log('[CardGenerator] 恢复的生成结果:', result)
       
-      // 如果任务已完成，添加到消息列表
+      // 如果任务已完成，更新消息
       if (result.allFiles || result.files) {
-        const aiMessage = {
-          type: 'ai',
-          content: '任务已完成（从上次会话恢复）',
-          resultData: result,
+        updateMessage(unfinishedGeneration.message.id, {
           isGenerating: false,
-          timestamp: new Date()
-        }
-        addAIMessage(aiMessage)
+          resultData: result,
+          content: '任务已完成（从上次会话恢复）',
+          generationState: null
+        })
         ElMessage.success('之前的生成任务已完成')
       } else {
         // 任务仍在进行中，UI会自动更新
@@ -555,8 +564,6 @@ const handleSendMessage = async (messageData) => {
   }
   
   addUserMessage(message, currentTemplate)
-  const aiMessage = addAIMessage('', true, '', currentTemplate)
-  chatInputText.value = ''
   
   // 构建完整的API参数
   const params = {
@@ -572,12 +579,25 @@ const handleSendMessage = async (messageData) => {
   if (language) params.language = language  
   if (reference) params.reference = reference
   
+  // 创建AI消息时就包含初始的生成状态
+  const initialGenerationState = {
+    taskId: null, // 还没有taskId，稍后会更新
+    params: params,
+    pollingAttempts: 0,
+    maxAttempts: 100,
+    status: '准备生成...'
+  }
+  
+  const aiMessage = addAIMessage('', true, '', currentTemplate, initialGenerationState)
+  chatInputText.value = ''
+  
   console.log('[CardGenerator] API params:', params)
   console.log('[CardGenerator] Using token:', token)
   console.log('[CardGenerator] Using async generation mode')
+  console.log('[CardGenerator] AI Message ID:', aiMessage.id)
   
-  // 使用异步模式生成
-  const result = await startAsyncGeneration(params)
+  // 使用异步模式生成，传入messageId
+  const result = await startAsyncGeneration(params, aiMessage.id)
   if (result) {
     const finalResultData = {
       type: result.type,

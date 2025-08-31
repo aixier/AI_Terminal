@@ -4,6 +4,10 @@
     title="分享到小红书"
     width="600px"
     :fullscreen="isMobile"
+    :append-to-body="true"
+    :lock-scroll="true"
+    :modal="true"
+    :close-on-click-modal="false"
     class="xhs-share-dialog"
     @update:model-value="$emit('close')"
     @close="$emit('close')"
@@ -238,6 +242,19 @@ const openShareLink = () => {
 </script>
 
 <style scoped>
+/* 确保对话框在移动端正确显示在最顶层 */
+.xhs-share-dialog {
+  z-index: 9999 !important;
+}
+
+.xhs-share-dialog :deep(.el-dialog) {
+  z-index: 9999 !important;
+}
+
+.xhs-share-dialog :deep(.el-overlay) {
+  z-index: 9998 !important;
+}
+
 .xhs-share-dialog :deep(.el-dialog__body) {
   padding: 0;
 }

@@ -46,15 +46,47 @@
         circle
         title="刷新预览"
       />
+      <el-button 
+        size="small"
+        @click="handleShare"
+        :icon="Share"
+        circle
+        title="分享"
+      />
     </template>
   </MessageCard>
+  
+  <!-- 社媒分享选择对话框 -->
+  <SocialShareDialog
+    :visible="showSocialShareDialog"
+    :share-data="shareData"
+    :is-mobile="isMobile"
+    @close="closeSocialShareDialog"
+    @share-success="handleShareSuccess"
+  />
+  
+  <!-- 小红书分享结果对话框 -->
+  <ShareDialog
+    :visible="shareDialogVisible"
+    :share-result="shareResult"
+    :loading-progress="loadingProgress"
+    :is-mobile="isMobile"
+    @close="closeShareDialog"
+    @copy-content="copyShareContent"
+    @copy-link="copyLink"
+    @copy-short-link="copyShortLink"
+    @open-link="openShareLink"
+  />
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElButton, ElIcon, ElMessage } from 'element-plus'
-import { Refresh, FullScreen, CopyDocument, Download, Loading } from '@element-plus/icons-vue'
+import { Refresh, FullScreen, CopyDocument, Download, Loading, Share } from '@element-plus/icons-vue'
 import MessageCard from './MessageCard.vue'
+import SocialShareDialog from '../components/SocialShareDialog.vue'
+import ShareDialog from '../components/ShareDialog.vue'
+import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
 // 移除highlight.js相关导入，不再需要代码高亮
 
 const props = defineProps({
@@ -436,6 +468,79 @@ const handleDownload = () => {
   
   ElMessage.success('下载成功')
   emit('download', actualFileName.value)
+}
+
+// 检测是否移动端
+const isMobile = computed(() => {
+  return window.innerWidth <= 768
+})
+
+// 获取文件名（用于分享）
+const fileName = computed(() => actualFileName.value)
+
+// 获取文件夹名（用于分享）
+const folderName = computed(() => {
+  if (props.resultData) {
+    return props.resultData.folderName || 
+           props.resultData.folder ||
+           props.resultData.taskId ||
+           null
+  }
+  return null
+})
+
+// 社媒分享相关状态
+const showSocialShareDialog = ref(false)
+const shareData = ref(null)
+
+// 使用小红书分享hook
+const {
+  shareDialogVisible,
+  shareResult,
+  loadingProgress,
+  closeShareDialog,
+  copyShareContent,
+  copyLink,
+  copyShortLink,
+  openShareLink
+} = useXiaohongshuShare()
+
+// 处理分享按钮点击
+const handleShare = () => {
+  // 准备分享数据
+  shareData.value = {
+    file: {
+      name: fileName.value,
+      content: actualHtmlContent.value
+    },
+    folder: {
+      name: folderName.value || getFolderFromResultData()
+    }
+  }
+  
+  // 显示社媒选择对话框
+  showSocialShareDialog.value = true
+}
+
+// 从resultData中获取文件夹名
+const getFolderFromResultData = () => {
+  if (!props.resultData) return null
+  
+  // 尝试从多个可能的字段获取文件夹名
+  return props.resultData.folderName || 
+         props.resultData.folder ||
+         props.resultData.taskId ||
+         null
+}
+
+// 处理社媒分享对话框关闭
+const closeSocialShareDialog = () => {
+  showSocialShareDialog.value = false
+}
+
+// 处理分享成功
+const handleShareSuccess = (platform) => {
+  console.log(`[HtmlMessageCard] 分享到${platform}成功`)
 }
 
 const handleFullscreen = () => {

@@ -64,19 +64,6 @@
     @close="closeSocialShareDialog"
     @share-success="handleShareSuccess"
   />
-  
-  <!-- 小红书分享结果对话框 -->
-  <ShareDialog
-    :visible="shareDialogVisible"
-    :share-result="shareResult"
-    :loading-progress="loadingProgress"
-    :is-mobile="isMobile"
-    @close="closeShareDialog"
-    @copy-content="copyShareContent"
-    @copy-link="copyLink"
-    @copy-short-link="copyShortLink"
-    @open-link="openShareLink"
-  />
 </template>
 
 <script setup>
@@ -85,7 +72,6 @@ import { ElButton, ElIcon, ElMessage } from 'element-plus'
 import { Refresh, FullScreen, CopyDocument, Download, Loading, Share } from '@element-plus/icons-vue'
 import MessageCard from './MessageCard.vue'
 import SocialShareDialog from '../components/SocialShareDialog.vue'
-import ShareDialog from '../components/ShareDialog.vue'
 import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
 // 移除highlight.js相关导入，不再需要代码高亮
 
@@ -509,16 +495,9 @@ const folderName = computed(() => {
 const showSocialShareDialog = ref(false)
 const shareData = ref(null)
 
-// 使用小红书分享hook
+// 使用小红书分享hook（简化版，直接打开链接）
 const {
-  shareDialogVisible,
-  shareResult,
-  loadingProgress,
-  closeShareDialog,
-  copyShareContent,
-  copyLink,
-  copyShortLink,
-  openShareLink
+  shareToXiaohongshu
 } = useXiaohongshuShare()
 
 // 处理分享按钮点击

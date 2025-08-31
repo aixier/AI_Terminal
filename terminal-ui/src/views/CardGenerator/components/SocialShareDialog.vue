@@ -43,26 +43,12 @@
       </div>
     </div>
   </el-dialog>
-  
-  <!-- 小红书分享结果对话框 -->
-  <ShareDialog
-    :visible="shareDialogVisible"
-    :share-result="shareResult"
-    :loading-progress="loadingProgress"
-    :is-mobile="isMobile"
-    @close="closeShareDialog"
-    @copy-content="copyShareContent"
-    @copy-link="copyLink"
-    @copy-short-link="copyShortLink"
-    @open-link="openShareLink"
-  />
 </template>
 
 <script setup>
 import { defineProps, defineEmits, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
-import ShareDialog from './ShareDialog.vue'
 
 const props = defineProps({
   visible: {
@@ -86,17 +72,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'share-success'])
 
-// 使用小红书分享功能
+// 使用小红书分享功能（简化版）
 const {
-  shareToXiaohongshu,
-  shareDialogVisible,
-  shareResult,
-  loadingProgress,
-  closeShareDialog,
-  copyShareContent,
-  copyLink,
-  copyShortLink,
-  openShareLink
+  shareToXiaohongshu
 } = useXiaohongshuShare()
 
 // 社交平台配置

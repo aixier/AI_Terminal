@@ -106,7 +106,7 @@ export function useXiaohongshuShare() {
 
       if (folderName && folderName !== 'root-files') {
         try {
-          // 尝试获取页面信息
+          // 尝试获取页面信息（可选）
           loadingProgress.value = '正在获取模板信息...'
           const queryUrl = `/api/generate/card/query/${encodeURIComponent(folderName)}`
           const queryResponse = await fetch(queryUrl)
@@ -137,9 +137,15 @@ export function useXiaohongshuShare() {
                 }
               }
             }
+          } else if (queryResponse.status === 404) {
+            // 404是正常的，说明没有对应的文件夹信息
+            console.log('[XHS Share] 文件夹信息不存在，继续处理')
+          } else {
+            console.warn('[XHS Share] 查询文件夹信息失败:', queryResponse.status)
           }
         } catch (error) {
-          console.warn('[XHS Share] 获取pageinfo失败，继续使用HTML:', error)
+          // 静默处理错误，pageinfo是可选的
+          console.log('[XHS Share] 获取pageinfo时出错（可忽略）:', error.message)
         }
       }
 
@@ -165,19 +171,22 @@ export function useXiaohongshuShare() {
         throw new Error(result.message || '处理失败')
       }
 
-      // 保存结果并显示对话框
+      // 保存结果
       shareResult.value = result
-      shareDialogVisible.value = true
       
-      ElMessage.success('生成分享内容成功！')
+      // 直接打开分享链接
+      if (result.data?.shareLink) {
+        window.open(result.data.shareLink, '_blank')
+        ElMessage.success('正在打开分享页面...')
+      } else {
+        ElMessage.warning('分享链接生成失败')
+      }
+      
       return true
       
     } catch (error) {
       console.error('[XHS Share] 分享失败:', error)
       ElMessage.error('分享失败: ' + error.message)
-      
-      // 失败时关闭对话框
-      shareDialogVisible.value = false
       return false
     } finally {
       isSharing.value = false

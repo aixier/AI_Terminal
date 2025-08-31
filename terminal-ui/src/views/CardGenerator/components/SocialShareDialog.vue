@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    v-model="visible"
+    :model-value="visible"
     :title="title"
     width="400px"
     :modal="true"
@@ -8,6 +8,7 @@
     :append-to-body="true"
     class="social-share-dialog"
     :class="{ mobile: isMobile }"
+    @update:model-value="handleClose"
     @close="handleClose"
   >
     <!-- 社交平台列表 -->

@@ -58,7 +58,16 @@ router.post('/xiaohongshu', async (req, res) => {
     })
     
     if (!response.ok) {
-      throw new Error(`Engagia API错误: ${response.status} ${response.statusText}`)
+      let errorMsg = `Engagia API错误: ${response.status} ${response.statusText}`
+      try {
+        const errorData = await response.json()
+        if (errorData.message) {
+          errorMsg = `Engagia API: ${errorData.message}`
+        }
+      } catch (e) {
+        // 无法解析错误响应
+      }
+      throw new Error(errorMsg)
     }
     
     const result = await response.json()

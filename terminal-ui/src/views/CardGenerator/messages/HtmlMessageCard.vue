@@ -481,10 +481,26 @@ const fileName = computed(() => actualFileName.value)
 // 获取文件夹名（用于分享）
 const folderName = computed(() => {
   if (props.resultData) {
-    return props.resultData.folderName || 
-           props.resultData.folder ||
-           props.resultData.taskId ||
-           null
+    // 优先从resultData中查找文件夹信息
+    if (props.resultData.folderName) return props.resultData.folderName
+    if (props.resultData.folder) return props.resultData.folder
+    if (props.resultData.taskId) return props.resultData.taskId
+    
+    // 尝试从文件路径中提取文件夹名
+    if (props.resultData.filePath) {
+      const pathParts = props.resultData.filePath.split('/')
+      // 查找card目录后的文件夹名
+      const cardIndex = pathParts.indexOf('card')
+      if (cardIndex >= 0 && cardIndex < pathParts.length - 2) {
+        return pathParts[cardIndex + 1]
+      }
+    }
+    
+    // 从fileName中提取（如"8月的川西.html" -> "8月的川西"）
+    if (props.resultData.fileName || props.fileName) {
+      const name = props.resultData.fileName || props.fileName
+      return name.replace(/\.(html|htm)$/i, '')
+    }
   }
   return null
 })
@@ -527,10 +543,22 @@ const getFolderFromResultData = () => {
   if (!props.resultData) return null
   
   // 尝试从多个可能的字段获取文件夹名
-  return props.resultData.folderName || 
-         props.resultData.folder ||
-         props.resultData.taskId ||
-         null
+  if (props.resultData.folderName) return props.resultData.folderName
+  if (props.resultData.folder) return props.resultData.folder
+  if (props.resultData.taskId) return props.resultData.taskId
+  
+  // 从文件路径提取
+  if (props.resultData.filePath) {
+    const pathParts = props.resultData.filePath.split('/')
+    const cardIndex = pathParts.indexOf('card')
+    if (cardIndex >= 0 && cardIndex < pathParts.length - 2) {
+      return pathParts[cardIndex + 1]
+    }
+  }
+  
+  // 从文件名提取
+  const name = props.resultData.fileName || props.fileName || ''
+  return name.replace(/\.(html|htm)$/i, '') || null
 }
 
 // 处理社媒分享对话框关闭

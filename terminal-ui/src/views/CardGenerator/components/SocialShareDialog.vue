@@ -43,12 +43,26 @@
       </div>
     </div>
   </el-dialog>
+  
+  <!-- 小红书分享结果对话框 -->
+  <ShareDialog
+    :visible="shareDialogVisible"
+    :share-result="shareResult"
+    :loading-progress="loadingProgress"
+    :is-mobile="isMobile"
+    @close="closeShareDialog"
+    @copy-content="copyShareContent"
+    @copy-link="copyLink"
+    @copy-short-link="copyShortLink"
+    @open-link="openShareLink"
+  />
 </template>
 
 <script setup>
 import { defineProps, defineEmits, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
+import ShareDialog from './ShareDialog.vue'
 
 const props = defineProps({
   visible: {

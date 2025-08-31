@@ -95,7 +95,10 @@ export function useXiaohongshuShare() {
 
       // 准备请求体
       loadingProgress.value = '正在准备分享数据...'
-      let requestBody = { html: content }
+      let requestBody = { 
+        html: content,
+        name: file.name  // 添加文件名参数
+      }
       
       // 处理文件夹信息（如果存在）
       const folderName = folder?.name || folder?.id || null

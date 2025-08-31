@@ -101,7 +101,7 @@
             复制发布内容
           </el-button>
           <el-button @click="openShareLink" :icon="Position">
-            {{ isSDKReady ? '智能分享到小红书' : '在小红书中打开' }}
+            查看分享页面
           </el-button>
         </div>
         
@@ -154,7 +154,6 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, Plus, CopyDocument, Position, Loading } from '@element-plus/icons-vue'
-import { useXhsSDK } from '../../../composables/useXhsSDK'
 
 const props = defineProps({
   visible: {
@@ -234,33 +233,14 @@ const copyShortLink = () => {
   }
 }
 
-// 使用小红书SDK
-const { shareToXHS, isSDKReady } = useXhsSDK()
-
-const openShareLink = async () => {
+// 打开分享链接
+const openShareLink = () => {
   const link = props.shareResult?.data?.shareLink
-  
-  // 尝试使用SDK分享（优先）
-  if (isSDKReady.value && props.shareResult?.data) {
-    const { images = [], cardImages = [] } = props.shareResult.data
-    const allImages = [...images, ...cardImages].filter(Boolean)
-    
-    const success = await shareToXHS({
-      title: postTitle.value,
-      content: postContent.value,
-      hashtags: postHashtags.value,
-      imageUrls: allImages,
-      shareLink: link
-    })
-    
-    if (success) {
-      return // SDK分享成功
-    }
-  }
-  
-  // 降级到原有方式
   if (link) {
-    emit('open-link', link)
+    // 直接在新窗口打开分享页面
+    window.open(link, '_blank')
+  } else {
+    ElMessage.warning('分享链接尚未生成')
   }
 }
 </script>

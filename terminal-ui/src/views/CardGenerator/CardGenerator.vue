@@ -817,9 +817,11 @@ onUnmounted(() => {
 
 /* 固定头部容器 */
 .mobile-header-fixed {
-  position: sticky;
+  position: fixed; /* 改为fixed确保始终在顶部 */
   top: 0;
-  z-index: 100;
+  left: 0;
+  right: 0;
+  z-index: 1100; /* 提高z-index确保在其他内容之上 */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -829,6 +831,7 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  padding-top: 50px; /* 为固定头部留出空间 */
   /* 不需要 margin-bottom，因为 ResponsiveLayout 已经处理了底部导航栏的空间 */
 }
 

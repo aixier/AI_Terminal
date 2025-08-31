@@ -157,6 +157,7 @@ const handleShareContent = (message) => {
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: visible; /* 允许内容超出 */
 }
 
 </style>

@@ -159,21 +159,25 @@ const scrollToBottom = () => {
       const lastMessage = messages[messages.length - 1]
       
       if (lastMessage) {
-        // 使用 scrollIntoView 确保整个消息（包括底部）完全可见
-        lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' })
+        // 使用 scrollIntoView 确保消息可见，但不过度滚动
+        // 使用 'nearest' 而不是 'end'，避免内容被截断
+        lastMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
         
-        // 额外滚动一点距离，确保消息底部完全露出
+        // 检查并微调滚动位置
         setTimeout(() => {
           const containerHeight = messagesContainer.value.clientHeight
-          const scrollHeight = messagesContainer.value.scrollHeight
-          const currentScroll = messagesContainer.value.scrollTop
+          const messageTop = lastMessage.offsetTop
           const messageBottom = lastMessage.offsetTop + lastMessage.offsetHeight
+          const currentScroll = messagesContainer.value.scrollTop
+          const visibleBottom = currentScroll + containerHeight
           
-          // 如果消息底部没有完全显示，继续滚动
-          if (messageBottom > currentScroll + containerHeight) {
-            messagesContainer.value.scrollTop = messageBottom - containerHeight + 50 // 增加到50px边距，确保卡片底部操作按钮可见
+          // 如果消息底部没有完全显示，温和地调整滚动
+          if (messageBottom > visibleBottom - 80) { // 留80px缓冲区
+            // 滚动到能看到完整消息的位置
+            const targetScroll = messageBottom - containerHeight + 100 // 100px底部缓冲
+            messagesContainer.value.scrollTop = Math.max(0, targetScroll)
           }
-        }, 300) // 稍微延长等待时间，确保内容完全渲染
+        }, 400) // 等待内容渲染
       } else {
         // 备用方案：直接设置scrollTop
         messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
@@ -184,15 +188,12 @@ const scrollToBottom = () => {
 
 // 监听消息变化，自动滚动到底部
 watch(() => props.messages, (newMessages, oldMessages) => {
-  // 当有新消息时滚动
-  if (newMessages.length > 0) {
-    scrollToBottom()
-    // 对于某些情况，需要延迟执行以确保DOM更新完成
+  // 只在有新消息添加时滚动（而不是每次更新）
+  if (newMessages.length > (oldMessages?.length || 0)) {
+    // 延迟执行，确保DOM更新完成
     setTimeout(scrollToBottom, 100)
-    // 对于卡片消息，可能需要更长时间渲染
-    setTimeout(scrollToBottom, 500)
   }
-}, { deep: true, immediate: true })
+}, { deep: true })
 
 // 组件挂载时滚动到底部
 onMounted(() => {
@@ -293,6 +294,11 @@ nextTick(() => {
   position: relative;
 }
 
+/* 移动端允许更自由的滚动 */
+.message-list-view.mobile {
+  overflow: visible; /* 移动端不限制overflow */
+}
+
 /* 清除聊天记录按钮容器 */
 .clear-chat-container {
   position: absolute;
@@ -337,15 +343,16 @@ nextTick(() => {
 
 /* 移动端样式 */
 .message-list-view.mobile .messages-container {
-  padding: 16px 12px 280px 12px; /* 大幅增加底部空间，确保卡片完全显示 */
-  min-height: calc(100vh + 200px); /* 增加额外高度，允许更多滚动空间 */
+  padding: 16px 12px 180px 12px; /* 适度的底部空间，避免过度 */
+  min-height: 100%; /* 至少占满容器高度 */
+  /* 不设置超出视口的min-height，让内容自然撑开 */
 }
 
-/* 在消息容器底部添加额外的空白区域 */
+/* 在消息容器底部添加额外的空白区域，确保最后消息可见 */
 .message-list-view.mobile .messages-container::after {
   content: '';
   display: block;
-  height: 100px; /* 额外的底部空间 */
+  height: 60px; /* 适度的底部缓冲空间 */
   width: 100%;
 }
 

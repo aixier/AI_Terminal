@@ -261,7 +261,7 @@ const onLayoutTransition = (el, done) => {
 .mobile-view-container {
   flex: 1;
   height: 100%;
-  overflow: hidden; /* 改为hidden，让内部组件自己控制滚动 */
+  overflow: visible; /* 允许内容超出，让内部组件控制滚动 */
   position: relative;
   padding-top: var(--global-task-status-height, 0);
   /* 移除padding-bottom，让内部组件自己处理 */

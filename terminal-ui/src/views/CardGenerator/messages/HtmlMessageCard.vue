@@ -466,8 +466,16 @@ const fileName = computed(() => actualFileName.value)
 
 // 获取文件夹名（用于分享）
 const folderName = computed(() => {
+  // 优先使用实际的topic名称
+  if (props.resultData?.topic) {
+    return props.resultData.topic
+  }
+  if (props.topic) {
+    return props.topic
+  }
+  
   if (props.resultData) {
-    // 优先从resultData中查找文件夹信息
+    // 其次从resultData中查找文件夹信息
     if (props.resultData.folderName) return props.resultData.folderName
     if (props.resultData.folder) return props.resultData.folder
     if (props.resultData.taskId) return props.resultData.taskId
@@ -482,7 +490,7 @@ const folderName = computed(() => {
       }
     }
     
-    // 从fileName中提取（如"8月的川西.html" -> "8月的川西"）
+    // 最后从fileName中提取（如"8月的川西.html" -> "8月的川西"）
     if (props.resultData.fileName || props.fileName) {
       const name = props.resultData.fileName || props.fileName
       return name.replace(/\.(html|htm)$/i, '')

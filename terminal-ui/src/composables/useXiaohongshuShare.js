@@ -108,7 +108,10 @@ export function useXiaohongshuShare() {
         try {
           // 尝试获取页面信息（可选）
           loadingProgress.value = '正在获取模板信息...'
-          const queryUrl = `/api/generate/card/query/${encodeURIComponent(folderName)}`
+          // 对topic进行sanitize处理（与后端保持一致）
+          const sanitizedFolderName = folderName.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+          console.log('[XHS Share] Sanitized文件夹名称:', sanitizedFolderName)
+          const queryUrl = `/api/generate/card/query/${encodeURIComponent(sanitizedFolderName)}`
           const queryResponse = await fetch(queryUrl)
           
           if (queryResponse.ok) {

@@ -69,11 +69,53 @@ const loadTemplates = async () => {
         icon: t.icon || (t.outputType === 'html' ? '🌐' : '📄')
       }))
       
-      // 只显示快速和精细两个按钮
-      templates.value = apiTemplates.filter(t => 
+      // 只显示快速和精细两个按钮，并确保使用正确的名称
+      const filteredTemplates = apiTemplates.filter(t => 
         t.id === 'cardplanet-Sandra-json' || 
         t.id === 'daily-knowledge-card-template.md'
       )
+      
+      // 强制设置正确的显示名称，不依赖API返回的name
+      templates.value = filteredTemplates.map(t => {
+        if (t.id === 'cardplanet-Sandra-json') {
+          return {
+            ...t,
+            name: '快速',
+            description: '快速生成单个HTML卡片',
+            icon: '⚡',
+            outputCount: 1
+          }
+        } else if (t.id === 'daily-knowledge-card-template.md') {
+          return {
+            ...t,
+            name: '精细',
+            description: '生成4种样式的HTML卡片',
+            icon: '✨',
+            outputCount: 4
+          }
+        }
+        return t
+      })
+      
+      // 如果没有找到预期的模板，使用默认值
+      if (templates.value.length === 0) {
+        templates.value = [
+          {
+            id: 'cardplanet-Sandra-json',
+            name: '快速',
+            description: '快速生成单个HTML卡片',
+            icon: '⚡',
+            outputCount: 1
+          },
+          {
+            id: 'daily-knowledge-card-template.md',
+            name: '精细',
+            description: '生成4种样式的HTML卡片',
+            icon: '✨',
+            outputCount: 4
+          }
+        ]
+      }
     }
   } catch (error) {
     console.error('Failed to load template buttons:', error)

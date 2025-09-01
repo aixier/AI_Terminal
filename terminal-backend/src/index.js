@@ -294,7 +294,8 @@ app.get('/api-info', (req, res) => {
         generate: '/api/generate',
         sse: '/api/sse',
         preview: '/api/preview',
-        workspace: '/api/workspace'
+        workspace: '/api/workspace',
+        transcription: '/api/transcription'
       }
     },
     message: 'Welcome to AI Terminal Backend Service'

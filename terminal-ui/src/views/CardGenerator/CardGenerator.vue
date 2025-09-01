@@ -164,8 +164,6 @@
   
   <!-- Share dialog moved to PortfolioPage.vue -->
   
-  <!-- Mobile Debug Panel (only shows on mobile devices) -->
-  <MobileDebugPanel ref="debugPanel" />
 </template>
 
 <script setup>
@@ -195,7 +193,6 @@ import ResponsiveLayout from '../../layouts/ResponsiveLayout.vue'
 import GlobalTaskStatus from '../../components/GlobalTaskStatus.vue'
 // import TabNavigation from '../../components/mobile/TabNavigation.vue' // 已替换为 MobileNavigation
 import ContextMenu from '../../components/ContextMenu.vue'
-import MobileDebugPanel from '../../components/MobileDebugPanel.vue'
 
 // Import services and APIs
 import sseService from '../../services/sseService'

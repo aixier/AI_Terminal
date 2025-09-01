@@ -196,8 +196,24 @@ watch(() => props.shareResult, (newResult, oldResult) => {
     // 当新的分享结果生成时（且有分享链接），自动打开分享页面
     if (!oldResult && newResult.data.shareLink) {
       setTimeout(() => {
-        window.open(newResult.data.shareLink, '_blank')
-        ElMessage.success('分享页面已在新窗口打开')
+        // 检测是否是移动端
+        const isMobile = /Mobile|Android|iPhone/i.test(navigator.userAgent)
+        
+        if (isMobile) {
+          // 移动端：在当前页面打开，更可靠
+          window.location.href = newResult.data.shareLink
+          ElMessage.success('正在跳转到分享页面...')
+        } else {
+          // PC端：尝试新窗口打开
+          const newWindow = window.open(newResult.data.shareLink, '_blank')
+          if (newWindow) {
+            ElMessage.success('分享页面已在新窗口打开')
+          } else {
+            // 如果新窗口被阻止，在当前页面打开
+            window.location.href = newResult.data.shareLink
+            ElMessage.info('正在跳转到分享页面...')
+          }
+        }
       }, 500) // 稍微延迟，让用户看到成功提示
     }
   }
@@ -245,8 +261,24 @@ const copyShortLink = () => {
 const openShareLink = () => {
   const link = props.shareResult?.data?.shareLink
   if (link) {
-    // 直接在新窗口打开分享页面
-    window.open(link, '_blank')
+    // 检测是否是移动端
+    const isMobile = /Mobile|Android|iPhone/i.test(navigator.userAgent)
+    
+    if (isMobile) {
+      // 移动端：在当前页面打开，更可靠
+      window.location.href = link
+      ElMessage.success('正在跳转到分享页面...')
+    } else {
+      // PC端：尝试新窗口打开
+      const newWindow = window.open(link, '_blank')
+      if (newWindow) {
+        ElMessage.success('分享页面已在新窗口打开')
+      } else {
+        // 如果新窗口被阻止，在当前页面打开
+        window.location.href = link
+        ElMessage.info('正在跳转到分享页面...')
+      }
+    }
   } else {
     ElMessage.warning('分享链接尚未生成')
   }

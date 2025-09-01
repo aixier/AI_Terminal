@@ -218,9 +218,25 @@ export function useXiaohongshuShare() {
       // 直接打开分享链接
       if (result.data?.shareLink) {
         console.log('[XHS Share] 分享链接生成成功:', result.data.shareLink)
-        // 直接打开链接
-        window.open(result.data.shareLink, '_blank')
-        ElMessage.success('分享页面已在新窗口打开')
+        
+        // 检测是否是移动端
+        const isMobile = /Mobile|Android|iPhone/i.test(navigator.userAgent)
+        
+        if (isMobile) {
+          // 移动端：在当前页面打开，更可靠
+          window.location.href = result.data.shareLink
+          ElMessage.success('正在跳转到分享页面...')
+        } else {
+          // PC端：尝试新窗口打开
+          const newWindow = window.open(result.data.shareLink, '_blank')
+          if (newWindow) {
+            ElMessage.success('分享页面已在新窗口打开')
+          } else {
+            // 如果新窗口被阻止，在当前页面打开
+            window.location.href = result.data.shareLink
+            ElMessage.info('正在跳转到分享页面...')
+          }
+        }
       } else {
         ElMessage.warning('分享链接生成失败')
       }

@@ -571,26 +571,26 @@ const handleFullscreen = () => {
   iframe.srcdoc = processedHtml.value
   
   const closeBtn = document.createElement('button')
-  closeBtn.innerHTML = '✕'
+  closeBtn.innerHTML = '关闭'
   closeBtn.style.position = 'fixed'
   closeBtn.style.top = '20px'
   closeBtn.style.right = '20px'
   closeBtn.style.zIndex = '10000'
-  closeBtn.style.width = '40px'
-  closeBtn.style.height = '40px'
-  closeBtn.style.borderRadius = '50%'
+  closeBtn.style.padding = '8px 20px'
+  closeBtn.style.borderRadius = '8px'
   closeBtn.style.border = '1px solid rgba(255, 255, 255, 0.8)'
   closeBtn.style.background = 'linear-gradient(135deg, #ffe4e1 0%, #ffffff 100%)'
   closeBtn.style.color = '#666666'
-  closeBtn.style.fontSize = '18px'
+  closeBtn.style.fontSize = '14px'
   closeBtn.style.cursor = 'pointer'
   closeBtn.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.08)'
   closeBtn.style.transition = 'all 0.3s ease'
-  closeBtn.style.fontWeight = '300'
+  closeBtn.style.fontWeight = '400'
+  closeBtn.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
   
   // 添加 hover 效果
   closeBtn.onmouseenter = () => {
-    closeBtn.style.transform = 'scale(1.1)'
+    closeBtn.style.transform = 'scale(1.05)'
     closeBtn.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)'
     closeBtn.style.background = 'linear-gradient(135deg, #ffd4cc 0%, #ffffff 100%)'
   }

@@ -212,8 +212,10 @@ const displayTemplates = computed(() => {
     t.fileName === 'cardplanet-Sandra-json'
   )
   
+  // 直接使用后端数据，不做任何覆盖
   // 按照特定顺序排序：快速在前，精细在后
   return quickAndDetailTemplates.sort((a, b) => {
+    // daily-knowledge-card-template.md (快速) 在前
     if (a.fileName === 'daily-knowledge-card-template.md') return -1
     if (b.fileName === 'daily-knowledge-card-template.md') return 1
     return 0

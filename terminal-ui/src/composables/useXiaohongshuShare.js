@@ -190,10 +190,12 @@ export function useXiaohongshuShare() {
       // 关闭加载状态
       loadingInstance.close()
       
-      // 不直接打开链接，让ShareDialog处理
+      // 直接打开分享链接
       if (result.data?.shareLink) {
-        // 分享成功，数据会通过shareResult传递给ShareDialog
         console.log('[XHS Share] 分享链接生成成功:', result.data.shareLink)
+        // 直接打开链接
+        window.open(result.data.shareLink, '_blank')
+        ElMessage.success('分享页面已在新窗口打开')
       } else {
         ElMessage.warning('分享链接生成失败')
       }

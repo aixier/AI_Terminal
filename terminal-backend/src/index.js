@@ -17,6 +17,7 @@ import previewRoutes from './routes/preview.js'
 import generateRoutes from './routes/generate/index.js'
 import uploadRoutes from './routes/upload.js'
 import workspaceRoutes from './routes/workspace.js'
+import transcriptionRoutes from './routes/transcription.js'
 import { setupSocketHandlers } from './services/socketService.js'
 import websocketService from './services/websocketService.js'
 // import { preventCommandInjection, limitRequestSize, auditLog, rateLimit } from './middleware/security.js'
@@ -271,6 +272,9 @@ console.log('     ✓ /api/preview route registered')
 
 app.use('/api/workspace', workspaceRoutes)
 console.log('     ✓ /api/workspace route registered')
+
+app.use('/api/transcription', transcriptionRoutes)
+console.log('     ✓ /api/transcription route registered')
 
 // 5. API信息路由 (移到/api-info避免与静态文件冲突)
 console.log('  6️⃣ Registering API info route...')

@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElLoading } from 'element-plus'
 
 /**
  * 小红书分享通用组合式函数
@@ -83,7 +83,12 @@ export function useXiaohongshuShare() {
     loadingProgress.value = '正在读取文件内容...'
     shareDialogVisible.value = true  // 立即显示对话框
     
-    ElMessage.info('正在生成分享内容，请稍候...')
+    // 创建一个持久的加载实例，直到获得结果才关闭
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: '正在生成分享内容，请稍候...',
+      background: 'rgba(0, 0, 0, 0.7)'
+    })
 
     try {
       // 获取文件内容
@@ -111,7 +116,12 @@ export function useXiaohongshuShare() {
           // 对topic进行sanitize处理（与后端保持一致）
           const sanitizedFolderName = folderName.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
           console.log('[XHS Share] Sanitized文件夹名称:', sanitizedFolderName)
-          const queryUrl = `/api/generate/card/query/${encodeURIComponent(sanitizedFolderName)}`
+          
+          // 获取当前用户名
+          const username = localStorage.getItem('username') || 'default'
+          console.log('[XHS Share] 当前用户名:', username)
+          
+          const queryUrl = `/api/generate/card/query/${encodeURIComponent(sanitizedFolderName)}?username=${username}`
           const queryResponse = await fetch(queryUrl)
           
           if (queryResponse.ok) {
@@ -177,10 +187,13 @@ export function useXiaohongshuShare() {
       // 保存结果
       shareResult.value = result
       
-      // 直接打开分享链接
+      // 关闭加载状态
+      loadingInstance.close()
+      
+      // 不直接打开链接，让ShareDialog处理
       if (result.data?.shareLink) {
-        window.open(result.data.shareLink, '_blank')
-        ElMessage.success('正在打开分享页面...')
+        // 分享成功，数据会通过shareResult传递给ShareDialog
+        console.log('[XHS Share] 分享链接生成成功:', result.data.shareLink)
       } else {
         ElMessage.warning('分享链接生成失败')
       }
@@ -188,6 +201,10 @@ export function useXiaohongshuShare() {
       return true
       
     } catch (error) {
+      // 确保关闭加载状态
+      if (loadingInstance) {
+        loadingInstance.close()
+      }
       console.error('[XHS Share] 分享失败:', error)
       ElMessage.error('分享失败: ' + error.message)
       return false

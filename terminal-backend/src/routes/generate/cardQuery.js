@@ -72,18 +72,18 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
       })
     }
     
-    // 从sanitized名称恢复原始主题（这是个近似恢复，实际应该存储映射关系）
-    const originalTopic = folderName.replace(/_/g, ' ')
+    // folderName本身就是sanitized的topic名称，直接使用
+    // 不要尝试"恢复"，因为用户的原始topic可能就包含下划线
+    const sanitizedTopic = folderName
     
     console.log(`[Query Card API] ==================== QUERY REQUEST ====================`)
-    console.log(`[Query Card API] Folder Name: ${folderName}`)
-    console.log(`[Query Card API] Original Topic (approximated): ${originalTopic}`)
+    console.log(`[Query Card API] Folder Name (sanitized): ${folderName}`)
     console.log(`[Query Card API] Query Username: ${queryUsername}`)
     console.log(`[Query Card API] Auth Username: ${req.user.username}`)
     console.log(`[Query Card API] ================================================================`)
     
-    // 构建用户卡片路径
-    const userCardPath = userService.getUserCardPath(queryUsername, originalTopic)
+    // 构建用户卡片路径 - 传入的folderName已经是sanitized的
+    const userCardPath = userService.getUserCardPath(queryUsername, sanitizedTopic)
     
     console.log(`[Query Card API] User Card Path: ${userCardPath}`)
     
@@ -198,8 +198,8 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
       
       // 构建响应数据（与 /api/generate/card 保持一致）
       const responseData = {
-        topic: originalTopic,
-        sanitizedTopic: folderName,
+        topic: sanitizedTopic, // 使用sanitized的topic，因为原始topic未知
+        sanitizedTopic: sanitizedTopic,
         templateName: 'cardplanet-Sandra-json', // 默认模板，实际应该存储
         fileName: primaryFile.fileName,
         filePath: primaryFile.path,

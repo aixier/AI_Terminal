@@ -187,11 +187,19 @@ const showTagInput = ref(false)
 const suggestedTags = ref(['创作分享', '学习笔记', '知识分享', '个人成长', '工作技巧', '生活记录'])
 
 // Watch for share result changes to populate form
-watch(() => props.shareResult, (newResult) => {
+watch(() => props.shareResult, (newResult, oldResult) => {
   if (newResult?.data) {
     postTitle.value = newResult.data.title || ''
     postContent.value = newResult.data.content || ''
     postHashtags.value = newResult.data.hashtags || []
+    
+    // 当新的分享结果生成时（且有分享链接），自动打开分享页面
+    if (!oldResult && newResult.data.shareLink) {
+      setTimeout(() => {
+        window.open(newResult.data.shareLink, '_blank')
+        ElMessage.success('分享页面已在新窗口打开')
+      }, 500) // 稍微延迟，让用户看到成功提示
+    }
   }
 }, { immediate: true })
 

@@ -6,7 +6,9 @@ import { promises as fsPromises } from 'fs'
 import senseVoiceService from '../services/SenseVoice/index.js'
 import TaskManager from '../services/SenseVoice/TaskManager.js'
 import logger from '../utils/logger.js'
-import { OSSService } from '../services/oss/index.js'
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { OSSService } = require('../services/oss/index.js');
 
 const router = express.Router()
 

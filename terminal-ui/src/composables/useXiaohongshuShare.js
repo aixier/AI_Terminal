@@ -91,6 +91,10 @@ export function useXiaohongshuShare() {
     })
 
     try {
+      // 添加调试信息
+      console.log('[XHS Share Debug] 开始分享流程')
+      console.log('[XHS Share Debug] 用户代理:', navigator.userAgent)
+      console.log('[XHS Share Debug] 是否移动端:', /Mobile|Android|iPhone/i.test(navigator.userAgent))
       // 获取文件内容
       loadingProgress.value = '正在读取文件内容...'
       const content = await getFileContent(file)
@@ -166,6 +170,10 @@ export function useXiaohongshuShare() {
 
       // 发送分享请求
       loadingProgress.value = '正在生成分享内容，请稍候...'
+      
+      console.log('[XHS Share Debug] 请求体大小:', JSON.stringify(requestBody).length, '字符')
+      console.log('[XHS Share Debug] 请求URL:', '/api/generate/share/xiaohongshu')
+      
       const response = await fetch('/api/generate/share/xiaohongshu', {
         method: 'POST',
         headers: {
@@ -173,9 +181,26 @@ export function useXiaohongshuShare() {
         },
         body: JSON.stringify(requestBody)
       })
+      
+      console.log('[XHS Share Debug] 响应状态:', response.status)
 
       if (!response.ok) {
-        throw new Error(`API请求失败: ${response.status}`)
+        // 获取详细错误信息
+        let errorDetail = `${response.status}`
+        try {
+          const errorText = await response.text()
+          console.error('[XHS Share Debug] 错误响应:', errorText)
+          try {
+            const errorData = JSON.parse(errorText)
+            errorDetail = errorData.message || errorData.error || `HTTP ${response.status}`
+          } catch (e) {
+            // 不是JSON格式
+            errorDetail = `HTTP ${response.status}: ${errorText.substring(0, 100)}`
+          }
+        } catch (e) {
+          console.error('[XHS Share Debug] 无法读取错误响应')
+        }
+        throw new Error(errorDetail)
       }
 
       const result = await response.json()
@@ -208,7 +233,35 @@ export function useXiaohongshuShare() {
         loadingInstance.close()
       }
       console.error('[XHS Share] 分享失败:', error)
-      ElMessage.error('分享失败: ' + error.message)
+      
+      // 显示更详细的错误信息
+      const errorMsg = error.message || '未知错误'
+      
+      // 移动端显示更详细的错误
+      if (/Mobile|Android|iPhone/i.test(navigator.userAgent)) {
+        ElMessage.error({
+          message: `分享失败: ${errorMsg}`,
+          duration: 8000,  // 移动端显示更长时间
+          showClose: true,
+          dangerouslyUseHTMLString: true,
+          customClass: 'mobile-error-message'
+        })
+        
+        console.error('[XHS Share] 移动端错误详情:')
+        console.error('- 错误信息:', errorMsg)
+        console.error('- User Agent:', navigator.userAgent)
+        console.error('- 可能原因:')
+        console.error('  1. 请求超时（移动网络不稳定）')
+        console.error('  2. 请求体过大（移动网络限制）')
+        console.error('  3. CORS问题（移动浏览器安全策略）')
+      } else {
+        ElMessage.error({
+          message: `分享失败: ${errorMsg}`,
+          duration: 5000,
+          showClose: true
+        })
+      }
+      
       return false
     } finally {
       isSharing.value = false

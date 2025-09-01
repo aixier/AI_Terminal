@@ -579,12 +579,27 @@ const handleFullscreen = () => {
   closeBtn.style.width = '40px'
   closeBtn.style.height = '40px'
   closeBtn.style.borderRadius = '50%'
-  closeBtn.style.border = 'none'
-  closeBtn.style.backgroundColor = '#f56c6c'
-  closeBtn.style.color = '#fff'
-  closeBtn.style.fontSize = '20px'
+  closeBtn.style.border = '1px solid rgba(255, 255, 255, 0.8)'
+  closeBtn.style.background = 'linear-gradient(135deg, #ffe4e1 0%, #ffffff 100%)'
+  closeBtn.style.color = '#666666'
+  closeBtn.style.fontSize = '18px'
   closeBtn.style.cursor = 'pointer'
-  closeBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)'
+  closeBtn.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.08)'
+  closeBtn.style.transition = 'all 0.3s ease'
+  closeBtn.style.fontWeight = '300'
+  
+  // 添加 hover 效果
+  closeBtn.onmouseenter = () => {
+    closeBtn.style.transform = 'scale(1.1)'
+    closeBtn.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)'
+    closeBtn.style.background = 'linear-gradient(135deg, #ffd4cc 0%, #ffffff 100%)'
+  }
+  
+  closeBtn.onmouseleave = () => {
+    closeBtn.style.transform = 'scale(1)'
+    closeBtn.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.08)'
+    closeBtn.style.background = 'linear-gradient(135deg, #ffe4e1 0%, #ffffff 100%)'
+  }
   
   closeBtn.onclick = () => {
     document.body.removeChild(iframe)

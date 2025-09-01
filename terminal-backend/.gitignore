@@ -7,3 +7,57 @@ logs/
 .DS_Store
 dist/
 build/
+
+# 敏感信息
+*.key
+*.pem
+config/production.json
+config/local.json
+
+# 测试输出文件
+test-result.json
+test-results/
+*.transcription.txt
+*.transcription.json
+*-转录*.md
+*-转录*.json
+*.srt
+
+# 测试脚本（保留核心测试文件）
+test-*.js
+!test-transcription-final.js
+parse-transcription.js
+test-oss-direct.js
+test-transcription.js
+test-transcription-complete.js
+
+# 临时文件
+temp/
+tmp/
+uploads/
+data/uploads/
+data/tasks/
+
+# 本地测试视频文件
+*.mp4
+*.mp3
+*.wav
+*.m4a
+*.mov
+*.avi
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Mac
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*

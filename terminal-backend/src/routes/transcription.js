@@ -8,7 +8,7 @@ import TaskManager from '../services/SenseVoice/TaskManager.js'
 import logger from '../utils/logger.js'
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const { OSSService } = require('../services/oss/index.js');
+const { OSSService } = require('../services/oss/index.cjs');
 
 const router = express.Router()
 

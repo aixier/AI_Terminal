@@ -3,7 +3,8 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import { promises as fsPromises } from 'fs'
-import transcriptionService from '../services/transcriptionService.js'
+import senseVoiceService from '../services/SenseVoice/index.js'
+import TaskManager from '../services/SenseVoice/TaskManager.js'
 import logger from '../utils/logger.js'
 
 const router = express.Router()
@@ -25,7 +26,7 @@ const storage = multer.diskStorage({
 // 文件过滤器
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase().replace('.', '')
-  if (transcriptionService.getSupportedFormats().includes(ext)) {
+  if (senseVoiceService.getSupportedFormats().includes(ext)) {
     cb(null, true)
   } else {
     cb(new Error(`Unsupported file format: ${ext}`), false)
@@ -69,8 +70,8 @@ router.post('/file', upload.single('file'), async (req, res) => {
       enablePunctuation: req.body.enablePunctuation !== 'false'
     }
 
-    // 调用转录服务
-    const result = await transcriptionService.transcribe(filePath, options)
+    // 提交转录任务
+    const result = await senseVoiceService.submitTranscriptionTask(filePath, options)
 
     // 删除临时文件
     await fsPromises.unlink(filePath).catch(err => {
@@ -112,8 +113,8 @@ router.post('/url', async (req, res) => {
 
     logger.info(`Processing transcription from URL: ${url}`)
 
-    // 调用转录服务
-    const result = await transcriptionService.transcribeFromUrl(url, options)
+    // 提交URL转录任务
+    const result = await senseVoiceService.submitUrlTranscriptionTask(url, options)
 
     res.json(result)
   } catch (error) {
@@ -133,7 +134,7 @@ router.post('/url', async (req, res) => {
 router.get('/formats', (req, res) => {
   res.json({
     success: true,
-    formats: transcriptionService.getSupportedFormats(),
+    formats: senseVoiceService.getSupportedFormats(),
     maxFileSize: '100MB'
   })
 })
@@ -170,7 +171,7 @@ router.post('/batch', upload.array('files', 10), async (req, res) => {
     // 并行处理所有文件
     const promises = req.files.map(async (file) => {
       try {
-        const result = await transcriptionService.transcribe(file.path, options)
+        const result = await senseVoiceService.submitTranscriptionTask(file.path, options)
         results.push({
           filename: file.originalname,
           ...result
@@ -213,6 +214,138 @@ router.post('/batch', upload.array('files', 10), async (req, res) => {
     res.status(error.status || 500).json({
       success: false,
       error: error.message || 'Batch transcription failed'
+    })
+  }
+})
+
+/**
+ * GET /api/transcription/task/:taskId
+ * 获取任务状态
+ */
+router.get('/task/:taskId', async (req, res) => {
+  try {
+    const { taskId } = req.params
+    const result = await senseVoiceService.getTaskStatus(taskId)
+    res.json(result)
+  } catch (error) {
+    logger.error('Get task status error:', error)
+    res.status(404).json({
+      success: false,
+      error: error.message || 'Task not found'
+    })
+  }
+})
+
+/**
+ * GET /api/transcription/task/:taskId/result
+ * 获取任务结果
+ */
+router.get('/task/:taskId/result', async (req, res) => {
+  try {
+    const { taskId } = req.params
+    const result = await senseVoiceService.getTaskResult(taskId)
+    
+    if (!result.success && result.status !== 'succeeded') {
+      return res.status(result.status === 'failed' ? 400 : 202).json(result)
+    }
+    
+    res.json(result)
+  } catch (error) {
+    logger.error('Get task result error:', error)
+    res.status(404).json({
+      success: false,
+      error: error.message || 'Task not found'
+    })
+  }
+})
+
+/**
+ * GET /api/transcription/tasks
+ * 获取任务列表
+ */
+router.get('/tasks', (req, res) => {
+  try {
+    const filter = {
+      status: req.query.status,
+      type: req.query.type,
+      since: req.query.since,
+      page: req.query.page ? parseInt(req.query.page) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit) : 20
+    }
+    
+    const result = TaskManager.getAllTasks(filter)
+    res.json({
+      success: true,
+      ...result
+    })
+  } catch (error) {
+    logger.error('Get tasks list error:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get tasks'
+    })
+  }
+})
+
+/**
+ * DELETE /api/transcription/task/:taskId
+ * 删除任务
+ */
+router.delete('/task/:taskId', async (req, res) => {
+  try {
+    const { taskId } = req.params
+    await TaskManager.deleteTask(taskId)
+    res.json({
+      success: true,
+      message: 'Task deleted successfully'
+    })
+  } catch (error) {
+    logger.error('Delete task error:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to delete task'
+    })
+  }
+})
+
+/**
+ * POST /api/transcription/task/:taskId/retry
+ * 重试失败的任务
+ */
+router.post('/task/:taskId/retry', async (req, res) => {
+  try {
+    const { taskId } = req.params
+    const newTaskId = await TaskManager.retryTask(taskId)
+    res.json({
+      success: true,
+      newTaskId,
+      message: 'Task retry submitted'
+    })
+  } catch (error) {
+    logger.error('Retry task error:', error)
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to retry task'
+    })
+  }
+})
+
+/**
+ * GET /api/transcription/statistics
+ * 获取统计信息
+ */
+router.get('/statistics', (req, res) => {
+  try {
+    const stats = TaskManager.getStatistics()
+    res.json({
+      success: true,
+      statistics: stats
+    })
+  } catch (error) {
+    logger.error('Get statistics error:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get statistics'
     })
   }
 })

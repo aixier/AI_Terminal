@@ -48,7 +48,7 @@ export function setupSocketHandlers(io) {
   if (process.env.NODE_ENV === 'development') {
     setInterval(() => {
       const stats = socketHandler.getStats()
-      logger.debug('[SocketService] Stats:', stats)
+      // logger.debug('[SocketService] Stats:', stats)
     }, 60000) // 每分钟报告一次
   }
 

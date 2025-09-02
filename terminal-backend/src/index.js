@@ -147,11 +147,11 @@ console.log('  1️⃣ Registering CORS middleware...')
 app.use(cors({
   origin: (origin, callback) => {
     // 记录所有 CORS 请求
-    if (origin) {
-      logger.debug(`CORS check for origin: ${origin}`)
-    } else {
-      logger.debug(`CORS check for direct access (no origin)`)
-    }
+    // if (origin) {
+    //   logger.debug(`CORS check for origin: ${origin}`)
+    // } else {
+    //   logger.debug(`CORS check for direct access (no origin)`)
+    // }
     
     // 允许所有配置的源以及常见的本地地址，同时允许无origin的直接访问（静态资源）
     if (!origin || 
@@ -188,8 +188,9 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 console.log('     ✓ Body Parser middleware registered')
 
-// 3. 请求日志中间件
-console.log('  3️⃣ Registering Request Logging middleware...')
+// 3. 请求日志中间件 - 已禁用以减少日志噪音
+console.log('  3️⃣ Request Logging middleware disabled for cleaner output')
+/*
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString()
   const logMessage = `[${timestamp}] ${req.method} ${req.url}`
@@ -230,7 +231,8 @@ app.use((req, res, next) => {
   
   next()
 })
-console.log('     ✓ Request Logging middleware registered')
+*/
+// console.log('     ✓ Request Logging middleware registered')
 
 // 4. 安全中间件 - 暂时禁用，调试完成后启用
 console.log('  4️⃣ Security middleware: DISABLED (for debugging)')

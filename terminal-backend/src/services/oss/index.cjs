@@ -1,7 +1,7 @@
-const OSSClient = require('./oss-client');
-const MultipartUploadManager = require('./multipart-upload');
-const STSManager = require('./sts-manager');
-const config = require('./config');
+const OSSClient = require('./oss-client.cjs');
+const MultipartUploadManager = require('./multipart-upload.cjs');
+const STSManager = require('./sts-manager.cjs');
+const config = require('./config.cjs');
 
 /**
  * OSS服务主入口

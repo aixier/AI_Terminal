@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《你，静不下来》第二期 戴军、艳艳 - 播客卡片</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Long+Cang&family=Noto+Sans+SC:wght@400;600;700;800&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        
+        .cards-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+        
+        /* 封面样式 - 新闻感母板 */
+        .cover-card {
+            width: 375px;
+            height: 500px;
+            aspect-ratio: 3/4;
+            position: relative;
+            background-image: linear-gradient(rgba(255,255,255,0.5), rgba(255,255,255,0.5)), 
+                              url('../templates/custom_1756817359336/CDN/封面背景.jpeg');
+            background-size: cover, cover;
+            background-position: center, center;
+            background-repeat: no-repeat, no-repeat;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 1px 3px rgba(0,0,0,0.1),
+                0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        /* 遮罩层 */
+        .mask-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.18) 100%);
+            pointer-events: none;
+        }
+        
+        .mask-left-gradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 55%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(0,0,0,0.28), transparent);
+            pointer-events: none;
+        }
+        
+        .mask-top-gradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 350px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.30), transparent);
+            pointer-events: none;
+        }
+        
+        /* 顶部播客信息 */
+        .podcast-header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            height: 67px;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+        
+        .podcast-header-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+        
+        /* 标题区域 */
+        .title-container {
+            position: absolute;
+            top: 110px;
+            left: 40px;
+            right: 40px;
+            z-index: 10;
+        }
+        
+        .title-h1 {
+            margin: 0;
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 0.95;
+            letter-spacing: -0.01em;
+            color: #FFF;
+            text-align: right;
+            text-shadow: 0 2px 3px rgba(0,0,0,0.25);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .title-h2 {
+            margin: 18px 0 0 0;
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 34px;
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -0.005em;
+            color: #FFF;
+            text-align: right;
+            text-shadow: 0 2px 3px rgba(0,0,0,0.25);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .capsule-container {
+            margin-top: 24px;
+            text-align: right;
+        }
+        
+        .capsule-tag {
+            display: inline-block;
+            background-color: #F8F6F2;
+            font-family: 'Long Cang', cursive;
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.2;
+            padding: 8px 16px;
+            border-radius: 24px;
+            white-space: nowrap;
+        }
+        
+        .capsule-text-normal {
+            color: #666;
+        }
+        
+        .capsule-text-highlight {
+            color: #22C55E;
+        }
+        
+        /* 底部主持人图片 */
+        .host-section {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            overflow: hidden;
+        }
+        
+        .host-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+        }
+        
+        /* 内容页通用样式 */
+        .content-card {
+            width: 375px;
+            height: 500px;
+            aspect-ratio: 3/4;
+            position: relative;
+            border-radius: 0;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            margin: 0 auto;
+        }
+        
+        /* 样式1：上下分区式（浅色版） */
+        .style1-light {
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            position: relative;
+        }
+        
+        .style1-light-image {
+            width: 100%;
+            height: 65%;
+            object-fit: cover;
+        }
+        
+        .style1-light::before {
+            content: '';
+            position: absolute;
+            top: 55%;
+            left: 0;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(to bottom, 
+                transparent 0%, 
+                rgba(248,246,242,0.2) 30%,
+                rgba(248,246,242,0.6) 70%,
+                rgba(248,246,242,0.9) 100%
+            );
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .style1-light-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 38%;
+            padding: 20px;
+            background: 
+                linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)),
+                url('../templates/custom_1756817359336/CDN/样式1纹理.jpg');
+            background-size: cover;
+            background-position: center;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 3;
+            box-shadow: 
+                0 -4px 16px rgba(0,0,0,0.06),
+                inset 0 2px 8px rgba(0,0,0,0.05);
+            backdrop-filter: blur(12px) saturate(180%);
+            clip-path: path('M 0 40 C 150 10, 225 10, 375 0 L 375 500 L 0 500 Z');
+        }
+        
+        .style1-light-text {
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0;
+            text-align: left;
+        }
+        
+        /* 样式2：左右分栏式（杂志感） */
+        .style2 {
+            display: flex;
+            background: #fff;
+        }
+        
+        .style2-image {
+            width: 60%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .style2-content {
+            width: 40%;
+            padding: 25px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: #f8f9fa;
+            position: relative;
+        }
+        
+        .style2-first-lines {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.4;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            border-left: 3px solid #22C55E;
+            padding-left: 10px;
+        }
+        
+        .style2-text {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #555;
+            margin: 0;
+        }
+        
+        .style2-quote {
+            font-size: 48px;
+            color: #22C55E;
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            line-height: 1;
+            opacity: 0.3;
+        }
+        
+        /* 样式4：首句放大式（抓眼） */
+        .style4 {
+            background: url('../templates/custom_1756817359336/CDN/样式4纹理.jpg');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .style4-image {
+            width: 100%;
+            height: 45%;
+            object-fit: cover;
+        }
+        
+        .style4-content {
+            height: 55%;
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .style4-first-line {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c3e50;
+            line-height: 1.3;
+            margin-bottom: 15px;
+            border-left: 4px solid #F1C40F;
+            padding-left: 12px;
+        }
+        
+        .style4-rest {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #555;
+            flex: 1;
+        }
+        
+        /* 样式5：阶梯式照片叠加风格 */
+        .style5 {
+            position: relative;
+            background: #000;
+        }
+        
+        .top-face-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            background-size: cover;
+            background-position: center 25%;
+            z-index: 7;
+        }
+        
+        .bg-strip {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center 50%;
+        }
+        
+        .strip-1 { top: 200px; z-index: 6; }
+        .strip-2 { top: 250px; z-index: 5; }
+        .strip-3 { top: 300px; z-index: 4; }
+        .strip-4 { top: 350px; z-index: 3; }
+        .strip-5 { top: 400px; z-index: 2; }
+        .strip-6 { top: 450px; z-index: 1; }
+        
+        .strip-text {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            line-height: 1.4;
+            text-align: center;
+            padding: 4px 12px;
+            box-sizing: border-box;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
+            z-index: 10;
+        }
+        
+        .text-strip-1 { top: 200px; }
+        .text-strip-2 { top: 250px; }
+        .text-strip-3 { top: 300px; }
+        .text-strip-4 { top: 350px; }
+        .text-strip-5 { top: 400px; }
+        .text-strip-6 { top: 450px; }
+        
+        /* 高亮词汇样式 */
+        .highlight {
+            color: #22C55E;
+            font-weight: 600;
+        }
+        
+        .highlight-green {
+            color: #22C55E;
+            font-weight: 600;
+        }
+        
+        /* 内容页小标题样式 */
+        .card-subtitle {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(51, 51, 51, 0.3);
+            white-space: nowrap;
+            z-index: 4;
+        }
+        
+        .card-subtitle-style2 {
+            position: absolute;
+            bottom: 8px;
+            right: 18px;
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(51, 51, 51, 0.3);
+            white-space: nowrap;
+            z-index: 4;
+        }
+        
+        .card-subtitle-style4 {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(51, 51, 51, 0.3);
+            white-space: nowrap;
+            z-index: 4;
+        }
+        
+        .card-subtitle-style5 {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
+            z-index: 10;
+        }
+        
+        /* 水印样式 */
+        .watermark {
+            position: absolute;
+            right: 20px;
+            bottom: 4px;
+            width: 24px;
+            height: 24px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .watermark img {
+            width: 100%;
+            height: 100%;
+            filter: grayscale(100%) opacity(0.6);
+        }
+        
+        .style2-content .watermark {
+            right: 18px;
+        }
+        
+        .style2-content .watermark img {
+            filter: grayscale(100%) opacity(0.4) brightness(0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="cards-container">
+        <!-- 封面卡片 -->
+        <div class="cover-card">
+            <div class="mask-vignette"></div>
+            <div class="mask-left-gradient"></div>
+            <div class="mask-top-gradient"></div>
+            
+            <div class="podcast-header">
+                <img src="../templates/custom_1756817359336/李静/第二期/照片/封面顶部.png" alt="播客头部" class="podcast-header-image">
+            </div>
+            
+            <div class="title-container">
+                <h1 class="title-h1">19岁收到500元工资</h1>
+                <h2 class="title-h2">认定老板值得跟随</h2>
+                <div class="capsule-container">
+                    <span class="capsule-tag">
+                        <span class="capsule-text-normal">开启25年深厚</span>
+                        <span class="capsule-text-highlight">友谊</span>
+                    </span>
+                </div>
+            </div>
+            
+            <div class="host-section">
+                <img src="../templates/custom_1756817359336/李静/第二期/照片/封面底部.png" alt="主持人合照" class="host-image">
+            </div>
+        </div>
+
+        <!-- 内容页1：样式1 -->
+        <div class="content-card style1-light">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12351750995095_.pic_hd.jpg" alt="访谈现场" class="style1-light-image">
+            <div class="style1-light-content">
+                <p class="style1-light-text">
+                    "我觉得年轻就像你身上有个伤口一样，你好的特别快，我们就很容易笑，我们很容易开心。我们特别的渺小，特别的一无所有。但是我们把每一个尴尬都变成了<span class="highlight-green">段子</span>。"
+                </p>
+                <div class="card-subtitle">年轻时的乐观心态</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容页2：样式2 -->
+        <div class="content-card style2">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12361750995096_.pic_hd.jpg" alt="访谈现场" class="style2-image">
+            <div class="style2-content">
+                <div class="style2-quote">"</div>
+                <div class="style2-first-lines">
+                    "我就没想到我的这个老板真的他给了我500块钱"
+                </div>
+                <p class="style2-text">
+                    "我当时就认定他了。我们两个就指着那一个一个上来的人，我们就说终有一天从下面上来的人，每一个都会认识我们。"
+                </p>
+                <div class="card-subtitle-style2">初入职场的感动</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容页3：样式4 -->
+        <div class="content-card style4">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12381750995098_.pic_hd.jpg" alt="访谈现场" class="style4-image">
+            <div class="style4-content">
+                <div class="style4-first-line">
+                    "我就真的自己在电脑上写信转给所有我认为能够递到这个人的手里面"
+                </div>
+                <div class="style4-rest">
+                    "让他帮助我。我可能太清醒了，觉得这件事情意义不大就不做。我做超级访问跟你们在一起，我觉得这是有意义的一件事。"
+                </div>
+                <div class="card-subtitle-style4">寻求帮助的勇气</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容页4：样式1 -->
+        <div class="content-card style1-light">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12391750995099_.pic_hd.jpg" alt="访谈现场" class="style1-light-image">
+            <div class="style1-light-content">
+                <p class="style1-light-text">
+                    "抱的时候我就跟他转了个身，他到了门外，我到了门里，我就这么进去了，你知道吗？我必须要亲自把我内心的<span class="highlight-green">感恩之情</span>表达出来。"
+                </p>
+                <div class="card-subtitle">巧妙混入的智慧</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容页5：样式5 -->
+        <div class="content-card style5">
+            <div class="top-face-layer" style="background-image: url('../templates/custom_1756817359336/李静/第二期/照片/12401750995103_.pic_hd.jpg');"></div>
+            
+            <div class="bg-strip strip-1" style="background-image: url('../templates/custom_1756817359336/李静/第二期/照片/12401750995103_.pic_hd.jpg');"></div>
+            <div class="bg-strip strip-2" style="background-image: url('../templates/custom_1756817359336/李静/第二期/照片/12401750995103_.pic_hd.jpg');"></div>
+            <div class="bg-strip strip-3" style="background-image: url('../templates/custom_1756817359336/李静/第二期/照片/12401750995103_.pic_hd.jpg');"></div>
+            <div class="bg-strip strip-4" style="background-image: url('../templates/custom_1756817359336/李静/第二期/照片/12401750995103_.pic_hd.jpg');"></div>
+            <div class="bg-strip strip-5" style="background-image: url('../templates/custom_1756817359336/李静/第二期/照片/12401750995103_.pic_hd.jpg');"></div>
+            <div class="bg-strip strip-6" style="background-image: url('../templates/custom_1756817359336/李静/第二期/照片/12401750995103_.pic_hd.jpg');"></div>
+            
+            <div class="strip-text text-strip-1">"大家好，欢迎来到我们的播客"</div>
+            <div class="strip-text text-strip-2">"你静不下来，这应该是我们的第二期了"</div>
+            <div class="strip-text text-strip-3">"我们做这档播客的初衷就是先紧着自己痛快"</div>
+            <div class="strip-text text-strip-4">"然后再请着各位痛快"</div>
+            <div class="strip-text text-strip-5">"大家如果有什么建议都可以给我们提"</div>
+            <div class="strip-text text-strip-6">"因为作为主持人，我更希望在这个播客里面是一个二把手"</div>
+            
+            <div class="card-subtitle-style5">播客开场白</div>
+        </div>
+
+        <!-- 内容页6：样式2 -->
+        <div class="content-card style2">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12411750995105_.pic_hd.jpg" alt="访谈现场" class="style2-image">
+            <div class="style2-content">
+                <div class="style2-quote">"</div>
+                <div class="style2-first-lines">
+                    "25年，我的斜对面那个也是25年"
+                </div>
+                <p class="style2-text">
+                    "所以青来的这两个朋友加起来是半个世纪。咱能别讲我正对面的就是应该算是我的一个特别重要的合作伙伴。"
+                </p>
+                <div class="card-subtitle-style2">25年的深厚友谊</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容页7：样式4 -->
+        <div class="content-card style4">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12421750995106_.pic_hd.jpg" alt="访谈现场" class="style4-image">
+            <div class="style4-content">
+                <div class="style4-first-line">
+                    "燕燕是我们超级访问的制片人"
+                </div>
+                <div class="style4-rest">
+                    "就是在我的公司我们一直在做内容，她是我们公司一号员工，19岁，我们认识的跟军哥认识是20岁。所以我们今天的主题叫什么？叫为什么我们还不散。"
+                </div>
+                <div class="card-subtitle-style4">团队核心成员介绍</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容页8：样式1 -->
+        <div class="content-card style1-light">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12431750995108_.pic_hd.jpg" alt="访谈现场" class="style1-light-image">
+            <div class="style1-light-content">
+                <p class="style1-light-text">
+                    "我觉得好不容易可以跟你们一块做节目了，我还有点紧张。我们三个第一次这么正经坐在这儿是吗？真的是我曾经想象过我们四个人坐一块儿，那是在<span class="highlight-green">打灌蛋</span>。"
+                </p>
+                <div class="card-subtitle">难得的正式聚会</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容页9：样式2 -->
+        <div class="content-card style2">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12441750995109_.pic_hd.jpg" alt="访谈现场" class="style2-image">
+            <div class="style2-content">
+                <div class="style2-quote">"</div>
+                <div class="style2-first-lines">
+                    "别忘了很多人是在地铁上听咱们今天讲笑话"
+                </div>
+                <p class="style2-text">
+                    "注意点咖啡别泼到别人脸上。在地铁里喝咖啡不允许的，地铁里不能吃东西的。你看咱们四个就是好久没有坐过地铁了。"
+                </p>
+                <div class="card-subtitle-style2">对听众的关怀</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容页10：样式4 -->
+        <div class="content-card style4">
+            <img src="../templates/custom_1756817359336/李静/第二期/照片/12451750995110_.pic.jpg" alt="访谈现场" class="style4-image">
+            <div class="style4-content">
+                <div class="style4-first-line">
+                    "以前真的是坐地铁，我就恨人家"
+                </div>
+                <div class="style4-rest">
+                    "因为早上起早要赶班，我们当时也是要做特别早班的。拿一韭菜盒子，你知道吗？你就是喷一瓶的香奈儿五号镇不住它。"
+                </div>
+                <div class="card-subtitle-style4">回忆早年辛苦时光</div>
+                <div class="watermark">
+                    <img src="../templates/custom_1756817359336/CDN/cardplanet_logo_filled.svg" alt="CardPlanet Logo">
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

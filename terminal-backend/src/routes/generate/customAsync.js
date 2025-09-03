@@ -10,6 +10,7 @@ import { ensureCardFolder, updateFolderStatus } from './utils/folderManager.js'
 import { SessionMetadata } from './utils/sessionMetadata.js'
 import zipProcessor from '../../utils/zipProcessor.js'
 import promptProcessor from '../../utils/promptProcessor.js'
+import htmlToBase64Converter from '../../utils/htmlToBase64Converter.js'
 
 const router = express.Router()
 
@@ -255,46 +256,58 @@ async function processInBackground(
     metadata.addLog('info', '第一次AI生成完成', { fileName: firstResult.fileName })
     await metadata.save(userCardPath)
     
-    // 2. 第二次AI生成 - 嵌入base64图片（使用同一个session）
-    console.log('[CustomAsync Background] Phase 2: Second AI generation (embed base64 images)')
-    console.log('[CustomAsync Background] Using same session for context continuity')
+    // 2. 直接使用组件进行Base64转换
+    console.log('[CustomAsync Background] Phase 2: Base64 conversion using component')
     await updateFolderStatus(userCardPath, 'embedding', { taskId })
     metadata.data.custom.phases.base64Embedding = 'processing'
     await metadata.save(userCardPath)
     
-    // 构建第二次提示词，明确指定输出文件名和要求
-    const outputFileName = firstResult.fileName.replace('.html', '_with_base64.html')
-    const base64Prompt = `写个Python脚本，将刚才生成的HTML文件 ${firstResult.fileName} 中的所有图片转换为base64并嵌入。
-
-具体要求：
-1. 读取HTML文件：${path.join(userCardPath, firstResult.fileName)}
-2. 使用正则表达式或BeautifulSoup找出所有<img>标签
-3. 提取每个img标签的src属性（可能是相对路径或绝对路径）
-4. 读取对应的图片文件（支持png、jpg、jpeg、gif、svg、webp等格式）
-5. 将图片转换为base64编码
-6. 将src替换为data:image/[format];base64,[data]格式
-7. 保存为新文件：${path.join(userCardPath, outputFileName)}
-8. 打印处理结果，显示转换了多少个图片
-
-请直接执行这个脚本，确保生成文件 ${outputFileName}`
+    const htmlFilePath = path.join(userCardPath, firstResult.fileName)
+    console.log('[CustomAsync Background] Converting HTML to base64:', htmlFilePath)
+    console.log('[CustomAsync Background] Template path for reference:', templatePath)
     
-    console.log('[CustomAsync Background] Second prompt for base64 embedding:')
-    console.log('[CustomAsync Background]', base64Prompt)
-    
-    // 执行第二次生成，检测带 _with_base64 后缀的文件，使用同一个session
-    const secondResult = await generateWithAI(
-      base64Prompt, 
-      userCardPath, 
-      username, 
-      folderName + '_base64',
-      { filePattern: '_with_base64', apiId }  // 传入相同的apiId
+    // 使用专用组件进行转换
+    const conversionResult = await htmlToBase64Converter.convertHtmlToBase64(
+      htmlFilePath,
+      templatePath  // 模板基础路径用于解析相对路径
     )
     
-    metadata.data.custom.phases.base64Embedding = 'completed'
-    metadata.addLog('info', 'Base64图片嵌入完成', { 
-      originalFile: firstResult.fileName,
-      base64File: secondResult.fileName 
-    })
+    let secondResult
+    
+    if (conversionResult.success) {
+      console.log('[CustomAsync Background] Base64 conversion successful!')
+      console.log(`[CustomAsync Background] Output file: ${conversionResult.outputFile}`)
+      console.log(`[CustomAsync Background] Stats:`, conversionResult.stats)
+      
+      metadata.data.custom.phases.base64Embedding = 'completed'
+      metadata.addLog('info', 'Base64图片嵌入完成', { 
+        originalFile: firstResult.fileName,
+        base64File: path.basename(conversionResult.outputFile),
+        stats: conversionResult.stats
+      })
+      
+      // 创建与原来相同格式的结果对象
+      secondResult = {
+        htmlContent: await fs.readFile(conversionResult.outputFile, 'utf-8'),
+        fileName: path.basename(conversionResult.outputFile)
+      }
+      
+    } else {
+      console.error('[CustomAsync Background] Base64 conversion failed:', conversionResult.error)
+      metadata.data.custom.phases.base64Embedding = 'failed'
+      metadata.addLog('error', 'Base64图片嵌入失败: ' + conversionResult.error)
+      
+      // 转换失败时，复制原文件作为fallback
+      const fallbackFileName = firstResult.fileName.replace('.html', '_with_base64.html')
+      const fallbackPath = path.join(userCardPath, fallbackFileName)
+      await fs.copyFile(htmlFilePath, fallbackPath)
+      
+      secondResult = {
+        htmlContent: firstResult.htmlContent,
+        fileName: fallbackFileName
+      }
+    }
+    
     await metadata.save(userCardPath)
     
     // 3. 更新状态为完成

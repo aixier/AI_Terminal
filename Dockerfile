@@ -30,6 +30,9 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --no-audit --no-fund
 # Copy source
 COPY terminal-backend .
 
+# Ensure data directories exist for later stages
+RUN mkdir -p /build/backend/src/data /build/backend/data
+
 # ============================
 # Final Stage: Runtime
 # ============================
@@ -70,10 +73,9 @@ COPY --from=backend-builder --chown=node:node /build/backend/node_modules ./term
 COPY --from=backend-builder --chown=node:node /build/backend/package*.json ./terminal-backend/
 COPY --from=backend-builder --chown=node:node /build/backend/src ./terminal-backend/src
 
-# Copy data files from backend-builder
-# src/data contains system config files
+# Copy data directories from backend-builder
+# These directories were ensured to exist in the backend-builder stage
 COPY --from=backend-builder --chown=node:node /build/backend/src/data/. ./data/
-# data directory contains public templates and example cards
 COPY --from=backend-builder --chown=node:node /build/backend/data/. ./data/
 
 # Copy built frontend to static path to be served by backend

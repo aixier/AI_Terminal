@@ -319,12 +319,20 @@ export const renameFile = async (params) => {
  */
 export const deleteFolder = async (params) => {
   try {
-    const response = await axios.delete(`${getApiUrl()}/folder`, {
+    const username = localStorage.getItem('username') || 'default'
+    // 将绝对路径转换为相对路径
+    let relativePath = params.path
+    const workspacePrefix = `/app/data/users/${username}/workspace/`
+    if (relativePath.startsWith(workspacePrefix)) {
+      relativePath = relativePath.substring(workspacePrefix.length)
+    }
+    
+    // 使用workspace API删除文件夹
+    const response = await axios.delete(`${getApiUrl().replace('/terminal', '')}/workspace/${username}/file/${encodeURIComponent(relativePath)}`, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      data: params
+      }
     })
     return response.data
   } catch (error) {

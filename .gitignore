@@ -85,3 +85,63 @@ DockerfileProduct
 # Production Dockerfile with sensitive information
 DockerfileProduct
 terminal-backend/data/public_template/cardplanet-Sandra-json/
+
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.mkv
+*.webm
+
+# Archive files  
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+
+# Test output files
+terminal-backend/test/output/
+podcast_cards*.html
+*卡片*.html
+*with_base64.html
+
+# Temporary HTML files in root
+/*.html
+
+# Chinese named files
+播客*.zip
+《*》*.html
+
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.mkv
+*.webm
+
+# Archive files
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+
+# Test output files
+terminal-backend/test/output/
+podcast_cards*.html
+*卡片*.html
+*with_base64.html
+
+# Temporary HTML files in root
+/*.html
+
+# Chinese named files
+播客*.zip
+《*》*.html

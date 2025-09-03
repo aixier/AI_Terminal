@@ -314,6 +314,25 @@ export const renameFile = async (params) => {
   }
 }
 
+/**
+ * 删除文件夹
+ */
+export const deleteFolder = async (params) => {
+  try {
+    const response = await axios.delete(`${getApiUrl()}/folder`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      data: params
+    })
+    return response.data
+  } catch (error) {
+    console.error('Delete folder error:', error)
+    return { success: false, message: error.message }
+  }
+}
+
 export default {
   executeCommand,
   getUserFolders,
@@ -329,5 +348,6 @@ export default {
   saveCardContent,
   deleteCard,
   renameFolder,
-  renameFile
+  renameFile,
+  deleteFolder
 }

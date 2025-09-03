@@ -66,6 +66,7 @@
             @preview-file="previewHtmlFile"
             @download-file="downloadFile"
             @delete-file="deleteCardFile"
+            @delete-folder="deleteFolderAction"
           />
           
           <!-- Terminal Page -->
@@ -129,6 +130,7 @@
             @preview-file="previewHtmlFile"
             @download-file="downloadFile"
             @delete-file="deleteCardFile"
+            @delete-folder="deleteFolderAction"
           />
           
           <!-- Terminal Page -->
@@ -155,11 +157,16 @@
   <!-- Context Menus -->
   <ContextMenu
     v-if="contextMenu.visible"
-    :x="contextMenu.x"
-    :y="contextMenu.y"
-    :items="contextMenu.items"
+    :visible="contextMenu.visible"
+    :position="{ x: contextMenu.x, y: contextMenu.y }"
+    :menu-items="contextMenu.items.map(item => ({
+      key: item.action,
+      text: item.label,
+      icon: item.icon || '',
+      disabled: false
+    }))"
     @close="contextMenu.visible = false"
-    @select="handleContextMenuSelect"
+    @menu-click="(item) => handleContextMenuSelect(item.key)"
   />
   
   <!-- Share dialog moved to PortfolioPage.vue -->
@@ -635,35 +642,37 @@ const retryGeneration = async (errorMessage) => {
 
 // ============ Context Menu Methods ============
 const showFolderContextMenu = (event, folder) => {
+  console.log('[showFolderContextMenu] Triggered for folder:', folder)
+  console.log('[showFolderContextMenu] Event:', event)
   contextMenu.value = {
     visible: true,
     x: event.clientX,
     y: event.clientY,
     items: [
-      { label: '新建文件夹', action: 'create-folder' },
-      { label: '重命名', action: 'rename-folder' },
-      { label: '删除', action: 'delete-folder' }
+      { label: '重命名', action: 'rename-folder', icon: '✏️' },
+      { label: '删除', action: 'delete-folder', icon: '🗑️', danger: true }
     ],
     context: { type: 'folder', data: folder }
   }
+  console.log('[showFolderContextMenu] Context menu set:', contextMenu.value)
 }
 
 const showCardContextMenu = (event, card, folder) => {
+  console.log('[showCardContextMenu] Triggered for card:', card)
+  console.log('[showCardContextMenu] Event:', event)
   const items = []
   
   if (isHtmlFile(card.name)) {
     items.push(
-      { label: '预览', action: 'preview' },
-      { label: '分享小红书', action: 'share-xhs' },
-      { label: '下载', action: 'download' },
-      { label: '删除', action: 'delete' }
+      { label: '预览', action: 'preview', icon: '👁️' },
+      { label: '分享小红书', action: 'share-xhs', icon: '📤' },
+      { label: '下载', action: 'download', icon: '⬇️' },
+      { label: '删除', action: 'delete', icon: '🗑️', danger: true }
     )
   } else {
     items.push(
-      { label: '打开', action: 'open' },
-      { label: '重命名', action: 'rename' },
-      { label: '下载', action: 'download' },
-      { label: '删除', action: 'delete' }
+      { label: '下载', action: 'download', icon: '⬇️' },
+      { label: '删除', action: 'delete', icon: '🗑️', danger: true }
     )
   }
   
@@ -674,6 +683,7 @@ const showCardContextMenu = (event, card, folder) => {
     items,
     context: { type: 'file', data: { card, folder } }
   }
+  console.log('[showCardContextMenu] Context menu set:', contextMenu.value)
 }
 
 const handleContextMenuSelect = (action) => {
@@ -701,19 +711,90 @@ const handleContextMenuSelect = (action) => {
   } else if (context.type === 'folder') {
     const folder = context.data
     switch (action) {
-      case 'create-folder':
-        console.log('Create folder:', folder)
-        break
       case 'rename-folder':
-        console.log('Rename folder:', folder)
+        renameFolderAction(folder)
         break
       case 'delete-folder':
-        console.log('Delete folder:', folder)
+        deleteFolderAction(folder)
         break
     }
   }
   
   contextMenu.value.visible = false
+}
+
+// ============ Folder Operations ============
+const renameFolderAction = async (folder) => {
+  try {
+    const { value } = await ElMessageBox.prompt('请输入新的文件夹名称', '重命名文件夹', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputValue: folder.name,
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return '文件夹名称不能为空'
+        }
+        if (value.includes('/') || value.includes('\\')) {
+          return '文件夹名称不能包含特殊字符'
+        }
+        return true
+      }
+    })
+    
+    if (value && value !== folder.name) {
+      const response = await terminalAPI.renameFolder({
+        oldPath: folder.path,
+        newName: value.trim()
+      })
+      
+      if (response.success) {
+        ElMessage.success('文件夹重命名成功')
+        await refreshCardFolders()
+      } else {
+        ElMessage.error(response.message || '重命名失败')
+      }
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Rename folder error:', error)
+      ElMessage.error('重命名操作失败')
+    }
+  }
+}
+
+const deleteFolderAction = async (folder) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除文件夹 "${folder.name}" 吗？该操作将删除文件夹内的所有文件。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    const response = await terminalAPI.deleteFolder({
+      path: folder.path
+    })
+    
+    if (response.success) {
+      ElMessage.success('文件夹删除成功')
+      // 如果删除的是当前选中的文件夹，清除选中状态
+      if (selectedFolderInfo.value?.path === folder.path) {
+        selectedFolderInfo.value = null
+        selectedCardInfo.value = null
+      }
+      await refreshCardFolders()
+    } else {
+      ElMessage.error(response.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Delete folder error:', error)
+      ElMessage.error('删除操作失败')
+    }
+  }
 }
 
 // ============ SSE Connection ============

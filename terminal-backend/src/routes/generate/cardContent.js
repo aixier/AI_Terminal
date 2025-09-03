@@ -88,20 +88,32 @@ router.get('/:folderName', authenticateUserOrDefault, ensureUserFolder, async (r
     console.log(`[CardContent API] Found files:`, files)
     
     // 特殊过滤规则：排除 response 文件、隐藏文件、元数据文件
-    const htmlFiles = files.filter(f => 
+    const allHtmlFiles = files.filter(f => 
       f.endsWith('.html') && 
       !f.includes('response') &&
       !f.startsWith('.') &&
       !f.includes('_meta')
     )
+    
+    // 分离base64.html文件和普通html文件
+    const base64HtmlFiles = allHtmlFiles.filter(f => f.endsWith('base64.html'))
+    const normalHtmlFiles = allHtmlFiles.filter(f => !f.endsWith('base64.html'))
+    
+    // 优先使用base64.html文件，如果没有则使用普通html文件
+    const htmlFiles = base64HtmlFiles.length > 0 ? base64HtmlFiles : normalHtmlFiles
+    
     const jsonFiles = files.filter(f => 
       f.endsWith('.json') && 
       !f.includes('response') &&
       !f.startsWith('.') &&
-      !f.includes('_meta')
+      !f.includes('_meta') &&
+      !f.endsWith('meta.json')  // 排除以meta.json结尾的文件
     )
     
-    console.log(`[CardContent API] Filtered HTML files:`, htmlFiles)
+    console.log(`[CardContent API] All HTML files:`, allHtmlFiles)
+    console.log(`[CardContent API] Base64 HTML files:`, base64HtmlFiles)
+    console.log(`[CardContent API] Normal HTML files:`, normalHtmlFiles)
+    console.log(`[CardContent API] Selected HTML files:`, htmlFiles)
     console.log(`[CardContent API] Filtered JSON files:`, jsonFiles)
     
     // 如果没有找到任何生成的文件
@@ -123,16 +135,19 @@ router.get('/:folderName', authenticateUserOrDefault, ensureUserFolder, async (r
     if (htmlFiles.length > 0) {
       const htmlFileName = htmlFiles[0]
       const htmlFilePath = path.join(userCardPath, htmlFileName)
+      const isBase64Version = htmlFileName.endsWith('base64.html')
+      
       try {
         const htmlContent = await fs.readFile(htmlFilePath, 'utf-8')
         htmlFileData = {
           fileName: htmlFileName,
           path: htmlFilePath,
           content: htmlContent,
-          fileType: 'html'
+          fileType: 'html',
+          isBase64Version: isBase64Version  // 标记是否为base64版本
         }
         result.files.push(htmlFileData)
-        console.log(`[CardContent API] HTML file read successfully: ${htmlFileName}`)
+        console.log(`[CardContent API] HTML file read successfully: ${htmlFileName}${isBase64Version ? ' (base64 version)' : ''}`)
       } catch (error) {
         console.error(`[CardContent API] Error reading HTML file:`, error)
       }
@@ -220,8 +235,9 @@ router.get('/:folderName', authenticateUserOrDefault, ensureUserFolder, async (r
     console.log(`[CardContent API] ==================== SUCCESS ====================`)
     console.log(`[CardContent API] Template: ${templateName}`)
     console.log(`[CardContent API] Found ${result.files.length} files`)
-    console.log(`[CardContent API] Primary file: ${primaryFile.fileName}`)
+    console.log(`[CardContent API] Primary file: ${primaryFile.fileName}${primaryFile.isBase64Version ? ' (base64 version)' : ''}`)
     console.log(`[CardContent API] Has pageinfo: ${!!responseData.pageinfo}`)
+    console.log(`[CardContent API] Using base64 version: ${!!primaryFile.isBase64Version}`)
     console.log(`[CardContent API] ============================================================`)
     
     // 返回成功响应（完全按照 v3.62.2 格式）

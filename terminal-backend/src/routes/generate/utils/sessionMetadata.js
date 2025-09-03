@@ -134,7 +134,7 @@ export class SessionMetadata {
    * @returns {string} 模板类型 (file | folder)
    */
   determineTemplateType(templateName) {
-    if (templateName.endsWith('.md')) {
+    if (templateName && typeof templateName === 'string' && templateName.endsWith('.md')) {
       return 'file'
     }
     return 'folder'

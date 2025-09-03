@@ -6,6 +6,8 @@ import cardQueryRoutes from './cardQuery.js'
 import cardContentRoutes from './cardContent.js'
 import customAsyncRoutes from './customAsync.js'
 import customStatusRoutes from './customStatus.js'
+import customOssAsyncRoutes from './customOssAsync.js'
+import customOssStatusRoutes from './customOssStatus.js'
 import templateRoutes from './templates.js'
 import statusRoutes from './status.js'
 import claudeRoutes from './claude.js'
@@ -29,6 +31,8 @@ router.use('/card/content', cardContentRoutes) // GET /api/generate/card/content
 // 自定义模板路由
 router.use('/custom/async', customAsyncRoutes) // POST /api/generate/custom/async
 router.use('/custom/status', customStatusRoutes) // GET /api/generate/custom/status/:taskId
+router.use('/custom/ossasync', customOssAsyncRoutes) // POST /api/generate/custom/ossasync
+router.use('/custom/ossstatus', customOssStatusRoutes) // GET /api/generate/custom/ossstatus/:taskId
 
 // 模板和状态路由
 router.use('/templates', templateRoutes)   // GET /api/generate/templates
@@ -52,6 +56,7 @@ router.get('/health', (req, res) => {
       cardStream: 'active',
       cardQuery: 'active',
       customAsync: 'active',
+      customOssAsync: 'active',
       templates: 'active',
       status: 'active',
       claude: 'active'

@@ -7,11 +7,11 @@ const defaultConfig = {
   // 基础配置
   region: 'oss-cn-beijing',
   secure: true,
-  timeout: 60000,
+  timeout: 180000,  // 增加到3分钟
   
   // 重试配置
-  retryCount: 3,
-  retryDelay: 1000,
+  retryCount: 5,    // 增加重试次数到5次
+  retryDelay: 2000, // 增加重试延迟到2秒
   
   // 文件配置
   maxFileSize: 100 * 1024 * 1024, // 100MB

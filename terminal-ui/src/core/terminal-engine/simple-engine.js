@@ -19,6 +19,21 @@ export class SimpleTerminalEngine {
     
     // 创建简单的终端界面
     this.container.innerHTML = `
+      <style>
+        @keyframes blink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0; }
+        }
+        #terminal-cursor {
+          display: inline-block;
+          width: 8px;
+          height: 16px;
+          background-color: #00ff00;
+          animation: blink 1s infinite;
+          vertical-align: text-bottom;
+          margin-left: 2px;
+        }
+      </style>
       <div style="
         background: #000000;
         color: #00ff00;
@@ -35,6 +50,10 @@ export class SimpleTerminalEngine {
     `
     
     this.contentEl = this.container.querySelector('#terminal-content')
+    
+    // 添加初始提示信息
+    this.content = 'AI Terminal v3.0\r\nConnecting to terminal server...\r\n'
+    this.updateDisplay()
     
     // 添加键盘事件监听
     this.setupKeyboardInput()
@@ -93,10 +112,12 @@ export class SimpleTerminalEngine {
   connectWebSocket() {
     const wsUrl = `ws://${window.location.hostname}:${window.location.port}/ws/terminal`
     
+    console.log('[Terminal] Connecting to WebSocket:', wsUrl)
     this.websocket = new WebSocket(wsUrl)
     
     this.websocket.onopen = () => {
       console.log('[Terminal] WebSocket connected')
+      this.write('Connected to terminal server\r\n')
       // 创建新的终端会话
       this.createTerminalSession()
     }
@@ -117,7 +138,7 @@ export class SimpleTerminalEngine {
     
     this.websocket.onerror = (error) => {
       console.error('[Terminal] WebSocket error:', error)
-      this.write('\r\n[连接错误]\r\n')
+      this.write('\r\n[连接错误: 请检查终端服务是否运行]\r\n')
     }
   }
   
@@ -142,6 +163,7 @@ export class SimpleTerminalEngine {
       case 'ready':
         this.terminalId = message.terminalId
         console.log(`[Terminal] Terminal ready: ${this.terminalId}`)
+        this.write('Terminal ready. Type commands to interact.\r\n$ ')
         break
         
       case 'output':
@@ -233,7 +255,14 @@ export class SimpleTerminalEngine {
     }
     
     // 更新显示内容
-    this.contentEl.textContent = this.content
+    this.updateDisplay()
+  }
+  
+  updateDisplay() {
+    if (!this.contentEl) return
+    
+    // 显示内容 + 光标
+    this.contentEl.innerHTML = this.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '<span id="terminal-cursor"></span>'
     
     // 滚动到底部
     this.contentEl.scrollTop = this.contentEl.scrollHeight
@@ -241,9 +270,7 @@ export class SimpleTerminalEngine {
   
   clear() {
     this.content = ''
-    if (this.contentEl) {
-      this.contentEl.textContent = ''
-    }
+    this.updateDisplay()
   }
   
   destroy() {

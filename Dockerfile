@@ -49,7 +49,6 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=6000 \
     LOG_LEVEL=info \
-    JWT_SECRET=mvp-jwt-secret-2025-aliyun-fc \
     JWT_EXPIRE_TIME=24h \
     MAX_TERMINAL_SESSIONS=10 \
     TERMINAL_TIMEOUT=600000 \
@@ -58,9 +57,10 @@ ENV NODE_ENV=production \
     LOG_PATH=/app/logs \
     STATIC_PATH=/app/static \
     SERVE_STATIC=true \
-    UV_THREADPOOL_SIZE=4 \
-    ANTHROPIC_AUTH_TOKEN=cr_54e6cbbcdc5711993b81e314ea6e470facb2b11b88d3c79b1be63619387199e3 \
-    ANTHROPIC_BASE_URL=http://44.212.20.73:3000/api/
+    UV_THREADPOOL_SIZE=4
+
+# Note: Sensitive environment variables should be provided at runtime:
+# JWT_SECRET, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, GEMINI_API_KEY
 
 # Global tools (requested)
 RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli && npm cache clean --force
@@ -70,8 +70,8 @@ COPY --from=backend-builder --chown=node:node /build/backend/node_modules ./term
 COPY --from=backend-builder --chown=node:node /build/backend/package*.json ./terminal-backend/
 COPY --from=backend-builder --chown=node:node /build/backend/src ./terminal-backend/src
 
-# Copy data files - IMPORTANT: both src/data and data directories
-# src/data contains system config files (commands.json, system-config.json, user-settings-template.json)
+# Copy data files from backend-builder
+# src/data contains system config files
 COPY --from=backend-builder --chown=node:node /build/backend/src/data/. ./data/
 # data directory contains public templates and example cards
 COPY --from=backend-builder --chown=node:node /build/backend/data/. ./data/
@@ -81,6 +81,7 @@ COPY --from=ui-builder --chown=node:node /build/ui/dist ./static
 
 # Create data/logs and initial structure
 RUN mkdir -p /app/data/users/default/folders/default-folder/cards \
+ && mkdir -p /app/data/users/default/workspace/card \
  && mkdir -p /app/data/public_template \
  && mkdir -p /app/data/history \
  && mkdir -p /app/logs \
@@ -99,16 +100,19 @@ EXPOSE 6000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD node -e "require('http').get('http://localhost:6000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
-# Drop privileges
-USER node
+# Set NODE_PATH for global modules
+ENV NODE_PATH="/usr/local/lib/node_modules"
 
-# Set Anthropic environment variables for claude-code and Gemini API key
-# Note: These should be set via docker run -e or docker-compose for security
-ENV ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="" \
-    GEMINI_API_KEY=""
+# Note: Sensitive environment variables (JWT_SECRET, ANTHROPIC_AUTH_TOKEN, 
+# ANTHROPIC_BASE_URL, GEMINI_API_KEY) should be provided at runtime
 
 WORKDIR /app/terminal-backend
 
+# Drop privileges
+USER node
+
+# Use tini for PID 1
 ENTRYPOINT ["/sbin/tini", "--"]
+
+# Run
 CMD ["node", "src/index.js"]

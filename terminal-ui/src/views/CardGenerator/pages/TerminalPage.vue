@@ -2,17 +2,9 @@
   <div class="terminal-page">
     <!-- PC端布局 -->
     <div v-if="!isMobile" class="desktop-terminal-layout">
-      <div class="terminal-info">
-        <h3>终端功能</h3>
-        <p>Terminal功能已独立为单独页面，提供更好的使用体验。</p>
-        <div class="terminal-actions">
-          <button @click="$emit('open-terminal-page')" class="terminal-btn primary">
-            🚀 在新页面打开终端
-          </button>
-          <button @click="$emit('refresh-terminal')" class="terminal-btn">
-            🔄 刷新终端连接
-          </button>
-        </div>
+      <!-- PC端嵌入式终端 -->
+      <div class="desktop-embedded-terminal">
+        <TerminalBest v-if="shouldShowTerminal" :key="terminalKey" />
       </div>
     </div>
     
@@ -39,6 +31,7 @@
 <script setup>
 import { defineProps, defineEmits } from 'vue'
 import TerminalChat from '../../../components/mobile/TerminalChat.vue'
+import TerminalBest from '../../../components/TerminalBest.vue'
 
 const props = defineProps({
   isMobile: {
@@ -72,67 +65,27 @@ const emit = defineEmits([
 .desktop-terminal-layout {
   height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8f9fa;
+  flex-direction: column;
+  background: #1e1e1e;
 }
 
-.terminal-info {
-  text-align: center;
-  padding: 40px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
-}
-
-.terminal-info h3 {
-  margin: 0 0 16px 0;
-  font-size: 24px;
-  color: #333;
-}
-
-.terminal-info p {
-  margin: 0 0 24px 0;
-  color: #666;
-  line-height: 1.6;
-}
-
-.terminal-actions {
+.desktop-embedded-terminal {
+  flex: 1;
+  overflow: hidden;
+  background: #1e1e1e;
   display: flex;
-  gap: 12px;
-  justify-content: center;
+  flex-direction: column;
 }
 
-.terminal-btn {
-  padding: 12px 24px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  background: #fff;
-  color: #333;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
+.desktop-embedded-terminal :deep(.terminal-wrapper) {
+  height: 100%;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
 }
 
-.terminal-btn:hover {
-  border-color: #667eea;
-  background: #f8f9ff;
-  transform: translateY(-1px);
-}
-
-.terminal-btn.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  color: white;
-}
-
-.terminal-btn.primary:hover {
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-  border-color: #5a67d8;
+.desktop-embedded-terminal :deep(.terminal-container) {
+  flex: 1;
+  overflow: hidden;
 }
 
 /* 移动端布局 */

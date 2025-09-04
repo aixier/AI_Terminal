@@ -67,11 +67,11 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
-import { useTerminalStore } from '../store/terminal'
+import { useUserStore } from '../store/user'
 import request from '../api/config'
 
 const router = useRouter()
-const terminalStore = useTerminalStore()
+const userStore = useUserStore()
 const loginFormRef = ref()
 const loading = ref(false)
 const checking = ref(true)
@@ -117,7 +117,7 @@ const handleLogin = async () => {
     }
     
     // 保存用户信息到store
-    terminalStore.setUserInfo(res.data.user)
+    userStore.setUserInfo(res.data.user)
     
     ElMessage.success('登录成功')
     router.push('/card-generator')
@@ -141,7 +141,7 @@ const verifyToken = async () => {
     const res = await request.get('/auth/verify')
     if (res.data && res.data.valid) {
       // Token有效，保存用户信息并跳转
-      terminalStore.setUserInfo(res.data.user)
+      userStore.setUserInfo(res.data.user)
       ElMessage.success('自动登录成功')
       router.push('/card-generator')
       return true

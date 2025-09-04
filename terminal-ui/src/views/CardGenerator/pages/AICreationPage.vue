@@ -2,7 +2,17 @@
   <div class="ai-creation-page" :class="{ mobile: isMobile }">
     <!-- PC端布局 -->
     <div v-if="!isMobile" class="desktop-creation-layout">
-      <!-- 消息和输入区域 -->
+      <!-- 中间素材栏 -->
+      <div class="assets-section">
+        <AssetManager
+          title="我的素材"
+          empty-message="暂无素材，点击上传添加"
+          @select-asset="handleSelectAsset"
+          @preview-asset="handlePreviewAsset"
+        />
+      </div>
+      
+      <!-- 右侧对话区域 -->
       <div class="chat-section">
         <!-- 消息列表（可滚动） -->
         <div class="messages-area">
@@ -65,6 +75,7 @@
 import { defineProps, defineEmits } from 'vue'
 import MessageListView from '../components/MessageListView.vue'
 import ChatInputPanel from '../components/ChatInputPanel.vue'
+import AssetManager from '../../../components/assets/AssetManagerSimple.vue'
 
 const props = defineProps({
   // 数据属性
@@ -97,6 +108,29 @@ const emit = defineEmits([
   'update:input-text'
 ])
 
+// 处理素材选择
+const handleSelectAsset = (asset) => {
+  // 将素材引用插入到输入框
+  const reference = `@${asset.name}`
+  emit('update:input-text', props.inputText + reference)
+}
+
+// 处理素材预览
+const handlePreviewAsset = (asset) => {
+  // 根据资源类型预览
+  if (asset.type === 'image') {
+    // 使用代理端点获取完整图片
+    const imageUrl = `/api/assets/file/${asset.id}`
+    window.open(imageUrl, '_blank')
+  } else if (asset.type === 'document') {
+    // 文档类型也通过代理下载
+    const fileUrl = `/api/assets/file/${asset.id}`
+    window.open(fileUrl, '_blank')
+  } else {
+    console.log('Preview asset:', asset)
+  }
+}
+
 // 处理消息操作
 const handlePreviewContent = (message) => {
   // TODO: 实现预览功能
@@ -121,19 +155,33 @@ const handleShareContent = (message) => {
   flex-direction: column;
 }
 
-/* PC端布局 */
+/* PC端布局 - 三栏式 */
 .desktop-creation-layout {
   height: 100%;
   display: flex;
-  flex-direction: column;
+  gap: 20px;
 }
 
+/* 中间素材栏 */
+.assets-section {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 右侧对话区域 */
 .chat-section {
   flex: 1;
   display: flex;
   flex-direction: column;
-  position: relative;
+  background: white;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .messages-area {

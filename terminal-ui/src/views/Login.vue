@@ -58,11 +58,11 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { useTerminalStore } from '../store/terminal'
+import { useUserStore } from '../store/user'
 import request from '../api/config'
 
 const router = useRouter()
-const terminalStore = useTerminalStore()
+const userStore = useUserStore()
 const loginFormRef = ref()
 const loading = ref(false)
 
@@ -100,7 +100,7 @@ const handleLogin = async () => {
     localStorage.setItem('username', loginForm.username)
     
     // 保存用户信息到store
-    terminalStore.setUserInfo(res.data.user)
+    userStore.setUserInfo(res.data.user)
     
     ElMessage.success('登录成功')
     router.push('/card-generator')

@@ -21,7 +21,7 @@ const routes = [
   {
     path: '/terminal',
     name: 'Terminal',
-    component: () => import('../views/TerminalEngineTest.vue'),
+    component: () => import('../views/Terminal.vue'),
     meta: { 
       requiresAuth: false,
       title: 'Terminal',
@@ -45,28 +45,6 @@ const routes = [
     name: 'Settings',
     component: () => import('../views/Settings.vue'),
     meta: { requiresAuth: true }
-  },
-  // Terminal Engine 测试页面 - 独立验证新引擎
-  {
-    path: '/terminal-engine-test',
-    name: 'TerminalEngineTest',
-    component: () => import('../views/TerminalEngineTest.vue'),
-    meta: { 
-      requiresAuth: false,
-      title: 'Terminal Engine 测试',
-      description: '独立验证新Terminal Engine的功能和性能'
-    }
-  },
-  // 简化Terminal测试页面 - 调试用
-  {
-    path: '/simple-terminal-test',
-    name: 'SimpleTerminalTest',
-    component: () => import('../views/SimpleTerminalTest.vue'),
-    meta: { 
-      requiresAuth: false,
-      title: 'Terminal Engine 调试',
-      description: '简化的Terminal Engine调试页面'
-    }
   }
 ]
 

@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 80
 app.use(compression())
 
 // API代理配置 - 默认启用（设置 ENABLE_PROXY=false 可关闭）
-const API_TARGET = process.env.API_TARGET || 'http://localhost:6000'
+const API_TARGET = process.env.API_TARGET || 'http://localhost:6009'
 const ENABLE_PROXY = process.env.ENABLE_PROXY !== 'false'
 if (ENABLE_PROXY) {
   app.use('/api', createProxyMiddleware({

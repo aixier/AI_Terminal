@@ -62,7 +62,7 @@ import { useRouter } from 'vue-router'
 import { useLayoutStore, MOBILE_TABS } from '../../store/layout.js'
 import { useDevice } from '../../composables/useDevice.js'
 import { touchMixin } from '../../mixins/responsive.js'
-import { useTerminalStore } from '../../store/terminal.js'
+import { useUserStore } from '../../store/user.js'
 
 // Props
 const props = defineProps({
@@ -101,7 +101,7 @@ const layout = useLayoutStore()
 const device = useDevice()
 const touch = touchMixin.setup()
 const router = useRouter()
-const terminalStore = useTerminalStore()
+const userStore = useUserStore()
 
 console.log('[TabNavigation] 组件初始化:', {
   layout: !!layout,
@@ -153,7 +153,7 @@ const activeTab = computed(() => {
 })
 
 // 用户信息相关
-const userInfo = computed(() => terminalStore.userInfo)
+const userInfo = computed(() => userStore.userInfo)
 const username = computed(() => {
   return userInfo.value?.username || localStorage.getItem('username') || ''
 })
@@ -313,7 +313,7 @@ const handleLogout = () => {
   localStorage.removeItem('username')
   
   // 清除store中的用户信息
-  terminalStore.clearSession()
+  userStore.clearUserInfo()
   
   // 跳转到登录页
   router.push('/login')

@@ -835,6 +835,7 @@ const handleLogout = () => {
   router.push('/login')
 }
 
+
 const openTerminalPage = () => {
   window.open('/terminal', '_blank')
 }
@@ -884,7 +885,9 @@ onUnmounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
+
 
 /* 移动端样式 */
 .mobile-view-content {

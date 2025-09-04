@@ -216,12 +216,19 @@ class NativeWebSocketService {
    * 处理终端输入
    */
   handleInput(ws, clientId, data) {
+    console.log(`[WebSocketService] Received input from ${clientId}:`, data, 'Length:', data.length)
     const terminalId = this.wsToTerminal.get(ws)
     if (terminalId) {
+      console.log(`[WebSocketService] Found terminal ${terminalId} for client ${clientId}`)
       const terminal = terminalManager.get(terminalId)  // 使用get方法
       if (terminal) {
+        console.log(`[WebSocketService] Writing to terminal: "${data}" (charCode: ${data.charCodeAt(0)})`)
         terminal.write(data)
+      } else {
+        console.error(`[WebSocketService] Terminal instance not found for ${terminalId}`)
       }
+    } else {
+      console.error(`[WebSocketService] No terminal mapping for client ${clientId}`)
     }
   }
 

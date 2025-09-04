@@ -18,6 +18,7 @@ import generateRoutes from './routes/generate/index.js'
 import uploadRoutes from './routes/upload.js'
 import workspaceRoutes from './routes/workspace.js'
 import transcriptionRoutes from './routes/transcription.js'
+import assetsRoutes from './routes/assets.js'
 import { setupSocketHandlers } from './services/socketService.js'
 import websocketService from './services/websocketService.js'
 // import { preventCommandInjection, limitRequestSize, auditLog, rateLimit } from './middleware/security.js'
@@ -278,6 +279,9 @@ console.log('     ✓ /api/workspace route registered')
 app.use('/api/transcription', transcriptionRoutes)
 console.log('     ✓ /api/transcription route registered')
 
+app.use('/api/assets', assetsRoutes)
+console.log('     ✓ /api/assets route registered')
+
 // 5. API信息路由 (移到/api-info避免与静态文件冲突)
 console.log('  6️⃣ Registering API info route...')
 app.get('/api-info', (req, res) => {
@@ -297,7 +301,8 @@ app.get('/api-info', (req, res) => {
         sse: '/api/sse',
         preview: '/api/preview',
         workspace: '/api/workspace',
-        transcription: '/api/transcription'
+        transcription: '/api/transcription',
+        assets: '/api/assets'
       }
     },
     message: 'Welcome to AI Terminal Backend Service'

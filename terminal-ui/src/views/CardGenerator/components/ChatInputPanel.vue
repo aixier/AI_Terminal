@@ -52,13 +52,15 @@
     <div class="input-section">
       <div class="input-row">
         <textarea
+          ref="textareaRef"
           v-model="inputText"
           class="input-textarea"
           :placeholder="placeholder"
           :rows="isMobile ? 2 : 3"
           @keydown.ctrl.enter="sendMessage"
           @keydown.meta.enter="sendMessage"
-          @input="$emit('update:input-text', $event.target.value)"
+          @input="handleInput"
+          @keydown="handleKeyDown"
         ></textarea>
         <button 
           class="send-button"
@@ -139,12 +141,21 @@
         </div>
       </div>
     </div>
+    
+    <!-- 素材引用选择器 -->
+    <AssetReferencePicker
+      v-if="showAssetPicker"
+      :position="assetPickerPosition"
+      @select="insertAssetReference"
+      @close="showAssetPicker = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref, computed, onMounted } from 'vue'
+import { defineProps, defineEmits, ref, computed, onMounted, nextTick } from 'vue'
 import axios from 'axios'
+import AssetReferencePicker from '../../../components/assets/AssetReferencePicker.vue'
 import { ElMessage } from 'element-plus'
 
 const props = defineProps({
@@ -189,6 +200,12 @@ const templates = ref([])
 const templateLoadError = ref(null)
 const selectedTemplate = ref(null) // ChatInputPanel内部的模板选中状态
 const isTemplateAvailable = computed(() => templates.value.length > 0 && !templateLoadError.value)
+const textareaRef = ref(null)
+
+// 素材引用相关
+const showAssetPicker = ref(false)
+const assetPickerPosition = ref({ x: 0, y: 0 })
+const cursorPosition = ref(0)
 
 // 可选参数状态
 const showAdvancedOptions = ref(false)
@@ -333,6 +350,78 @@ const loadTemplates = async () => {
 onMounted(() => {
   loadTemplates()
 })
+
+// 处理输入事件，检测@符号
+const handleInput = (event) => {
+  const value = event.target.value
+  const cursorPosition = event.target.selectionStart
+  
+  // 检测@符号
+  if (value[cursorPosition - 1] === '@') {
+    // 获取输入框位置
+    const rect = event.target.getBoundingClientRect()
+    const lineHeight = 24 // 估算行高
+    const charWidth = 8 // 估算字符宽度
+    
+    // 计算@符号的位置
+    const textBeforeCursor = value.substring(0, cursorPosition)
+    const lines = textBeforeCursor.split('\n')
+    const currentLine = lines[lines.length - 1]
+    
+    pickerPosition.value = {
+      x: rect.left + (currentLine.length - 1) * charWidth,
+      y: rect.top + (lines.length - 1) * lineHeight
+    }
+    
+    atPosition.value = cursorPosition - 1
+    showAssetPicker.value = true
+  }
+}
+
+// 处理键盘事件
+const handleKeyDown = (event) => {
+  // 如果素材选择器打开，让它处理键盘事件
+  if (showAssetPicker.value) {
+    // ESC键关闭选择器
+    if (event.key === 'Escape') {
+      showAssetPicker.value = false
+      atPosition.value = -1
+    }
+  }
+}
+
+// 插入素材引用
+const insertAssetReference = (asset) => {
+  if (atPosition.value < 0) return
+  
+  const textarea = textareaRef.value
+  const value = inputText.value
+  const reference = `@${asset.name}`
+  
+  // 替换@符号为完整引用
+  const before = value.substring(0, atPosition.value)
+  const after = value.substring(atPosition.value + 1)
+  const newValue = before + reference + after
+  
+  // 更新输入值
+  inputText.value = newValue
+  emit('update:inputText', newValue)
+  
+  // 计算新的光标位置
+  const newPosition = atPosition.value + reference.length
+  
+  // 重置状态
+  showAssetPicker.value = false
+  atPosition.value = -1
+  
+  // 聚焦输入框并设置光标位置
+  nextTick(() => {
+    if (textarea) {
+      textarea.focus()
+      textarea.setSelectionRange(newPosition, newPosition)
+    }
+  })
+}
 </script>
 
 <style scoped>

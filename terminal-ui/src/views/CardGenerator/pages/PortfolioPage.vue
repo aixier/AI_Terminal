@@ -4,8 +4,9 @@
     <div v-if="!isMobile" class="desktop-portfolio-layout">
       <!-- 文件管理器区域 -->
       <div class="file-manager-section">
+        <!-- 卡片管理 -->
         <FileManager
-          title="我的卡片"
+          title="我的卡片作品集"
           :folders="folders"
           :selected-folder="selectedFolder"
           :selected-file="selectedFile"
@@ -163,10 +164,13 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue'
+import { defineProps, defineEmits, ref } from 'vue'
 import FileManager from '../components/FileManager.vue'
 import ShareDialog from '../components/ShareDialog.vue'
 import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
+import { ElMessage } from 'element-plus'
+
+// 状态管理
 
 const props = defineProps({
   // 数据属性
@@ -275,6 +279,15 @@ const formatJsonContent = (content) => {
     // 如果JSON解析失败，返回原始内容
     return content
   }
+}
+
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
 }
 </script>
 
@@ -550,4 +563,5 @@ const formatJsonContent = (content) => {
   flex: 1;
   overflow: hidden;
 }
+
 </style>

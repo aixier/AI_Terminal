@@ -38,18 +38,36 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useTerminalStore } from '../store/terminal'
+// History management using localStorage directly
 
 const router = useRouter()
-const terminalStore = useTerminalStore()
 const commandHistory = ref([])
+
+// Helper functions for history management
+const getHistoryFromStorage = () => {
+  try {
+    const history = localStorage.getItem('commandHistory')
+    return history ? JSON.parse(history) : []
+  } catch (e) {
+    console.error('Failed to load history:', e)
+    return []
+  }
+}
+
+const saveHistoryToStorage = (history) => {
+  try {
+    localStorage.setItem('commandHistory', JSON.stringify(history))
+  } catch (e) {
+    console.error('Failed to save history:', e)
+  }
+}
 
 const formatTime = (timestamp) => {
   return new Date(timestamp).toLocaleString('zh-CN')
 }
 
 const loadHistory = () => {
-  commandHistory.value = terminalStore.commandHistory || []
+  commandHistory.value = getHistoryFromStorage()
 }
 
 const clearHistory = async () => {
@@ -59,8 +77,8 @@ const clearHistory = async () => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    terminalStore.clearHistory()
     commandHistory.value = []
+    saveHistoryToStorage([])
     ElMessage.success('历史记录已清除')
   } catch {
     // 用户取消
@@ -68,7 +86,8 @@ const clearHistory = async () => {
 }
 
 const rerunCommand = (command) => {
-  terminalStore.setCurrentCommand(command)
+  // Store the command to be rerun in sessionStorage
+  sessionStorage.setItem('pendingCommand', JSON.stringify(command))
   router.push('/card-generator')
 }
 

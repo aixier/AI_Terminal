@@ -60,10 +60,10 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { useTerminalStore } from '../store/terminal'
+import { useUserStore } from '../store/user'
 
 const router = useRouter()
-const terminalStore = useTerminalStore()
+const userStore = useUserStore()
 
 const settings = ref({
   theme: 'dark',
@@ -92,7 +92,8 @@ const loadSettings = () => {
 
 const saveSettings = () => {
   localStorage.setItem('terminalSettings', JSON.stringify(settings.value))
-  terminalStore.updateSettings(settings.value)
+  // Settings are stored in localStorage only
+  // userStore doesn't manage settings
   ElMessage.success('设置已保存')
 }
 
@@ -109,7 +110,7 @@ const resetSettings = () => {
 
 const logout = () => {
   localStorage.removeItem('token')
-  terminalStore.clearSession()
+  userStore.clearUserInfo()
   router.push('/login')
   ElMessage.success('已退出登录')
 }

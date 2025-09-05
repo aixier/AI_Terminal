@@ -54,9 +54,40 @@
             </div>
             <!-- 生成完成的卡片 -->
             <div v-else class="result-card">
+              <!-- 自定义模式消息 -->
+              <template v-if="isCustomMode(message)">
+                <div class="card-header">
+                  <span class="card-icon">📁</span>
+                  <span class="card-title">{{ message.title || '文件生成' }}</span>
+                  <span class="file-count">{{ getFileCount(message) }} 个文件</span>
+                </div>
+                <div class="custom-files-list">
+                  <div v-for="(file, index) in getMessageFiles(message)" :key="index" class="file-item">
+                    <span class="file-icon">{{ getFileIcon(file.fileType) }}</span>
+                    <span class="file-name">{{ file.fileName }}</span>
+                    <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                  </div>
+                  <div v-if="message.resultData?.mayHaveMore" class="generating-hint">
+                    <span class="hint-icon">💡</span>
+                    <span>Claude 可能还在生成更多文件...</span>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button 
+                    class="card-btn refresh-btn" 
+                    @click="handleRefreshFiles(message)"
+                    :class="{ refreshing: message.isRefreshing }"
+                  >
+                    {{ message.isRefreshing ? '⏳ 检查中' : '🔄 刷新文件' }}
+                  </button>
+                  <button class="card-btn primary" @click="$emit('preview-content', message)">
+                    👁️ 查看
+                  </button>
+                </div>
+              </template>
               <!-- HTML类型消息使用HtmlMessageCard渲染 -->
               <HtmlMessageCard 
-                v-if="isHtmlMessage(message)"
+                v-else-if="isHtmlMessage(message)"
                 :result-data="message.resultData || message"
                 :html-content="getMessageHtmlContent(message)"
                 :topic="getMessageTopic(message)"
@@ -118,6 +149,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'retry-generation',
+  'refresh-files',
   'preview-content',
   'save-content',
   'share-content',
@@ -148,6 +180,53 @@ const getTemplateIcon = (template) => {
     'default': '📄'
   }
   return iconMap[template] || iconMap.default
+}
+
+// 判断是否为自定义模式消息
+const isCustomMode = (message) => {
+  return message.resultData?.mode === 'custom'
+}
+
+// 获取消息文件列表
+const getMessageFiles = (message) => {
+  return message.resultData?.files || []
+}
+
+// 获取文件数量
+const getFileCount = (message) => {
+  return message.resultData?.totalFiles || 0
+}
+
+// 获取文件图标
+const getFileIcon = (fileType) => {
+  const iconMap = {
+    'html': '🌐',
+    'json': '📋',
+    'markdown': '📝',
+    'text': '📄',
+    'image': '🖼️',
+    'pdf': '📑',
+    'javascript': '📜',
+    'css': '🎨',
+    'python': '🐍',
+    'excel': '📊',
+    'video': '🎬',
+    'audio': '🎵'
+  }
+  return iconMap[fileType] || '📄'
+}
+
+// 格式化文件大小
+const formatFileSize = (size) => {
+  if (!size) return ''
+  if (size < 1024) return size + ' B'
+  if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
+  return (size / 1024 / 1024).toFixed(1) + ' MB'
+}
+
+// 处理刷新文件
+const handleRefreshFiles = (message) => {
+  emit('refresh-files', message)
 }
 
 // 自动滚动到底部
@@ -647,5 +726,81 @@ nextTick(() => {
     width: 100%;
     box-sizing: border-box;
   }
+}
+
+/* 自定义模式文件列表样式 */
+.file-count {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.custom-files-list {
+  margin: 12px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  transition: background 0.2s;
+}
+
+.file-item:hover {
+  background: #e9ecef;
+}
+
+.file-icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.file-name {
+  flex: 1;
+  font-size: 13px;
+  font-family: monospace;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  font-size: 11px;
+  color: #666;
+  margin-left: 8px;
+}
+
+.generating-hint {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #fff3cd;
+  border-radius: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #856404;
+}
+
+.hint-icon {
+  margin-right: 6px;
+}
+
+.refresh-btn.refreshing {
+  animation: spin 1s linear infinite;
+  opacity: 0.7;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

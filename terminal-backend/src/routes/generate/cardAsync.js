@@ -38,12 +38,17 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
   try {
     const { 
       topic, 
-      templateName = 'cardplanet-Sandra-json',
+      templateName,  // 不设置默认值，让自定义模式可以没有模板
       style: userStyle,      // 用户传入的风格参数（可选）
       language: userLanguage, // 用户传入的语言参数（可选）
       reference: userReference, // 用户传入的参考参数（可选）
-      token: userToken         // 用户传入的token（可选），用于指定生成到特定用户
+      token: userToken,         // 用户传入的token（可选），用于指定生成到特定用户
+      mode,                   // 自定义模式标识（custom/normal）
+      references              // 素材引用数组
     } = req.body
+    
+    // 如果不是自定义模式且没有模板，使用默认模板
+    const actualTemplateName = mode === 'custom' ? null : (templateName || 'cardplanet-Sandra-json')
     
     // 参数验证
     if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
@@ -55,7 +60,14 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
     }
     
     // 清理主题名称，用于文件夹命名
-    const sanitizedTopic = topic.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+    // 先尝试URL解码，处理可能的中文等特殊字符
+    let decodedTopic = topic
+    try {
+      decodedTopic = decodeURIComponent(topic)
+    } catch (e) {
+      console.log(`[Async Card API] URL decode failed for topic: ${topic}, using original`)
+    }
+    const sanitizedTopic = decodedTopic.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
     
     // 生成任务ID
     const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
@@ -83,7 +95,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
     console.log(`[Async Card API] Task ID: ${taskId}`)
     console.log(`[Async Card API] Topic: ${topic}`)
     console.log(`[Async Card API] Sanitized Topic: ${sanitizedTopic}`)
-    console.log(`[Async Card API] Template: ${templateName}`)
+    console.log(`[Async Card API] Template: ${actualTemplateName || 'custom mode (no template)'}`)
     console.log(`[Async Card API] Target User: ${targetUser.username}`)
     console.log(`[Async Card API] Request User: ${req.user.username}`)
     console.log(`[Async Card API] Output Path: ${userCardPath}`)
@@ -96,7 +108,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       folderName: sanitizedTopic,
       folderPath: userCardPath,
       topic: topic,
-      templateName: templateName,
+      templateName: actualTemplateName,
       status: 'submitted',
       submittedAt: new Date().toISOString(),
       folderCreated: !folderInfo.existed,
@@ -115,15 +127,12 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         // 更新文件夹状态为生成中
         await updateFolderStatus(backgroundUserCardPath, 'generating', { 
           taskId: taskId,
-          templateName: templateName 
+          templateName: actualTemplateName 
         })
         
         // 根据环境确定路径
         const isDocker = process.env.NODE_ENV === 'production' || process.env.DATA_PATH
         const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
-        
-        // 判断模板类型
-        const isFolder = !templateName.includes('.md')
         
         // 检查是否有用户传入的参数
         const hasUserParams = userStyle || userLanguage || userReference;
@@ -135,16 +144,52 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           console.log(`[Async Card API] User Reference: ${userReference ? userReference.substring(0, 100) + '...' : 'not provided'}`);
         }
         
+        // 检查是否是自定义模式
+        let pathMap = {};
+        let processedTopic = topic;
+        if (mode === 'custom' && references && references.length > 0) {
+          console.log(`[Async Card API] Task ${taskId}: Custom mode enabled with ${references.length} references`);
+          console.log(`[Async Card API] References details:`, JSON.stringify(references, null, 2));
+          
+          // 导入引用处理服务
+          const { convertReferencesToPaths, buildReferencePrompt } = await import('../../services/referenceConverter.js');
+          
+          // 转换引用为实际路径
+          const filePaths = await convertReferencesToPaths(references, targetUser.username);
+          console.log(`[Async Card API] Converted file paths:`, JSON.stringify(filePaths, null, 2));
+          
+          // 获取路径映射
+          const result = await buildReferencePrompt(filePaths, targetUser.username);
+          pathMap = result.pathMap || {};
+          
+          // 替换topic中的@引用为实际路径
+          processedTopic = topic;
+          for (const [fileName, fullPath] of Object.entries(pathMap)) {
+            // 替换 @文件名 为 完整路径
+            const regex = new RegExp(`@${fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g');
+            processedTopic = processedTopic.replace(regex, fullPath);
+            console.log(`[Async Card API] Replaced @${fileName} with ${fullPath}`);
+          }
+          
+          console.log(`[Async Card API] Original topic: "${topic}"`);
+          console.log(`[Async Card API] Processed topic: "${processedTopic}"`);
+          console.log(`[Async Card API] Custom mode paths converted: ${filePaths.length} files`);
+        }
+        
         // 使用前置提示词生成参数
-        const parameters = await claudeExecutorDirect.generateCardParameters(topic, templateName, {
-          style: userStyle,
-          language: userLanguage,
-          reference: userReference
-        })
+        // 自定义模式下不生成参数，直接使用处理后的topic
+        let parameters = { style: '', language: '', reference: '' };
+        if (mode !== 'custom') {
+          parameters = await claudeExecutorDirect.generateCardParameters(topic, actualTemplateName, {
+            style: userStyle,
+            language: userLanguage,
+            reference: userReference
+          });
+        }
         
         // 根据模板类型解构参数
         let cover, style, language, referenceContent
-        if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
+        if (actualTemplateName === 'cardplanet-Sandra-cover' || actualTemplateName === 'cardplanet-Sandra-json') {
           ({ cover, style, language, reference: referenceContent } = parameters)
         } else {
           ({ style, language, reference: referenceContent } = parameters)
@@ -152,7 +197,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         
         // 输出参数日志
         console.log(`[Async Card API] ========== PARAMETERS GENERATED ==========`)
-        if (templateName === 'cardplanet-Sandra-cover' || templateName === 'cardplanet-Sandra-json') {
+        if (actualTemplateName === 'cardplanet-Sandra-cover' || actualTemplateName === 'cardplanet-Sandra-json') {
           console.log(`[Async Card API] Cover: ${cover}`)
           console.log(`[Async Card API] Style: ${style}`)
           console.log(`[Async Card API] Language: ${language}`)
@@ -164,18 +209,35 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         }
         console.log(`[Async Card API] ==========================================`)
         
-        // 定义模板路径
-        const templatePath = isDocker 
-          ? path.join('/app/data/public_template', templateName)
-          : path.join(dataPath, 'public_template', templateName)
-        
         // 构建提示词
         let prompt
-        if (isFolder) {
-          const claudePath = path.join(templatePath, 'CLAUDE.md')
+        let templatePath = null  // 提前定义templatePath变量，避免作用域问题
+        
+        // 自定义模式 - 不使用模板
+        if (mode === 'custom') {
+          console.log(`[Async Card API] Custom mode - using processed topic with file paths`)
           
-          if (templateName === 'cardplanet-Sandra-json') {
-            prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
+          // 直接使用已经替换过路径的topic
+          prompt = processedTopic
+          
+          // 添加输出路径指示 - 注意路径末尾要加斜杠
+          prompt += `\n\n请将生成的内容用恰当的文件名和格式保存到这个文件夹下：\n[${backgroundUserCardPath}/]\n`
+          prompt += `注意：请根据内容类型生成相应的文件（如 .html, .json, .md 等）。`
+          
+        } else if (actualTemplateName) {
+          // 模板模式 - 使用指定的模板
+          templatePath = isDocker 
+            ? path.join('/app/data/public_template', actualTemplateName)
+            : path.join(dataPath, 'public_template', actualTemplateName)
+          
+          // 判断模板类型
+          const isFolder = !actualTemplateName.includes('.md')
+          
+          if (isFolder) {
+            const claudePath = path.join(templatePath, 'CLAUDE.md')
+            
+            if (actualTemplateName === 'cardplanet-Sandra-json') {
+              prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
 
 创作重点：
 - 把每张卡片当作独立的艺术海报设计
@@ -191,8 +253,8 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
 从${claudePath}文档开始，按其指引阅读全部6个文档获取创作框架。
 特别注意：必须按照html_generation_workflow.md中的双文件输出规范，同时生成HTML文件（主题英文名_style.html）和JSON文件（主题英文名_data.json）。
 生成的文件保存在[${backgroundUserCardPath}]`
-          } else if (templateName === 'cardplanet-Sandra-cover') {
-            prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
+            } else if (actualTemplateName === 'cardplanet-Sandra-cover') {
+              prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
 
 创作重点：
 - 把每张卡片当作独立的艺术海报设计
@@ -207,9 +269,9 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
 从${claudePath}文档开始，按其指引阅读全部6个文档获取创作框架。
 记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
 生成的json文档保存在[${backgroundUserCardPath}]`
-          } else {
-            // 其他文件夹模板
-            prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
+            } else {
+              // 其他文件夹模板
+              prompt = `你是一位海报设计师，要为"${topic}"创作一套收藏级卡片海报作品。
 
 创作重点：
 - 把每张卡片当作独立的艺术海报设计
@@ -223,13 +285,29 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
 从${claudePath}文档开始，按其指引阅读全部5个文档获取创作框架。
 记住：规范是创作的基础，但你的目标是艺术品，不是代码任务。
 生成的json文档保存在[${backgroundUserCardPath}]`
+            }
+          } else {
+            // 单文件模式（.md文件）
+            // 检查是否是 daily-knowledge-card-template
+            if (actualTemplateName === 'daily-knowledge-card-template.md') {
+              // Daily模板特殊处理：明确要求生成JSON文件
+              prompt = `根据[${templatePath}]文档的规范，就以下命题：${topic}
+              
+请生成一个JSON文件，文件名格式为：主题名称-知识卡片.json
+输出路径：[${backgroundUserCardPath}/]
+
+注意：
+1. 必须生成JSON格式文件
+2. JSON内容要符合模板规范
+3. 文件名使用中文主题名称`
+            } else {
+              // 其他单文件模板
+              prompt = `根据[${templatePath}]文档的规范，就以下命题：${topic}，生成相应的文档在[${backgroundUserCardPath}/] 文件夹下`
+            }
           }
         } else {
-          // 单文件模式（.md文件）
-          // templatePath 已在上面定义
-          
-          // 原有的提示词
-          prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${backgroundUserCardPath}]：${topic}`
+          // 没有模板也不是自定义模式 - 错误情况
+          throw new Error('No template specified and not in custom mode')
         }
         
         // 输出完整组装后的提示词
@@ -252,11 +330,11 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           console.error(`[Async Card API] Claude execution error:`, error)
         })
         
-        // 文件检测器 - 等待文件生成
+        // 文件检测器 - 根据模式决定检测策略
         console.log(`[Async Card API] Starting file detection for task: ${taskId}`)
         const fileDetected = await new Promise((resolve) => {
           let checkCount = 0
-          const maxChecks = 300 // 最多检查300次（10分钟）
+          const maxChecks = mode === 'custom' ? 60 : 300 // 自定义模式最多2分钟，模板模式10分钟
           
           const checkInterval = setInterval(async () => {
             checkCount++
@@ -265,19 +343,41 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
               console.log(`[Async Card API] Check #${checkCount}: Found ${files.length} files in ${backgroundUserCardPath}`)
               
               // 过滤出生成的文件
-              const generatedFiles = files.filter(f => 
-                (f.endsWith('.json') || f.endsWith('.html')) && 
-                !f.includes('-response') &&
-                !f.startsWith('.') &&
-                !f.includes('_meta')
-              )
+              const generatedFiles = files.filter(f => {
+                // 自定义模式：接受所有类型的文件
+                if (mode === 'custom') {
+                  return !f.includes('-response') &&
+                         !f.startsWith('.') &&
+                         !f.includes('_meta') &&
+                         !f.includes('_backup')
+                } else {
+                  // 模板模式：只接受 json 和 html
+                  return (f.endsWith('.json') || f.endsWith('.html')) && 
+                         !f.includes('-response') &&
+                         !f.startsWith('.') &&
+                         !f.includes('_meta')
+                }
+              })
               
               if (generatedFiles.length > 0) {
                 console.log(`[Async Card API] Generated files detected:`, generatedFiles)
               }
               
-              // 对于 cardplanet-Sandra-json 模板，需要两个文件
-              if (templateName === 'cardplanet-Sandra-json') {
+              // 自定义模式：检测到第一个文件就返回
+              if (mode === 'custom') {
+                if (generatedFiles.length > 0) {
+                  console.log(`[Async Card API] Custom mode: First file detected!`)
+                  clearInterval(checkInterval)
+                  await updateFolderStatus(backgroundUserCardPath, 'partial', {
+                    taskId: taskId,
+                    filesDetected: generatedFiles.length,
+                    mayHaveMore: true
+                  })
+                  resolve(true)
+                }
+              } 
+              // 模板模式的原有逻辑
+              else if (actualTemplateName === 'cardplanet-Sandra-json') {
                 const htmlFiles = generatedFiles.filter(f => f.endsWith('.html'))
                 const jsonFiles = generatedFiles.filter(f => f.endsWith('.json'))
                 
@@ -321,7 +421,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           console.log(`[Async Card API] Starting meta processing for task: ${taskId}`)
           
           // 1. 创建会话元数据
-          const metadata = new SessionMetadata(targetUser.username, topic, templateName, '/api/generate/card/async', taskId)
+          const metadata = new SessionMetadata(targetUser.username, topic, actualTemplateName, '/api/generate/card/async', taskId)
           
           // 设置请求参数
           if (style || language || referenceContent) {
@@ -358,7 +458,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           })
           
           // 2. 检查是否为daily模板，需要四文件生成
-          if (isDailyKnowledgeTemplate(templateName)) {
+          if (isDailyKnowledgeTemplate(actualTemplateName)) {
             console.log(`[Async Card API] Daily template detected, starting four-file generation for task: ${taskId}`)
             
             try {
@@ -371,7 +471,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                 const fourFileResult = await generateFourFiles({
                   userId: targetUser.username,
                   topic,
-                  templateName,
+                  templateName: actualTemplateName,
                   outputDir: backgroundUserCardPath,
                   jsonFilePath,
                   baseName: path.basename(jsonFiles[0], '.json'), // 使用JSON文件的基础名
@@ -456,5 +556,168 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
     })
   }
 })
+
+/**
+ * 刷新检测文件接口 - 用于自定义模式的渐进式文件展示
+ * GET /api/generate/card/async/refresh/:folderName
+ * 
+ * 响应:
+ * {
+ *   "code": 200,
+ *   "success": true,
+ *   "data": {
+ *     "files": [...],
+ *     "totalFiles": 2,
+ *     "status": "partial",
+ *     "folderName": "...",
+ *     "lastChecked": "2025-09-05T10:00:00Z"
+ *   }
+ * }
+ */
+router.get('/refresh/:folderName', authenticateUserOrDefault, async (req, res) => {
+  try {
+    let { folderName } = req.params
+    const username = req.user?.username || 'default'
+    
+    // 解码处理（兼容可能的URL编码）
+    try {
+      if (folderName.includes('%')) {
+        const decoded = decodeURIComponent(folderName)
+        console.log(`[Refresh API] URL decoded: ${folderName} -> ${decoded}`)
+        folderName = decoded
+      }
+    } catch (e) {
+      console.log(`[Refresh API] URL decode failed, using original: ${folderName}`)
+    }
+    
+    // 构建用户卡片路径
+    const userCardPath = userService.getUserCardPath(username, folderName)
+    
+    // 检查文件夹是否存在
+    try {
+      await fs.access(userCardPath)
+    } catch (error) {
+      return res.status(404).json({
+        code: 404,
+        success: false,
+        message: '文件夹不存在'
+      })
+    }
+    
+    // 扫描文件夹获取文件列表
+    const allFiles = await fs.readdir(userCardPath)
+    
+    // 过滤出生成的文件（排除元数据和临时文件）
+    const generatedFiles = allFiles.filter(f => 
+      !f.startsWith('.') &&           // 非隐藏文件
+      !f.includes('_meta') &&          // 非元数据
+      !f.includes('-response') &&      // 非响应日志
+      !f.includes('_backup')           // 非备份文件
+    )
+    
+    // 收集文件详细信息
+    const fileInfos = []
+    for (const fileName of generatedFiles) {
+      const filePath = path.join(userCardPath, fileName)
+      try {
+        const stats = await fs.stat(filePath)
+        const ext = path.extname(fileName).toLowerCase().substring(1)
+        
+        // 获取文件类型
+        const fileType = getFileTypeFromExt(ext)
+        
+        // 对于文本类文件，读取前200字符作为预览
+        let preview = ''
+        if (['txt', 'md', 'json', 'html', 'csv', 'xml', 'js', 'css'].includes(ext)) {
+          try {
+            const content = await fs.readFile(filePath, 'utf-8')
+            preview = content.substring(0, 200)
+          } catch (e) {
+            console.log(`[Refresh API] Cannot read preview for ${fileName}`)
+          }
+        }
+        
+        fileInfos.push({
+          fileName,
+          fileType,
+          extension: ext,
+          size: stats.size,
+          createdAt: stats.birthtime,
+          modifiedAt: stats.mtime,
+          preview
+        })
+      } catch (error) {
+        console.error(`[Refresh API] Error reading file ${fileName}:`, error)
+      }
+    }
+    
+    // 按创建时间排序（新的在前）
+    fileInfos.sort((a, b) => b.createdAt - a.createdAt)
+    
+    // 读取文件夹元数据以获取任务状态
+    let folderStatus = 'partial'
+    let mayHaveMore = true
+    
+    try {
+      const metaPath = path.join(userCardPath, '_meta.json')
+      const metaData = JSON.parse(await fs.readFile(metaPath, 'utf-8'))
+      folderStatus = metaData.status || 'partial'
+      mayHaveMore = metaData.mayHaveMore !== false  // 默认为true
+    } catch (e) {
+      // 元数据可能不存在
+    }
+    
+    // 返回文件列表和状态
+    res.json({
+      code: 200,
+      success: true,
+      data: {
+        files: fileInfos,
+        totalFiles: fileInfos.length,
+        status: folderStatus,
+        mayHaveMore,
+        folderName,
+        folderPath: userCardPath,
+        lastChecked: new Date().toISOString()
+      },
+      message: `找到 ${fileInfos.length} 个文件`
+    })
+    
+  } catch (error) {
+    console.error('[Refresh API] Error:', error)
+    res.status(500).json({
+      code: 500,
+      success: false,
+      message: '刷新失败',
+      error: error.message
+    })
+  }
+})
+
+/**
+ * 获取文件类型
+ */
+function getFileTypeFromExt(ext) {
+  const typeMap = {
+    // 图片
+    jpg: 'image', jpeg: 'image', png: 'image', gif: 'image',
+    svg: 'image', webp: 'image', bmp: 'image',
+    // 文档
+    pdf: 'pdf',
+    doc: 'document', docx: 'document',
+    txt: 'text', md: 'markdown',
+    // 代码
+    js: 'javascript', ts: 'typescript', py: 'python',
+    java: 'java', cpp: 'cpp', c: 'c', cs: 'csharp',
+    html: 'html', css: 'css', json: 'json', xml: 'xml',
+    // 数据
+    xlsx: 'excel', xls: 'excel', csv: 'csv',
+    // 视频
+    mp4: 'video', avi: 'video', mov: 'video', wmv: 'video',
+    // 音频  
+    mp3: 'audio', wav: 'audio', flac: 'audio'
+  }
+  return typeMap[ext] || ext || 'unknown'
+}
 
 export default router

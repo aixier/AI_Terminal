@@ -14,8 +14,19 @@ const router = express.Router()
  */
 router.get('/:topic', authenticateUserOrDefault, async (req, res) => {
   try {
-    const { topic } = req.params
+    let { topic } = req.params
     const username = req.user.username
+    
+    // 解码处理（兼容可能的URL编码）
+    try {
+      if (topic.includes('%')) {
+        const decoded = decodeURIComponent(topic)
+        console.log(`[Status API] URL decoded: ${topic} -> ${decoded}`)
+        topic = decoded
+      }
+    } catch (e) {
+      console.log(`[Status API] URL decode failed, using original: ${topic}`)
+    }
     
     const userCardPath = userService.getUserCardPath(username, topic)
     

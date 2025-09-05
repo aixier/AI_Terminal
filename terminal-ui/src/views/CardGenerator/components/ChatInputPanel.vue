@@ -3,7 +3,7 @@
     <!-- 模板快选按钮和高级选项在同一行 -->
     <div v-if="showTemplates || isMobile" class="template-shortcuts">
       <!-- 高级选项按钮（移动端放在最左边） -->
-      <div v-if="isMobile" class="advanced-toggle-container">
+      <div v-if="false && isMobile" class="advanced-toggle-container">
         <button 
           class="advanced-toggle-btn" 
           @click="showAdvancedOptions = !showAdvancedOptions"
@@ -34,6 +34,13 @@
         >
           {{ template.name }}
         </button>
+        
+        <!-- 自定义模式切换按钮 - 和模板按钮在一行 -->
+        <CustomModeToggle 
+          v-model="customModeEnabled"
+          @change="handleCustomModeChange"
+          class="custom-mode-in-line"
+        />
       </template>
     </div>
     
@@ -64,11 +71,11 @@
         ></textarea>
         <button 
           class="send-button"
-          :class="{ disabled: !canSend }"
-          :disabled="!canSend"
-          @click="sendMessage"
+          :class="{ disabled: !canSend && !isGenerating, generating: isGenerating }"
+          :disabled="!canSend && !isGenerating"
+          @click="handleButtonClick"
         >
-          <span class="send-text">{{ isGenerating ? '生成中...' : '发送' }}</span>
+          <span class="send-text">{{ isGenerating ? '⏹ 终止' : '发送' }}</span>
         </button>
       </div>
       
@@ -144,7 +151,7 @@
     
     <!-- 素材引用选择器 -->
     <AssetReferencePicker
-      v-if="showAssetPicker"
+      :visible="showAssetPicker"
       :position="assetPickerPosition"
       @select="insertAssetReference"
       @close="showAssetPicker = false"
@@ -153,10 +160,19 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref, computed, onMounted, nextTick } from 'vue'
+import { defineProps, defineEmits, ref, computed, onMounted, nextTick, watch } from 'vue'
 import axios from 'axios'
 import AssetReferencePicker from '../../../components/assets/AssetReferencePicker.vue'
 import { ElMessage } from 'element-plus'
+import CustomModeToggle from './CustomModeToggle.vue'
+import { useAssetCache } from '@/composables/useAssetCache'
+import { 
+  parseReferences, 
+  hasAtTrigger, 
+  getAtSymbolPosition,
+  formatReference,
+  convertReferencesToParams 
+} from '@/utils/referenceParser'
 
 const props = defineProps({
   inputText: {
@@ -189,11 +205,17 @@ const emit = defineEmits([
   'send-message',
   'select-template',
   'clear-history',
-  'update:input-text'
+  'update:input-text',
+  'stop-generation'
 ])
 
 const showTemplates = ref(true)
 const inputText = ref(props.inputText)
+
+// 监听内部 inputText 变化，同步到父组件
+watch(inputText, (newValue) => {
+  emit('update:inputText', newValue)
+})
 
 // 模板相关状态
 const templates = ref([])
@@ -202,10 +224,18 @@ const selectedTemplate = ref(null) // ChatInputPanel内部的模板选中状态
 const isTemplateAvailable = computed(() => templates.value.length > 0 && !templateLoadError.value)
 const textareaRef = ref(null)
 
+// 自定义模式相关
+const customModeEnabled = ref(false)
+const assetReferences = ref([])
+const assetMetadata = ref(null)
+const assetIndex = ref(null)
+const assetCache = useAssetCache()
+
 // 素材引用相关
 const showAssetPicker = ref(false)
 const assetPickerPosition = ref({ x: 0, y: 0 })
 const cursorPosition = ref(0)
+const atPosition = ref(-1)
 
 // 可选参数状态
 const showAdvancedOptions = ref(false)
@@ -218,7 +248,7 @@ const referenceValue = ref('')
 
 // 计算是否可以发送
 const canSend = computed(() => {
-  return !props.isGenerating && props.inputText.trim().length > 0
+  return !props.isGenerating && inputText.value.trim().length > 0
 })
 
 // 显示的模板列表 - 只显示快速和精细两个模板
@@ -257,22 +287,60 @@ const getTemplateDisplayName = (name) => {
 // 选择模板
 const selectTemplate = (template) => {
   selectedTemplate.value = template
-  console.log('[ChatInputPanel] Template selected:', template)
+  customModeEnabled.value = false  // 选择模板时，自动关闭自定义模式
+  console.log('[ChatInputPanel] Template selected:', template, 'Custom mode disabled')
   // 通知父组件模板选择变化，但现在已经不需要了，因为发送消息时会直接使用内部状态
+}
+
+// 处理按钮点击 - 发送或终止
+const handleButtonClick = () => {
+  if (props.isGenerating) {
+    // 生成中，执行终止操作
+    stopGeneration()
+  } else {
+    // 未生成，执行发送操作
+    sendMessage()
+  }
+}
+
+// 终止生成
+const stopGeneration = () => {
+  console.log('[ChatInputPanel] Stopping generation...')
+  
+  // 触发终止生成事件，让父组件处理
+  emit('stop-generation')
+  
+  // 清空输入框（可选）
+  // inputText.value = ''
 }
 
 // 发送消息
 const sendMessage = () => {
   if (canSend.value) {
-    // 构建完整的消息参数对象
+    const messageText = inputText.value.trim()
+    
+    // 构建基础消息参数对象
     const messageData = {
-      message: props.inputText.trim(),
-      template: selectedTemplate.value,  // 包含完整模板信息，用于显示
-      templateName: selectedTemplate.value?.fileName,  // 模板文件名，用于API调用
+      message: messageText,
+      // 自定义模式和模板模式互斥
+      template: customModeEnabled.value ? null : selectedTemplate.value,  // 自定义模式下不发送模板
+      templateName: customModeEnabled.value ? null : selectedTemplate.value?.fileName,  // 自定义模式下不发送模板文件名
+      // 模式标记
+      mode: customModeEnabled.value ? 'custom' : 'normal',
       // 可选参数
       style: enableStyle.value ? styleValue.value : undefined,
       language: enableLanguage.value ? languageValue.value : undefined,
       reference: enableReference.value ? referenceValue.value : undefined
+    }
+    
+    // 自定义模式下，解析并添加引用
+    if (customModeEnabled.value) {
+      const references = parseReferences(messageText)
+      if (references.length > 0) {
+        // 转换为后端需要的格式
+        messageData.references = convertReferencesToParams(references, assetMetadata.value)
+        console.log('[ChatInputPanel] Parsed references:', messageData.references)
+      }
     }
     
     console.log('[ChatInputPanel] Sending message with params:', messageData)
@@ -351,30 +419,183 @@ onMounted(() => {
   loadTemplates()
 })
 
+// 处理自定义模式切换
+const handleCustomModeChange = async (enabled) => {
+  console.log('[ChatInputPanel] Custom mode changed:', enabled)
+  customModeEnabled.value = enabled  // 确保状态更新
+  
+  // 如果启用自定义模式，清除模板选择
+  if (enabled) {
+    selectedTemplate.value = null
+    console.log('[ChatInputPanel] Template selection cleared due to custom mode')
+  }
+  
+  // 自定义模式只影响发送参数，不需要加载元数据
+  // 元数据仅在实际输入 @ 符号时才加载
+}
+
+// 加载素材元数据 - 从 localStorage 读取
+const loadAssetMetadata = async () => {
+  try {
+    console.log('[ChatInputPanel] Loading asset metadata from localStorage')
+    // 从缓存读取，不发起 API 请求
+    assetMetadata.value = await assetCache.getMetadata()
+    
+    if (assetMetadata.value) {
+      // 构建索引
+      buildAssetIndex()
+      console.log('[ChatInputPanel] Asset metadata loaded:', assetMetadata.value)
+    } else {
+      console.log('[ChatInputPanel] No asset metadata in localStorage')
+    }
+  } catch (error) {
+    console.error('[ChatInputPanel] Failed to load asset metadata:', error)
+    // 不显示错误消息，因为这是预期的（用户可能还没上传素材）
+  }
+}
+
+// 构建资源索引
+const buildAssetIndex = () => {
+  if (!assetMetadata.value) return
+  
+  assetIndex.value = {
+    categories: {},
+    files: [],
+    searchMap: {}
+  }
+  
+  // 新格式：使用 assets 和 labels
+  if (assetMetadata.value.assets) {
+    // 处理所有分类和文件
+    Object.entries(assetMetadata.value.assets).forEach(([categoryKey, files]) => {
+      const categoryLabel = categoryKey === '' 
+        ? '根目录' 
+        : (assetMetadata.value.labels?.[categoryKey] || categoryKey)
+      
+      // 添加分类
+      if (categoryKey !== '') {
+        assetIndex.value.categories[categoryKey] = {
+          key: categoryKey,
+          label: categoryLabel,
+          files: files
+        }
+      }
+      
+      // 添加文件
+      if (files && files.length > 0) {
+        files.forEach(file => {
+          assetIndex.value.files.push({
+            name: file,
+            fileName: file,
+            category: categoryKey,
+            categoryLabel: categoryLabel
+          })
+        })
+      }
+    })
+  }
+  
+  // 如果有树形结构，也处理它（用于分层显示）
+  if (assetMetadata.value.tree) {
+    assetMetadata.value.tree.forEach(cat => {
+      processCategory(cat)
+    })
+  }
+}
+
+// 递归处理分类
+const processCategory = (category, parentLabel = '') => {
+  const fullLabel = parentLabel 
+    ? `${parentLabel}/${category.label}` 
+    : category.label
+  
+  assetIndex.value.categories[category.key] = {
+    ...category,
+    fullLabel
+  }
+  
+  // 索引文件
+  if (category.files) {
+    category.files.forEach(file => {
+      assetIndex.value.files.push({
+        name: file,
+        category: category.key,
+        categoryLabel: fullLabel
+      })
+    })
+  }
+  
+  // 递归处理子分类
+  if (category.children) {
+    category.children.forEach(child => 
+      processCategory(child, fullLabel)
+    )
+  }
+}
+
 // 处理输入事件，检测@符号
 const handleInput = (event) => {
   const value = event.target.value
-  const cursorPosition = event.target.selectionStart
+  const cursorPos = event.target.selectionStart
   
-  // 检测@符号
-  if (value[cursorPosition - 1] === '@') {
-    // 获取输入框位置
-    const rect = event.target.getBoundingClientRect()
-    const lineHeight = 24 // 估算行高
-    const charWidth = 8 // 估算字符宽度
+  console.log('[ChatInputPanel] handleInput - value:', value, 'cursorPos:', cursorPos)
+  console.log('[ChatInputPanel] customModeEnabled:', customModeEnabled.value)
+  
+  // 仅在自定义模式下检测@符号
+  if (customModeEnabled.value && hasAtTrigger(value, cursorPos)) {
+    console.log('[ChatInputPanel] @ trigger detected!')
+    const atPos = getAtSymbolPosition(value, cursorPos)
+    console.log('[ChatInputPanel] @ position:', atPos)
     
-    // 计算@符号的位置
-    const textBeforeCursor = value.substring(0, cursorPosition)
-    const lines = textBeforeCursor.split('\n')
-    const currentLine = lines[lines.length - 1]
-    
-    pickerPosition.value = {
-      x: rect.left + (currentLine.length - 1) * charWidth,
-      y: rect.top + (lines.length - 1) * lineHeight
+    if (atPos !== null) {
+      // 获取输入框位置和样式
+      const textarea = event.target
+      const rect = textarea.getBoundingClientRect()
+      const styles = window.getComputedStyle(textarea)
+      const padding = parseInt(styles.paddingLeft) || 10
+      const lineHeight = parseInt(styles.lineHeight) || 24
+      const fontSize = parseInt(styles.fontSize) || 14
+      const charWidth = fontSize * 0.6 // 更准确的字符宽度估算
+      
+      // 计算光标位置（@ 符号后面）
+      const textBeforeCursor = value.substring(0, cursorPos)
+      const lines = textBeforeCursor.split('\n')
+      const currentLine = lines[lines.length - 1]
+      const charsAfterAt = currentLine.length // @ 后面的字符数
+      
+      // 计算 picker 的位置（在光标位置显示）
+      assetPickerPosition.value = {
+        x: rect.left + padding + charsAfterAt * charWidth,
+        y: rect.top + padding + (lines.length - 1) * lineHeight
+      }
+      
+      console.log('[ChatInputPanel] picker position:', assetPickerPosition.value)
+      
+      atPosition.value = atPos
+      cursorPosition.value = cursorPos
+      
+      // 确保元数据已加载
+      console.log('[ChatInputPanel] assetMetadata loaded?', !!assetMetadata.value)
+      if (assetMetadata.value) {
+        console.log('[ChatInputPanel] Showing asset picker')
+        showAssetPicker.value = true
+        console.log('[ChatInputPanel] showAssetPicker after setting:', showAssetPicker.value)
+      } else {
+        console.log('[ChatInputPanel] Loading asset metadata from localStorage...')
+        // 尝试加载元数据
+        loadAssetMetadata().then(() => {
+          console.log('[ChatInputPanel] Metadata loaded, assetMetadata:', !!assetMetadata.value)
+          if (assetMetadata.value) {
+            console.log('[ChatInputPanel] Showing asset picker after loading')
+            showAssetPicker.value = true
+          } else {
+            console.log('[ChatInputPanel] No metadata available, cannot show picker')
+          }
+        })
+      }
     }
-    
-    atPosition.value = cursorPosition - 1
-    showAssetPicker.value = true
+  } else {
+    console.log('[ChatInputPanel] No @ trigger detected or custom mode disabled')
   }
 }
 
@@ -392,23 +613,44 @@ const handleKeyDown = (event) => {
 
 // 插入素材引用
 const insertAssetReference = (asset) => {
+  console.log('[ChatInputPanel] Inserting asset reference:', asset)
+  console.log('[ChatInputPanel] At position:', atPosition.value)
+  
   if (atPosition.value < 0) return
   
   const textarea = textareaRef.value
-  const value = inputText.value
-  const reference = `@${asset.name}`
+  const value = inputText.value  // 使用本地状态而不是 props
   
-  // 替换@符号为完整引用
-  const before = value.substring(0, atPosition.value)
+  // 使用简化的引用格式：直接使用文件名或分类名
+  let reference
+  if (asset.type === 'category') {
+    // 分类引用：直接使用分类名
+    reference = asset.label || asset.key
+  } else {
+    // 文件引用：直接使用文件名
+    reference = asset.name || asset.fileName
+  }
+  
+  console.log('[ChatInputPanel] Reference to insert:', reference)
+  
+  // 检查@前是否有空格（如果@在开头则不需要）
+  const needSpaceBefore = atPosition.value > 0 && value[atPosition.value - 1] !== ' '
+  
+  // 构建新值：替换@符号为引用，并在后面加空格避免粘连
+  const before = value.substring(0, atPosition.value) + (needSpaceBefore ? ' ' : '')
   const after = value.substring(atPosition.value + 1)
-  const newValue = before + reference + after
+  // 在引用后添加空格，避免与后续内容粘连
+  const newValue = before + '@' + reference + ' ' + after
   
-  // 更新输入值
+  console.log('[ChatInputPanel] New value:', newValue)
+  
+  // 更新本地状态
   inputText.value = newValue
+  // 更新父组件
   emit('update:inputText', newValue)
   
-  // 计算新的光标位置
-  const newPosition = atPosition.value + reference.length
+  // 计算新的光标位置（在引用后的空格后）
+  const newPosition = before.length + 1 + reference.length + 1
   
   // 重置状态
   showAssetPicker.value = false
@@ -655,6 +897,17 @@ const insertAssetReference = (asset) => {
   min-width: 60px;
   justify-content: center;
   height: 36px; /* 固定高度与输入框匹配 */
+}
+
+/* 生成中状态的按钮样式 */
+.send-button.generating {
+  background: #f56c6c;
+  border-color: #f56c6c;
+}
+
+.send-button.generating:hover:not(:disabled) {
+  background: #f78989;
+  border-color: #f78989;
 }
 
 /* 操作按钮 */

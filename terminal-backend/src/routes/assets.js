@@ -560,6 +560,9 @@ router.post('/upload', upload.array('files', 10), async (req, res) => {
   try {
     const username = req.user?.username || 'default'
     const category = req.body.category || ''
+    const encoding = req.body.encoding || 'auto'  // 获取编码标记
+    
+    console.log(`[Assets Upload] Encoding flag: ${encoding}`)
     
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
@@ -577,7 +580,22 @@ router.post('/upload', upload.array('files', 10), async (req, res) => {
     
     // 处理每个文件
     for (const file of req.files) {
-      const originalName = file.originalname
+      // 修复中文文件名编码问题
+      // multer 可能会将文件名编码为 Latin-1，需要正确解码
+      let originalName = file.originalname
+      try {
+        // 尝试将 Latin-1 编码的字符串转换为正确的 UTF-8
+        const latin1Buffer = Buffer.from(originalName, 'latin1')
+        const utf8String = latin1Buffer.toString('utf8')
+        // 如果转换后的字符串看起来合理，就使用它
+        if (!utf8String.includes('�') && !utf8String.includes('Ã')) {
+          originalName = utf8String
+        }
+      } catch (e) {
+        console.log('[Assets] Failed to decode filename, using original:', originalName)
+      }
+      
+      console.log(`[Assets] Processing file - Original: ${file.originalname}, Decoded: ${originalName}`)
       const tempPath = file.path
       
       // 确保文件名唯一

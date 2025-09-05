@@ -344,7 +344,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
       }
       
       // 原有的提示词
-      prompt = `根据[${templatePath}]文档的规范，就以下命题，生成一组卡片的json文档在[${userCardPath}]：${topic}`
+      prompt = `根据[${templatePath}]文档的规范，就以下命题：${topic}，生成一组卡片的json文档在[${userCardPath}]文件夹下`
     }
     
     // 文件夹已经在前面创建，这里只更新状态

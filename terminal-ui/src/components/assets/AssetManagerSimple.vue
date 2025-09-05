@@ -2,7 +2,7 @@
   <div class="asset-manager-simple">
     <!-- 标题栏 -->
     <div class="header">
-      <span class="title">{{ title || '我的素材' }}</span>
+      <span class="title" @click="navigateToRoot">{{ title || '我的素材' }}</span>
       <button class="upload-btn" @click="selectFiles">上传文件</button>
     </div>
 
@@ -136,6 +136,36 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { assetsApi } from '../../api/assets'
 
+// 解码文件名的工具函数
+const decodeFileName = (fileName) => {
+  if (!fileName) return fileName
+  
+  // 如果文件名看起来像是Latin-1编码的中文（包含特定字符）
+  if (fileName.includes('æ') || fileName.includes('å') || fileName.includes('Ã')) {
+    try {
+      // 尝试修复乱码
+      // 这种乱码通常是UTF-8被错误地解释为Latin-1
+      const bytes = []
+      for (let i = 0; i < fileName.length; i++) {
+        bytes.push(fileName.charCodeAt(i))
+      }
+      // 尝试将字节数组解释为UTF-8
+      const decoder = new TextDecoder('utf-8')
+      const uint8Array = new Uint8Array(bytes)
+      const decoded = decoder.decode(uint8Array)
+      
+      if (decoded && !decoded.includes('�')) {
+        console.log(`[AssetManager] Decoded filename: ${fileName} -> ${decoded}`)
+        return decoded
+      }
+    } catch (e) {
+      console.log('[AssetManager] Failed to decode filename:', fileName)
+    }
+  }
+  
+  return fileName
+}
+
 // 状态
 const loading = ref(false)
 const currentCategory = ref('')  // 当前分类的key，空字符串表示根目录
@@ -170,6 +200,37 @@ const renameInput = ref(null)
 const canGoBack = computed(() => navigationIndex.value > 0)
 const canGoForward = computed(() => navigationIndex.value < navigationHistory.value.length - 1)
 
+// 保存元数据到缓存（供 @ 功能使用）
+const saveMetadataToCache = (data) => {
+  try {
+    // 转换数据格式：categories -> assets
+    const metadata = {
+      version: data.version || '3.0',
+      userId: data.userId || 'default',
+      lastUpdated: data.lastUpdated || new Date().toISOString(),
+      assets: data.categories || {},  // categories 映射到 assets
+      labels: data.labels || {},
+      tree: data.tree || []  // 保留树形结构
+    }
+    
+    // 包装成缓存格式
+    const cacheData = {
+      data: metadata,
+      timestamp: Date.now(),
+      version: metadata.version,
+      lastUpdated: metadata.lastUpdated
+    }
+    
+    // 直接保存 JSON，不进行编码
+    localStorage.setItem('asset_metadata', JSON.stringify(cacheData))
+    localStorage.setItem('asset_metadata_version', cacheData.lastUpdated)
+    
+    console.log('[AssetManagerSimple] Asset metadata saved to localStorage:', metadata)
+  } catch (error) {
+    console.error('[AssetManagerSimple] Failed to save metadata to cache:', error)
+  }
+}
+
 // 方法
 const loadData = async () => {
   loading.value = true
@@ -181,6 +242,9 @@ const loadData = async () => {
       labelsData.value = categoriesRes.data.labels || {}
       categoryTree.value = categoriesRes.data.tree || []
       updateBreadcrumb()
+      
+      // 保存元数据到 localStorage，供 @ 功能使用
+      saveMetadataToCache(categoriesRes.data)
     }
 
     // 获取文件
@@ -227,7 +291,8 @@ const loadData = async () => {
           fileCount: cat.files.length
         })),
         ...currentFiles.map(filename => ({
-          name: filename,
+          name: decodeFileName(filename),  // 解码文件名
+          originalName: filename,  // 保留原始文件名用于后端操作
           type: 'file',
           category: currentCategory.value
         }))
@@ -501,10 +566,29 @@ const handleFileSelect = async (event) => {
   
   try {
     const formData = new FormData()
-    files.forEach(file => formData.append('files', file))
+    
+    // 处理每个文件，确保文件名正确编码
+    files.forEach(file => {
+      // 如果文件名包含中文或特殊字符，需要特别处理
+      // 创建一个新的File对象，使用正确编码的文件名
+      if (file.name && /[^\x00-\x7F]/.test(file.name)) {
+        // 文件名包含非ASCII字符
+        console.log('[AssetManager] Original filename:', file.name)
+        
+        // 直接使用原始文件和文件名
+        // FormData会自动处理编码
+        formData.append('files', file, file.name)
+      } else {
+        formData.append('files', file)
+      }
+    })
+    
     if (currentCategory.value) {
       formData.append('category', currentCategory.value)
     }
+    
+    // 添加编码标记，告诉后端这是UTF-8编码的
+    formData.append('encoding', 'utf-8')
     
     await assetsApi.uploadAssets(formData)
     ElMessage.success('上传成功')
@@ -587,7 +671,9 @@ const deleteSelected = async () => {
       if (item.type === 'category') {
         await assetsApi.deleteCategory(item.key)
       } else {
-        await assetsApi.deleteAsset(item.id)
+        // 使用原始文件名进行删除操作
+        const fileName = item.originalName || item.name
+        await assetsApi.deleteFile(fileName, item.category)
       }
     }
     ElMessage.success('删除成功')
@@ -639,6 +725,12 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 500;
   color: #333;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.title:hover {
+  color: #0078d4;
 }
 
 .header .upload-btn {

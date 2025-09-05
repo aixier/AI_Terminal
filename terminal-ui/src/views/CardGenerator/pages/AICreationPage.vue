@@ -20,6 +20,7 @@
             :messages="messages"
             :is-mobile="false"
             @retry-generation="$emit('retry-generation', $event)"
+            @refresh-files="$emit('refresh-files', $event)"
             @preview-content="handlePreviewContent"
             @save-content="handleSaveContent"
             @share-content="handleShareContent"
@@ -36,6 +37,7 @@
             :is-mobile="false"
             :max-templates="6"
             @send-message="$emit('send-message', $event)"
+            @stop-generation="$emit('stop-generation')"
             @clear-history="$emit('clear-history')"
             @update:input-text="$emit('update:input-text', $event)"
           />
@@ -50,6 +52,7 @@
         :messages="messages"
         :is-mobile="true"
         @retry-generation="$emit('retry-generation', $event)"
+        @refresh-files="$emit('refresh-files', $event)"
         @preview-content="handlePreviewContent"
         @save-content="handleSaveContent"
         @share-content="handleShareContent"
@@ -64,6 +67,7 @@
         :is-mobile="true"
         :max-templates="4"
         @send-message="$emit('send-message', $event)"
+        @stop-generation="$emit('stop-generation')"
         @clear-history="$emit('clear-history')"
         @update:input-text="$emit('update:input-text', $event)"
       />
@@ -104,6 +108,8 @@ const props = defineProps({
 const emit = defineEmits([
   'send-message',
   'retry-generation',
+  'refresh-files',
+  'stop-generation',
   'clear-history',
   'update:input-text'
 ])

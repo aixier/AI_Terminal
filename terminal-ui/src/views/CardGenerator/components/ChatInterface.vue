@@ -71,6 +71,16 @@
                 >
                   <span>📂</span> 打开文件
                 </button>
+                <!-- 自定义模式下的刷新按钮 -->
+                <button 
+                  v-if="message.resultData.mode === 'custom' && message.resultData.folderName"
+                  @click="$emit('refresh-files', message)"
+                  class="action-btn"
+                  :class="{ refreshing: message.isRefreshing }"
+                >
+                  <span>{{ message.isRefreshing ? '⏳' : '🔄' }}</span> 
+                  {{ message.isRefreshing ? '检查中' : '刷新文件' }}
+                </button>
                 <button 
                   @click="$emit('retry', message)"
                   class="action-btn"
@@ -196,6 +206,7 @@ const emit = defineEmits([
   'select-template',
   'retry',
   'open-file',
+  'refresh-files',
   'clear-history'
 ])
 
@@ -537,6 +548,15 @@ defineExpose({
 
 .action-btn:hover {
   background: #e8e8e8;
+}
+
+.action-btn.refreshing {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .error-icon {

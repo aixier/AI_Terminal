@@ -42,6 +42,8 @@
             :is-mobile="false"
             @send-message="handleSendMessage"
             @retry-generation="retryGeneration"
+            @refresh-files="refreshCustomFiles"
+            @stop-generation="handleStopGeneration"
             @clear-history="clearChatHistory"
             @update:input-text="chatInputText = $event"
           />
@@ -107,6 +109,8 @@
             :is-mobile="true"
             @send-message="handleSendMessage"
             @retry-generation="retryGeneration"
+            @refresh-files="refreshCustomFiles"
+            @stop-generation="handleStopGeneration"
             @clear-history="clearChatHistory"
             @update:input-text="chatInputText = $event"
           />
@@ -204,6 +208,7 @@ import ContextMenu from '../../components/ContextMenu.vue'
 // Import services and APIs
 import sseService from '../../services/sseService'
 import terminalAPI from '../../api/terminal'
+import * as asyncCardApi from '../../api/asyncCardGeneration'
 
 // Router
 const router = useRouter()
@@ -545,8 +550,8 @@ const deleteCardFile = async (file, folder) => {
 
 // ============ Chat Methods ============
 const handleSendMessage = async (messageData) => {
-  // 处理新的消息格式：{message, template, style, language, reference}
-  let message, currentTemplate, style, language, reference
+  // 处理新的消息格式：{message, template, style, language, reference, mode, references}
+  let message, currentTemplate, style, language, reference, mode, references
   
   if (typeof messageData === 'string') {
     // 兼容旧格式
@@ -559,6 +564,8 @@ const handleSendMessage = async (messageData) => {
     style = messageData.style
     language = messageData.language
     reference = messageData.reference
+    mode = messageData.mode  // 自定义模式标识
+    references = messageData.references  // 素材引用数组
   }
   
   if (!message || isGenerating.value) return
@@ -578,13 +585,24 @@ const handleSendMessage = async (messageData) => {
   // 构建完整的API参数
   const params = {
     topic: message,
-    templateName: messageData.templateName || (currentTemplate 
-      ? currentTemplate.fileName 
-      : 'daily-knowledge-card-template.md'),  // 默认使用快速模板
     token: token  // 使用实际的token
   }
   
-  // 添加可选参数（只在有值时传递）
+  // 自定义模式不使用模板
+  if (mode === 'custom') {
+    // 自定义模式：不设置 templateName，让后端识别为自定义模式
+    params.mode = mode
+    if (references && references.length > 0) {
+      params.references = references  // 素材引用数组
+    }
+  } else {
+    // 模板模式：设置模板名称
+    params.templateName = messageData.templateName || (currentTemplate 
+      ? currentTemplate.fileName 
+      : 'daily-knowledge-card-template.md')  // 默认使用快速模板
+  }
+  
+  // 添加其他可选参数（只在有值时传递）
   if (style) params.style = style
   if (language) params.language = language  
   if (reference) params.reference = reference
@@ -618,7 +636,13 @@ const handleSendMessage = async (messageData) => {
       fileName: result.fileName,
       templateName: params.templateName,
       allFiles: result.allFiles,
-      generatedAt: result.generatedAt
+      generatedAt: result.generatedAt,
+      // 自定义模式支持
+      mode: params.mode,
+      folderName: result.folderName,
+      files: result.files,
+      totalFiles: result.totalFiles,
+      mayHaveMore: result.mayHaveMore
     }
     
     updateMessage(aiMessage.id, {
@@ -638,6 +662,96 @@ const handleSendMessage = async (messageData) => {
 
 const retryGeneration = async (errorMessage) => {
   console.log('Retry generation for:', errorMessage)
+}
+
+// 处理终止生成
+const handleStopGeneration = () => {
+  console.log('[CardGenerator] Stopping generation...')
+  
+  // 1. 停止异步生成（清理轮询等）
+  if (stopGeneration) {
+    stopGeneration()
+  }
+  
+  // 2. 找到并删除正在生成的消息
+  const generatingMessage = chatMessages.value.find(m => m.isGenerating)
+  if (generatingMessage) {
+    console.log('[CardGenerator] Removing generating message:', generatingMessage.id)
+    // 删除生成中的消息
+    chatMessages.value = chatMessages.value.filter(m => m.id !== generatingMessage.id)
+  }
+  
+  // 3. 重置生成状态
+  isGenerating.value = false
+  
+  // 4. 清空输入框（可选）
+  // chatInputText.value = ''
+  
+  ElMessage.success('已终止生成')
+}
+
+// 刷新自定义模式的文件列表
+const refreshCustomFiles = async (message) => {
+  console.log('[RefreshFiles] Refreshing files for message:', message)
+  
+  if (!message.resultData || !message.resultData.folderName) {
+    console.error('[RefreshFiles] No folder name in message')
+    return
+  }
+  
+  // 设置刷新状态
+  updateMessage(message.id, { isRefreshing: true })
+  
+  try {
+    // 调用刷新API
+    const result = await asyncCardApi.refreshGeneratedFiles(message.resultData.folderName)
+    
+    if (result.success && result.data) {
+      console.log('[RefreshFiles] Found files:', result.data.files)
+      
+      // 更新消息，添加新发现的文件
+      const updatedResultData = {
+        ...message.resultData,
+        files: result.data.files,
+        totalFiles: result.data.totalFiles,
+        status: result.data.status,
+        mayHaveMore: result.data.mayHaveMore,
+        lastRefreshed: new Date().toISOString()
+      }
+      
+      // 如果有文件，设置第一个为主要文件
+      if (result.data.files && result.data.files.length > 0) {
+        const htmlFile = result.data.files.find(f => f.fileType === 'html')
+        const primaryFile = htmlFile || result.data.files[0]
+        updatedResultData.primaryFile = primaryFile
+        updatedResultData.type = primaryFile.fileType || 'file'
+      }
+      
+      updateMessage(message.id, {
+        isRefreshing: false,
+        resultData: updatedResultData
+      })
+      
+      // 显示提示
+      const newFileCount = result.data.totalFiles - (message.resultData.totalFiles || 0)
+      if (newFileCount > 0) {
+        ElMessage.success(`发现 ${newFileCount} 个新文件`)
+      } else {
+        ElMessage.info('暂无新文件')
+      }
+      
+      // 刷新文件夹列表
+      refreshCardFolders()
+      
+    } else {
+      updateMessage(message.id, { isRefreshing: false })
+      ElMessage.warning('刷新失败，请重试')
+    }
+  } catch (error) {
+    console.error('[RefreshFiles] Error refreshing files:', error)
+    updateMessage(message.id, { isRefreshing: false })
+    ElMessage.error('刷新失败：' + error.message)
+  }
 }
 
 // ============ Context Menu Methods ============

@@ -1,100 +1,140 @@
 <template>
-  <div class="asset-reference-picker">
-    <!-- 遮罩层 -->
-    <div class="picker-overlay" @click="$emit('close')"></div>
-    
-    <!-- 选择器弹窗 -->
-    <div class="picker-popup" :style="popupStyle">
-      <!-- 头部 -->
-      <div class="picker-header">
-        <input 
-          ref="searchInput"
-          v-model="searchQuery"
-          type="text"
-          placeholder="搜索素材..."
-          @input="handleSearch"
-        >
-        <button class="close-btn" @click="$emit('close')">×</button>
+  <teleport to="body">
+    <div 
+      v-if="visible"
+      class="asset-reference-picker"
+      :style="pickerStyle"
+      @click.stop
+    >
+      <!-- 初始选择界面 -->
+      <div v-if="mode === 'initial'" class="picker-menu">
+        <div class="menu-header">选择引用类型</div>
+        <div class="menu-item" @click="selectMode('category')">
+          <el-icon class="menu-icon"><Folder /></el-icon>
+          <span>按分类浏览</span>
+        </div>
+        <div class="menu-item" @click="selectMode('file')">
+          <el-icon class="menu-icon"><Document /></el-icon>
+          <span>按文件浏览</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" @click="handleClose">
+          <el-icon class="menu-icon"><Close /></el-icon>
+          <span>取消</span>
+        </div>
       </div>
       
-      <!-- 内容 -->
-      <div class="picker-body" v-loading="loading">
-        <!-- 最近使用 -->
-        <div v-if="recentAssets.length > 0" class="asset-section">
-          <div class="section-title">最近使用</div>
-          <div class="asset-list">
-            <div 
-              v-for="asset in recentAssets"
-              :key="asset.id"
-              class="asset-item"
-              @click="selectAsset(asset)"
-            >
-              <span class="asset-icon">{{ getAssetIcon(asset.type) }}</span>
-              <span class="asset-name">{{ asset.name }}</span>
-              <span class="asset-ref">{{ asset.shortReference }}</span>
-            </div>
+      <!-- 分类选择界面 -->
+      <div v-else-if="mode === 'category'" class="picker-menu">
+        <div class="menu-header">
+          <el-icon class="back-btn" @click="backToInitial"><ArrowLeft /></el-icon>
+          选择分类
+        </div>
+        
+        <!-- 搜索框 -->
+        <div class="search-box">
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索分类..."
+            size="small"
+            clearable
+            @input="handleSearch"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </div>
+        
+        <!-- 分类列表 -->
+        <div class="menu-list">
+          <div 
+            v-for="cat in filteredCategories" 
+            :key="cat.key"
+            class="menu-item"
+            @click="selectCategory(cat)"
+            :title="cat.fullLabel || cat.label"
+          >
+            <el-icon class="menu-icon"><Folder /></el-icon>
+            <span class="item-text">{{ cat.label }}</span>
+            <span class="item-count">{{ cat.fileCount || 0 }}</span>
           </div>
         </div>
         
-        <!-- 所有素材 -->
-        <div class="asset-section">
-          <div class="section-title">
-            所有素材
-            <span class="section-count">({{ filteredAssets.length }})</span>
-          </div>
-          
-          <!-- 类型筛选标签 -->
-          <div class="type-tabs">
-            <button 
-              v-for="type in assetTypes"
-              :key="type.value"
-              class="type-tab"
-              :class="{ active: selectedType === type.value }"
-              @click="selectedType = type.value"
-            >
-              {{ type.icon }} {{ type.label }}
-            </button>
-          </div>
-          
-          <!-- 素材列表 -->
-          <div class="asset-list">
-            <div 
-              v-for="asset in displayAssets"
-              :key="asset.id"
-              class="asset-item"
-              @click="selectAsset(asset)"
-            >
-              <span class="asset-icon">{{ getAssetIcon(asset.type) }}</span>
-              <div class="asset-details">
-                <div class="asset-name">{{ asset.name }}</div>
-                <div class="asset-meta">
-                  {{ formatFileSize(asset.size) }} · {{ formatTime(asset.createdAt) }}
-                </div>
-              </div>
-              <span class="asset-ref">{{ asset.shortReference }}</span>
-            </div>
-          </div>
-          
-          <!-- 空状态 -->
-          <div v-if="displayAssets.length === 0" class="empty-state">
-            <span>没有找到匹配的素材</span>
-          </div>
+        <div v-if="filteredCategories.length === 0" class="empty-message">
+          没有找到匹配的分类
         </div>
       </div>
       
-      <!-- 底部提示 -->
-      <div class="picker-footer">
-        <div class="help-text">
-          点击素材插入引用，或使用键盘上下键选择，Enter确认
+      <!-- 文件选择界面 -->
+      <div v-else-if="mode === 'file'" class="picker-menu">
+        <div class="menu-header">
+          <el-icon class="back-btn" @click="backToInitial"><ArrowLeft /></el-icon>
+          选择文件
+        </div>
+        
+        <!-- 搜索框 -->
+        <div class="search-box">
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索文件..."
+            size="small"
+            clearable
+            @input="handleSearch"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </div>
+        
+        <!-- 文件列表 -->
+        <div class="menu-list">
+          <div 
+            v-for="file in filteredFiles" 
+            :key="file.name"
+            class="menu-item"
+            @click="selectFile(file)"
+            :title="`${file.categoryLabel}/${file.name}`"
+          >
+            <el-icon class="menu-icon">
+              <component :is="getFileIcon(file.name)" />
+            </el-icon>
+            <span class="item-text">{{ file.name }}</span>
+            <span class="item-category">{{ file.categoryLabel }}</span>
+          </div>
+        </div>
+        
+        <div v-if="filteredFiles.length === 0" class="empty-message">
+          没有找到匹配的文件
         </div>
       </div>
     </div>
-  </div>
+  </teleport>
+  
+  <!-- 点击外部关闭 -->
+  <div 
+    v-if="visible"
+    class="picker-backdrop"
+    @click="handleClose"
+  ></div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { assetsApi, assetUtils } from '../../api/assets'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ElInput, ElIcon } from 'element-plus'
+import { 
+  Folder, 
+  Document, 
+  Close, 
+  ArrowLeft, 
+  Search,
+  Picture,
+  VideoPlay,
+  Tickets,
+  DataAnalysis
+} from '@element-plus/icons-vue'
+import { useAssetCache } from '@/composables/useAssetCache'
 
 // Props
 const props = defineProps({
@@ -102,9 +142,9 @@ const props = defineProps({
     type: Object,
     default: () => ({ x: 0, y: 0 })
   },
-  maxHeight: {
-    type: Number,
-    default: 400
+  visible: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -112,369 +152,464 @@ const props = defineProps({
 const emit = defineEmits(['select', 'close'])
 
 // 状态
-const loading = ref(false)
+const mode = ref('initial')  // initial | category | file
 const searchQuery = ref('')
-const recentAssets = ref([])
-const allAssets = ref([])
-const selectedType = ref('')
-const selectedIndex = ref(-1)
-const searchInput = ref(null)
+const assetMetadata = ref(null)
+const assetIndex = ref(null)
+const assetCache = useAssetCache()
 
-// 素材类型配置
-const assetTypes = [
-  { value: '', label: '全部', icon: '📦' },
-  { value: 'image', label: '图片', icon: '🖼️' },
-  { value: 'document', label: '文档', icon: '📄' },
-  { value: 'other', label: '其他', icon: '📁' }
-]
-
-// 计算属性
-const filteredAssets = computed(() => {
-  let result = allAssets.value
+// 计算选择器位置
+const pickerStyle = computed(() => {
+  const maxWidth = 320
+  const maxHeight = 400
+  const padding = 10
   
-  // 搜索过滤
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(asset => 
-      asset.name.toLowerCase().includes(query) ||
-      asset.originalName?.toLowerCase().includes(query) ||
-      asset.tags?.some(tag => tag.toLowerCase().includes(query))
-    )
+  let x = props.position.x
+  let y = props.position.y + 30  // 向下偏移
+  
+  // 防止超出视窗
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  
+  if (x + maxWidth + padding > viewportWidth) {
+    x = viewportWidth - maxWidth - padding
   }
   
-  // 类型过滤
-  if (selectedType.value) {
-    result = result.filter(asset => asset.type === selectedType.value)
-  }
-  
-  return result
-})
-
-const displayAssets = computed(() => {
-  // 限制显示数量，避免列表过长
-  return filteredAssets.value.slice(0, 50)
-})
-
-// 弹窗位置样式
-const popupStyle = computed(() => {
-  const { x, y } = props.position
-  
-  // 计算位置，确保不超出视窗
-  let left = x
-  let top = y + 30 // 在输入位置下方显示
-  
-  // 检查右边界
-  if (left + 400 > window.innerWidth) {
-    left = window.innerWidth - 400 - 20
-  }
-  
-  // 检查下边界
-  if (top + props.maxHeight > window.innerHeight) {
-    top = y - props.maxHeight - 30 // 改为在输入位置上方显示
+  if (y + maxHeight + padding > viewportHeight) {
+    y = props.position.y - maxHeight - 10  // 改为向上显示
   }
   
   return {
-    left: `${left}px`,
-    top: `${top}px`,
-    maxHeight: `${props.maxHeight}px`
+    left: `${Math.max(padding, x)}px`,
+    top: `${Math.max(padding, y)}px`,
+    maxWidth: `${maxWidth}px`,
+    maxHeight: `${maxHeight}px`
   }
 })
 
-// 方法
-const loadAssets = async () => {
-  loading.value = true
-  try {
-    // 加载最近使用的素材
-    const recentResponse = await assetsApi.getReferences(true, 5)
-    if (recentResponse.data.success) {
-      recentAssets.value = recentResponse.data.data.references
-    }
-    
-    // 加载所有素材
-    const allResponse = await assetsApi.getReferences(false, 100)
-    if (allResponse.data.success) {
-      allAssets.value = allResponse.data.data.references
-    }
-  } catch (error) {
-    console.error('加载素材失败:', error)
-  } finally {
-    loading.value = false
+// 过滤后的分类列表
+const filteredCategories = computed(() => {
+  if (!assetIndex.value) return []
+  
+  const categories = Object.values(assetIndex.value.categories)
+  
+  if (!searchQuery.value) {
+    return categories
   }
+  
+  const query = searchQuery.value.toLowerCase()
+  return categories.filter(cat => 
+    cat.label.toLowerCase().includes(query) ||
+    cat.key.toLowerCase().includes(query)
+  )
+})
+
+// 过滤后的文件列表
+const filteredFiles = computed(() => {
+  if (!assetIndex.value) return []
+  
+  let files = assetIndex.value.files || []
+  
+  if (!searchQuery.value) {
+    return files.slice(0, 50)  // 限制显示数量
+  }
+  
+  const query = searchQuery.value.toLowerCase()
+  return files.filter(file => 
+    file.name.toLowerCase().includes(query) ||
+    file.categoryLabel.toLowerCase().includes(query)
+  ).slice(0, 50)
+})
+
+// 获取文件图标
+const getFileIcon = (fileName) => {
+  const ext = fileName.split('.').pop().toLowerCase()
+  
+  const iconMap = {
+    // 图片
+    jpg: Picture,
+    jpeg: Picture,
+    png: Picture,
+    gif: Picture,
+    svg: Picture,
+    webp: Picture,
+    
+    // 视频
+    mp4: VideoPlay,
+    avi: VideoPlay,
+    mov: VideoPlay,
+    wmv: VideoPlay,
+    
+    // 文档
+    pdf: Tickets,
+    doc: Document,
+    docx: Document,
+    txt: Document,
+    md: Document,
+    
+    // 数据
+    xlsx: DataAnalysis,
+    xls: DataAnalysis,
+    csv: DataAnalysis,
+    json: DataAnalysis
+  }
+  
+  return iconMap[ext] || Document
 }
 
-const handleSearch = () => {
-  // 搜索时重置选择
-  selectedIndex.value = -1
+// 方法
+const selectMode = (newMode) => {
+  mode.value = newMode
+  searchQuery.value = ''
 }
 
-const selectAsset = (asset) => {
-  emit('select', asset)
+const backToInitial = () => {
+  mode.value = 'initial'
+  searchQuery.value = ''
+}
+
+const selectCategory = (category) => {
+  emit('select', {
+    type: 'category',
+    key: category.key,
+    label: category.label,
+    ...category
+  })
+  handleClose()
+}
+
+const selectFile = (file) => {
+  emit('select', {
+    type: 'file',
+    name: file.name,
+    fileName: file.name,
+    category: file.category,
+    categoryLabel: file.categoryLabel,
+    ...file
+  })
+  handleClose()
+}
+
+const handleClose = () => {
+  mode.value = 'initial'
+  searchQuery.value = ''
   emit('close')
 }
 
-const { getAssetIcon, formatFileSize } = assetUtils
-
-const formatTime = (time) => {
-  const date = new Date(time)
-  const now = new Date()
-  const diff = now - date
-  
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`
-  
-  return date.toLocaleDateString()
+const handleSearch = () => {
+  // 搜索逻辑已通过computed属性实现
 }
 
-// 键盘导航
-const handleKeyDown = (event) => {
-  const assets = displayAssets.value
+// 加载元数据
+const loadMetadata = async () => {
+  try {
+    console.log('[AssetReferencePicker] Loading metadata...')
+    
+    // 先清空旧数据
+    assetMetadata.value = null
+    assetIndex.value = null
+    
+    // 重新获取数据
+    assetMetadata.value = await assetCache.getMetadata()
+    console.log('[AssetReferencePicker] Metadata loaded:', JSON.stringify(assetMetadata.value, null, 2))
+    
+    if (assetMetadata.value) {
+      buildAssetIndex()
+      console.log('[AssetReferencePicker] Asset index built:', JSON.stringify(assetIndex.value, null, 2))
+    } else {
+      console.log('[AssetReferencePicker] No metadata available')
+    }
+  } catch (error) {
+    console.error('[AssetReferencePicker] Failed to load asset metadata:', error)
+  }
+}
+
+// 构建索引
+const buildAssetIndex = () => {
+  if (!assetMetadata.value) return
   
-  switch(event.key) {
-    case 'ArrowUp':
-      event.preventDefault()
-      if (selectedIndex.value > 0) {
-        selectedIndex.value--
-      } else {
-        selectedIndex.value = assets.length - 1
-      }
-      break
+  assetIndex.value = {
+    categories: {},
+    files: []
+  }
+  
+  // 新格式：使用 assets 和 labels
+  if (assetMetadata.value.assets) {
+    // 处理所有分类和文件
+    Object.entries(assetMetadata.value.assets).forEach(([categoryKey, files]) => {
+      const categoryLabel = categoryKey === '' 
+        ? '根目录' 
+        : (assetMetadata.value.labels?.[categoryKey] || categoryKey)
       
-    case 'ArrowDown':
-      event.preventDefault()
-      if (selectedIndex.value < assets.length - 1) {
-        selectedIndex.value++
-      } else {
-        selectedIndex.value = 0
+      // 添加分类（不包括根目录）
+      if (categoryKey !== '') {
+        // 计算文件数量
+        const fileCount = files ? files.length : 0
+        
+        assetIndex.value.categories[categoryKey] = {
+          key: categoryKey,
+          label: categoryLabel,
+          fullLabel: categoryLabel,
+          files: files,
+          fileCount: fileCount
+        }
+        
+        console.log(`[AssetReferencePicker] Added category: key="${categoryKey}", label="${categoryLabel}"`)
       }
-      break
       
-    case 'Enter':
-      event.preventDefault()
-      if (selectedIndex.value >= 0 && selectedIndex.value < assets.length) {
-        selectAsset(assets[selectedIndex.value])
+      // 添加文件
+      if (files && files.length > 0) {
+        files.forEach(file => {
+          assetIndex.value.files.push({
+            name: file,
+            fileName: file,
+            category: categoryKey,
+            categoryLabel: categoryLabel
+          })
+        })
       }
-      break
-      
-    case 'Escape':
-      event.preventDefault()
-      emit('close')
-      break
+    })
+  }
+  
+  // 如果有树形结构，也处理它（用于分层显示）
+  // 但不要覆盖已经从 labels 设置的正确标签
+  if (assetMetadata.value.tree) {
+    assetMetadata.value.tree.forEach(cat => {
+      // 只处理尚未添加的分类
+      if (!assetIndex.value.categories[cat.key]) {
+        processCategory(cat)
+      }
+    })
+  }
+}
+
+// 递归处理分类
+const processCategory = (category, parentLabel = '') => {
+  const fullLabel = parentLabel 
+    ? `${parentLabel}/${category.label}` 
+    : category.label
+  
+  // 计算文件数量
+  let fileCount = category.files ? category.files.length : 0
+  if (category.children) {
+    category.children.forEach(child => {
+      const childCount = countCategoryFiles(child)
+      fileCount += childCount
+    })
+  }
+  
+  assetIndex.value.categories[category.key] = {
+    ...category,
+    fullLabel,
+    fileCount
+  }
+  
+  // 索引文件
+  if (category.files) {
+    category.files.forEach(file => {
+      assetIndex.value.files.push({
+        name: file,
+        fileName: file,
+        category: category.key,
+        categoryLabel: category.label
+      })
+    })
+  }
+  
+  // 递归处理子分类
+  if (category.children) {
+    category.children.forEach(child => 
+      processCategory(child, fullLabel)
+    )
+  }
+}
+
+// 统计分类文件数
+const countCategoryFiles = (category) => {
+  let count = category.files ? category.files.length : 0
+  
+  if (category.children) {
+    category.children.forEach(child => {
+      count += countCategoryFiles(child)
+    })
+  }
+  
+  return count
+}
+
+// 键盘事件处理
+const handleKeyDown = (event) => {
+  if (event.key === 'Escape') {
+    handleClose()
   }
 }
 
 // 生命周期
-onMounted(async () => {
-  await loadAssets()
-  
-  // 自动聚焦搜索框
-  await nextTick()
-  searchInput.value?.focus()
-  
-  // 添加键盘事件监听
-  window.addEventListener('keydown', handleKeyDown)
+onMounted(() => {
+  loadMetadata()
+  document.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
+  document.removeEventListener('keydown', handleKeyDown)
+})
+
+// 监听visible变化
+watch(() => props.visible, (newVal) => {
+  if (newVal) {
+    mode.value = 'initial'
+    searchQuery.value = ''
+    
+    // 清空内存缓存，强制从 localStorage 重新加载
+    assetCache.clearMemoryCache()
+    
+    // 每次显示时都重新加载数据，确保最新
+    loadMetadata()
+  }
 })
 </script>
 
 <style scoped>
 .asset-reference-picker {
   position: fixed;
-  z-index: 9999;
+  z-index: 3000;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
 }
 
-/* 遮罩层 */
-.picker-overlay {
+.picker-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  z-index: 2999;
 }
 
-/* 弹窗 */
-.picker-popup {
-  position: absolute;
-  width: 400px;
-  background: var(--bg-primary, #fff);
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+.picker-menu {
+  width: 100%;
+  max-height: 400px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
-/* 头部 */
-.picker-header {
+.menu-header {
   display: flex;
   align-items: center;
-  padding: 12px;
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
-}
-
-.picker-header input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 4px;
+  gap: 8px;
+  padding: 12px 16px;
   font-size: 14px;
-  background: var(--bg-secondary, #f5f5f5);
-  color: var(--text-primary, #333);
+  font-weight: 600;
+  color: #303133;
+  border-bottom: 1px solid #ebeef5;
+  background: #f5f7fa;
 }
 
-.close-btn {
-  width: 32px;
-  height: 32px;
-  margin-left: 8px;
-  border: none;
-  background: transparent;
-  font-size: 20px;
-  color: var(--text-secondary, #666);
+.back-btn {
   cursor: pointer;
+  transition: color 0.3s;
 }
 
-.close-btn:hover {
-  color: var(--text-primary, #333);
+.back-btn:hover {
+  color: #409eff;
 }
 
-/* 内容 */
-.picker-body {
+.search-box {
+  padding: 12px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.menu-list {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 4px 0;
 }
 
-/* 分组 */
-.asset-section {
-  margin-bottom: 16px;
-}
-
-.asset-section:last-child {
-  margin-bottom: 0;
-}
-
-.section-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary, #666);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-
-.section-count {
-  font-weight: normal;
-  color: var(--text-tertiary, #999);
-}
-
-/* 类型标签 */
-.type-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.type-tab {
-  padding: 4px 12px;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 16px;
-  background: var(--bg-secondary, #f5f5f5);
-  font-size: 12px;
-  color: var(--text-secondary, #666);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.type-tab.active {
-  background: var(--primary-color, #007bff);
-  color: white;
-  border-color: var(--primary-color, #007bff);
-}
-
-/* 素材列表 */
-.asset-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.asset-item {
+.menu-item {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  border-radius: 4px;
+  gap: 8px;
+  padding: 10px 16px;
   cursor: pointer;
   transition: background 0.2s;
-}
-
-.asset-item:hover {
-  background: var(--bg-secondary, #f5f5f5);
-}
-
-.asset-icon {
-  font-size: 20px;
-  margin-right: 12px;
-}
-
-.asset-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.asset-name {
   font-size: 14px;
-  color: var(--text-primary, #333);
-  white-space: nowrap;
+  color: #606266;
+}
+
+.menu-item:hover {
+  background: #f5f7fa;
+}
+
+.menu-item:active {
+  background: #ecf5ff;
+}
+
+.menu-icon {
+  font-size: 16px;
+  color: #909399;
+}
+
+.item-text {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.asset-meta {
-  font-size: 11px;
-  color: var(--text-tertiary, #999);
-  margin-top: 2px;
-}
-
-.asset-ref {
-  font-family: monospace;
+.item-count {
   font-size: 12px;
-  color: var(--primary-color, #007bff);
-  background: var(--bg-tertiary, #f0f0f0);
+  color: #909399;
+  background: #f0f2f5;
   padding: 2px 6px;
-  border-radius: 3px;
-  margin-left: 8px;
+  border-radius: 10px;
 }
 
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 24px;
-  color: var(--text-tertiary, #999);
-  font-size: 14px;
-}
-
-/* 底部提示 */
-.picker-footer {
-  padding: 8px 12px;
-  border-top: 1px solid var(--border-color, #e0e0e0);
-  background: var(--bg-secondary, #f5f5f5);
-}
-
-.help-text {
+.item-category {
   font-size: 12px;
-  color: var(--text-tertiary, #999);
+  color: #909399;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #ebeef5;
+  margin: 4px 0;
+}
+
+.empty-message {
+  padding: 20px;
+  text-align: center;
+  color: #909399;
+  font-size: 13px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 移动端适配 */
 @media (max-width: 768px) {
-  .picker-popup {
-    width: 90vw;
-    max-width: 360px;
+  .asset-reference-picker {
+    position: fixed;
+    left: 10px !important;
+    right: 10px !important;
+    top: auto !important;
+    bottom: 10px !important;
+    max-width: none !important;
+    max-height: 50vh !important;
   }
 }
 </style>

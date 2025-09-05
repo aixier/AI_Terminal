@@ -1,3 +1,4 @@
 {"id":"daily-knowledge-card-template.md","version":"1.0","description":"知识卡片生成，包含4种样式","name":"快速","outputType":"html","outputCount":1,"triggerFile":"json","waitForTrigger":true}
-{"id":"cardplanet-Sandra-json","version":"1.0","description":"卡片星球设计风格，双文件输出","name":"精细","outputType":"html","outputCount":1,"triggerFile":null,"waitForTrigger":false}
+{"id":"cardplanet-Sandra-json","version":"1.0","description":"卡片星球设计风格，双文件输出","name":"精细","outputType":"html","outputCount":2,"triggerFile":null,"waitForTrigger":false}
 {"id":"podcast-template","version":"1.0","description":"播客小红书图文卡片生成","name":"播客","outputType":"html","outputCount":1,"triggerFile":null,"waitForTrigger":false}
+{"id":"custom-mode","version":"1.0","description":"自定义模式，支持任意文件生成","name":"自定义","outputType":"*","outputCount":"*","triggerFile":null,"waitForTrigger":false,"filePattern":"*"}

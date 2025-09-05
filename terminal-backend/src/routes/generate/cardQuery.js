@@ -60,7 +60,7 @@ const router = express.Router()
  */
 router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
   try {
-    const { folderName } = req.params
+    let { folderName } = req.params
     const queryUsername = req.query.username || req.user.username
     
     // 参数验证
@@ -72,8 +72,21 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
       })
     }
     
+    // 尝试解码（如果已经被编码过）
+    // Express通常会自动解码，但为了兼容性，我们再次尝试解码
+    try {
+      // 如果folderName包含%，说明可能被编码过
+      if (folderName.includes('%')) {
+        const decoded = decodeURIComponent(folderName)
+        console.log(`[Query Card API] URL decoded: ${folderName} -> ${decoded}`)
+        folderName = decoded
+      }
+    } catch (e) {
+      // 解码失败，使用原始值
+      console.log(`[Query Card API] URL decode failed, using original: ${folderName}`)
+    }
+    
     // folderName本身就是sanitized的topic名称，直接使用
-    // 不要尝试"恢复"，因为用户的原始topic可能就包含下划线
     const sanitizedTopic = folderName
     
     console.log(`[Query Card API] ==================== QUERY REQUEST ====================`)
@@ -98,25 +111,26 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
       const files = await fs.readdir(userCardPath)
       console.log(`[Query Card API] Found files in folder:`, files)
       
-      // 过滤出HTML和JSON文件（排除响应文件和元数据）
-      const htmlFiles = files.filter(f => 
-        f.endsWith('.html') && 
+      // 过滤出所有生成的文件（排除响应文件和元数据）
+      const generatedFiles = files.filter(f => 
         !f.includes('-response') &&
         !f.startsWith('.') &&  // 排除隐藏文件
-        !f.includes('_meta')    // 排除元数据文件
+        !f.includes('_meta') &&    // 排除元数据文件
+        !f.includes('_backup')      // 排除备份文件
       )
-      const jsonFiles = files.filter(f => 
-        f.endsWith('.json') && 
-        !f.includes('-response') &&
-        !f.startsWith('.') &&  // 排除隐藏文件
-        !f.includes('_meta')    // 排除元数据文件
-      )
+      
+      // 分类文件
+      const htmlFiles = generatedFiles.filter(f => f.endsWith('.html'))
+      const jsonFiles = generatedFiles.filter(f => f.endsWith('.json'))
+      const otherFiles = generatedFiles.filter(f => !f.endsWith('.html') && !f.endsWith('.json'))
       
       console.log(`[Query Card API] HTML files:`, htmlFiles)
       console.log(`[Query Card API] JSON files:`, jsonFiles)
+      console.log(`[Query Card API] Other files:`, otherFiles)
+      console.log(`[Query Card API] Total generated files:`, generatedFiles.length)
       
       // 检查是否有生成的文件
-      if (htmlFiles.length === 0 && jsonFiles.length === 0) {
+      if (generatedFiles.length === 0) {
         return res.status(404).json({
           code: 404,
           success: false,
@@ -180,6 +194,43 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
         }
       }
       
+      // 读取其他类型文件（自定义模式生成的文件）
+      for (const fileName of otherFiles) {
+        const filePath = path.join(userCardPath, fileName)
+        const ext = path.extname(fileName).toLowerCase().substring(1)
+        
+        try {
+          // 根据文件扩展名决定如何处理
+          const stats = await fs.stat(filePath)
+          
+          // 对于文本类文件，读取内容
+          if (['md', 'txt', 'csv', 'xml', 'yaml', 'yml', 'log', 'sh', 'py', 'js', 'ts', 'jsx', 'tsx', 'css', 'scss'].includes(ext)) {
+            const content = await fs.readFile(filePath, 'utf-8')
+            allFiles.push({
+              fileName: fileName,
+              path: filePath,
+              content: content,
+              fileType: ext || 'text',
+              size: stats.size
+            })
+            console.log(`[Query Card API] Successfully read ${ext} file: ${fileName}`)
+          } else {
+            // 对于二进制文件，只记录元信息
+            allFiles.push({
+              fileName: fileName,
+              path: filePath,
+              content: null,  // 不读取二进制内容
+              fileType: ext || 'binary',
+              size: stats.size,
+              isBinary: true
+            })
+            console.log(`[Query Card API] Recorded binary file: ${fileName}`)
+          }
+        } catch (error) {
+          console.error(`[Query Card API] Error reading file ${fileName}:`, error)
+        }
+      }
+      
       if (allFiles.length === 0) {
         return res.status(404).json({
           code: 404,
@@ -193,8 +244,11 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
         })
       }
       
-      // 确定主文件（优先HTML，其次JSON）
-      const primaryFile = allFiles.find(f => f.fileType === 'html') || allFiles[0]
+      // 确定主文件（优先HTML，其次JSON，最后是其他文本文件）
+      const primaryFile = allFiles.find(f => f.fileType === 'html') || 
+                         allFiles.find(f => f.fileType === 'json') || 
+                         allFiles.find(f => !f.isBinary) ||  // 选择任何文本文件
+                         allFiles[0]  // 最后选择第一个文件
       
       // 构建响应数据（与 /api/generate/card 保持一致）
       const responseData = {

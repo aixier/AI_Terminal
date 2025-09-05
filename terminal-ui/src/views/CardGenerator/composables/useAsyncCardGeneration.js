@@ -115,13 +115,18 @@ export function useAsyncCardGeneration(updateMessageCallback = null) {
       
       // 处理结果
       const finalResult = {
-        type: 'html',
+        type: result.primaryFile?.fileType || 'html',
         content: result.htmlFile?.content || result.primaryFile?.content,
         fileName: result.htmlFile?.fileName || result.primaryFile?.fileName,
         topic: result.topic,
         allFiles: result.files,
         generatedAt: result.generatedAt,
-        totalFiles: result.totalFiles
+        totalFiles: result.totalFiles,
+        // 自定义模式支持
+        mode: params.mode,
+        folderName: result.folderName,
+        files: result.files,
+        mayHaveMore: params.mode === 'custom' // 自定义模式可能还有更多文件
       }
       
       isGenerating.value = false

@@ -14,6 +14,8 @@ import service from './config.js'
  * @param {string} [params.style] - 风格
  * @param {string} [params.language] - 语言
  * @param {string} [params.reference] - 参考内容
+ * @param {string} [params.mode] - 模式 (custom/normal)
+ * @param {Array} [params.references] - 素材引用数组
  * @returns {Promise<Object>} 任务提交结果
  */
 export const submitAsyncGeneration = async (params) => {
@@ -25,7 +27,9 @@ export const submitAsyncGeneration = async (params) => {
     ...(params.token && { token: params.token }),
     ...(params.style && { style: params.style }),
     ...(params.language && { language: params.language }),
-    ...(params.reference && { reference: params.reference })
+    ...(params.reference && { reference: params.reference }),
+    ...(params.mode && { mode: params.mode }),
+    ...(params.references && { references: params.references })
   }
   
   const result = await service.post('/generate/card/async', payload)
@@ -42,8 +46,8 @@ export const submitAsyncGeneration = async (params) => {
 export const checkGenerationStatus = async (topic) => {
   console.log('[AsyncCardAPI] 检查生成状态:', topic)
   
-  const encodedTopic = encodeURIComponent(topic)
-  const result = await service.get(`/generate/status/${encodedTopic}`)
+  // 不需要手动编码，axios会自动处理URL编码
+  const result = await service.get(`/generate/status/${topic}`)
   
   console.log('[AsyncCardAPI] 状态结果:', result)
   return result
@@ -57,8 +61,8 @@ export const checkGenerationStatus = async (topic) => {
 export const getGeneratedFiles = async (folderName) => {
   console.log('[AsyncCardAPI] 获取生成文件:', folderName)
   
-  const encodedFolderName = encodeURIComponent(folderName)
-  const result = await service.get(`/generate/card/query/${encodedFolderName}`)
+  // 不需要手动编码，axios会自动处理URL编码
+  const result = await service.get(`/generate/card/query/${folderName}`)
   
   console.log('[AsyncCardAPI] 文件内容:', result)
   return result
@@ -141,6 +145,21 @@ export const pollGenerationStatus = async (topic, options = {}) => {
     // 开始第一次轮询（延迟6秒）
     setTimeout(poll, 6000)
   })
+}
+
+/**
+ * 4. 刷新检测文件 - 用于自定义模式的渐进式文件展示
+ * @param {string} folderName - 文件夹名称
+ * @returns {Promise<Object>} 文件列表和状态
+ */
+export const refreshGeneratedFiles = async (folderName) => {
+  console.log('[AsyncCardAPI] 刷新检测文件:', folderName)
+  
+  // 不需要手动编码，axios会自动处理URL编码
+  const result = await service.get(`/generate/card/async/refresh/${folderName}`)
+  
+  console.log('[AsyncCardAPI] 刷新结果:', result)
+  return result
 }
 
 /**
@@ -407,10 +426,12 @@ export default {
   submitAsyncGeneration,
   checkGenerationStatus,
   getGeneratedFiles,
+  refreshGeneratedFiles,  // 新增：刷新检测文件
   
   // 高级功能
   pollGenerationStatus,
   generateCardAsync,
   generateCardsInBatch,
-  getTaskDetails
+  getTaskDetails,
+  checkAsyncTaskStatus
 }

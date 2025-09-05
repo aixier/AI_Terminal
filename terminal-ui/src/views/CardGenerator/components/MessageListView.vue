@@ -76,7 +76,7 @@
                   </div>
                   <div v-if="message.resultData?.mayHaveMore" class="generating-hint">
                     <span class="hint-icon">💡</span>
-                    <span>Claude 可能还在生成更多文件...</span>
+                    <span>刷新更新列表</span>
                   </div>
                 </div>
                 <div class="card-actions">

@@ -207,7 +207,7 @@ const isGeneratedFile = (fileName) => {
     <!-- 提示信息 -->
     <div v-if="showGeneratingHint" class="generating-hint">
       <i class="icon-info"></i>
-      Claude 可能还在生成更多文件，点击刷新查看
+      刷新查看更多文件，
     </div>
   </div>
 </template>

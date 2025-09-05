@@ -65,7 +65,14 @@
                   <div v-for="(file, index) in getMessageFiles(message)" :key="index" class="file-item">
                     <span class="file-icon">{{ getFileIcon(file.fileType) }}</span>
                     <span class="file-name">{{ file.fileName }}</span>
-                    <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                    <div class="file-actions">
+                      <button class="file-action-btn" @click="handleViewFile(message, file)" title="查看">
+                        👁️ 查看
+                      </button>
+                      <button class="file-action-btn" @click="handleDownloadFile(message, file)" title="下载">
+                        ⬇️ 下载
+                      </button>
+                    </div>
                   </div>
                   <div v-if="message.resultData?.mayHaveMore" class="generating-hint">
                     <span class="hint-icon">💡</span>
@@ -74,14 +81,11 @@
                 </div>
                 <div class="card-actions">
                   <button 
-                    class="card-btn refresh-btn" 
+                    class="card-btn refresh-btn full-width" 
                     @click="handleRefreshFiles(message)"
                     :class="{ refreshing: message.isRefreshing }"
                   >
                     {{ message.isRefreshing ? '⏳ 检查中' : '🔄 刷新文件' }}
-                  </button>
-                  <button class="card-btn primary" @click="$emit('preview-content', message)">
-                    👁️ 查看
                   </button>
                 </div>
               </template>
@@ -130,11 +134,33 @@
       </div>
     </div>
   </div>
+
+  <!-- Markdown预览对话框 -->
+  <el-dialog
+    v-model="showPreviewDialog"
+    :title="previewFile?.fileName || '文件预览'"
+    width="80%"
+    :show-close="false"
+    :close-on-click-modal="false"
+    custom-class="preview-dialog"
+  >
+    <MarkdownPreview
+      v-if="showPreviewDialog && previewFile"
+      :file-name="previewFile.fileName"
+      :content="previewContent"
+      :file-type="previewFile.fileType || 'text'"
+      @close="closePreview"
+      @download="downloadFromPreview"
+    />
+  </el-dialog>
 </template>
 
 <script setup>
 import { defineProps, defineEmits, ref, nextTick, watch, onMounted, onUpdated } from 'vue'
+import { ElMessage, ElDialog } from 'element-plus'
 import HtmlMessageCard from '../messages/HtmlMessageCard.vue'
+import MarkdownPreview from '@/components/MarkdownPreview.vue'
+import * as asyncCardApi from '@/api/asyncCardGeneration'
 
 const props = defineProps({
   messages: {
@@ -227,6 +253,108 @@ const formatFileSize = (size) => {
 // 处理刷新文件
 const handleRefreshFiles = (message) => {
   emit('refresh-files', message)
+}
+
+// 预览对话框状态
+const showPreviewDialog = ref(false)
+const previewFile = ref(null)
+const previewContent = ref('')
+
+// 处理查看文件
+const handleViewFile = async (message, file) => {
+  try {
+    // 获取文件内容
+    const folderName = message.resultData?.folderName
+    if (!folderName) {
+      ElMessage.error('无法获取文件夹信息')
+      return
+    }
+
+    // 调用API获取文件内容
+    const result = await asyncCardApi.getGeneratedFiles(folderName)
+    if (result.success && result.data?.allFiles) {
+      // 找到对应的文件内容
+      const targetFile = result.data.allFiles.find(f => f.fileName === file.fileName)
+      if (targetFile) {
+        previewFile.value = file
+        previewContent.value = targetFile.content || ''
+        showPreviewDialog.value = true
+      } else {
+        ElMessage.warning('文件内容未找到')
+      }
+    } else {
+      ElMessage.error('获取文件内容失败')
+    }
+  } catch (error) {
+    console.error('View file error:', error)
+    ElMessage.error('查看文件失败')
+  }
+}
+
+// 处理下载文件
+const handleDownloadFile = async (message, file) => {
+  try {
+    const folderName = message.resultData?.folderName
+    if (!folderName) {
+      ElMessage.error('无法获取文件夹信息')
+      return
+    }
+
+    // 获取文件内容
+    const result = await asyncCardApi.getGeneratedFiles(folderName)
+    if (result.success && result.data?.allFiles) {
+      const targetFile = result.data.allFiles.find(f => f.fileName === file.fileName)
+      if (targetFile && targetFile.content) {
+        // 创建下载
+        const blob = new Blob([
+          typeof targetFile.content === 'string' 
+            ? targetFile.content 
+            : JSON.stringify(targetFile.content, null, 2)
+        ], { type: 'text/plain;charset=utf-8' })
+        
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = file.fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        
+        ElMessage.success('文件下载成功')
+      } else {
+        ElMessage.warning('文件内容为空')
+      }
+    } else {
+      ElMessage.error('获取文件失败')
+    }
+  } catch (error) {
+    console.error('Download file error:', error)
+    ElMessage.error('下载文件失败')
+  }
+}
+
+// 关闭预览对话框
+const closePreview = () => {
+  showPreviewDialog.value = false
+  previewFile.value = null
+  previewContent.value = ''
+}
+
+// 从预览对话框下载
+const downloadFromPreview = () => {
+  if (previewFile.value && previewContent.value) {
+    const blob = new Blob([previewContent.value], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = previewFile.value.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    ElMessage.success('文件下载成功')
+  }
 }
 
 // 自动滚动到底部
@@ -633,6 +761,7 @@ nextTick(() => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: 12px;
 }
 
 .card-btn {
@@ -646,7 +775,13 @@ nextTick(() => {
   transition: all 0.2s;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+}
+
+.card-btn.full-width {
+  flex: 1;
+  width: 100%;
 }
 
 .card-btn:hover {
@@ -728,6 +863,33 @@ nextTick(() => {
   }
 }
 
+/* 预览对话框样式 */
+:deep(.preview-dialog) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+:deep(.preview-dialog .el-dialog__header) {
+  display: none;
+}
+
+:deep(.preview-dialog .el-dialog__body) {
+  padding: 0;
+  height: 80vh;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  :deep(.preview-dialog) {
+    width: 95% !important;
+    margin: 2.5vh auto;
+  }
+  
+  :deep(.preview-dialog .el-dialog__body) {
+    height: 90vh;
+  }
+}
+
 /* 自定义模式文件列表样式 */
 .file-count {
   background: #e3f2fd;
@@ -740,37 +902,77 @@ nextTick(() => {
 
 .custom-files-list {
   margin: 12px 0;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fafafa;
 }
 
 .file-item {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  background: #f8f9fa;
+  padding: 10px 12px;
+  background: white;
   border-radius: 6px;
-  margin-bottom: 6px;
-  transition: background 0.2s;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+  border: 1px solid #e0e0e0;
 }
 
 .file-item:hover {
-  background: #e9ecef;
+  background: #f5f5f5;
+  transform: translateX(2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.file-item:last-child {
+  margin-bottom: 0;
 }
 
 .file-icon {
-  font-size: 18px;
-  margin-right: 8px;
+  font-size: 20px;
+  margin-right: 10px;
+  flex-shrink: 0;
 }
 
 .file-name {
   flex: 1;
-  font-size: 13px;
-  font-family: monospace;
+  font-size: 14px;
+  font-family: 'Consolas', 'Monaco', monospace;
   color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.file-action-btn {
+  padding: 4px 10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.file-action-btn:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .file-size {

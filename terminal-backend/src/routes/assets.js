@@ -168,9 +168,12 @@ const storage = multer.diskStorage({
     const uploadDir = categoryToPath(category, username)
     
     try {
+      // 确保整个路径存在，包括所有父目录
       await fs.mkdir(uploadDir, { recursive: true })
+      console.log(`[Multer] Created/verified upload directory: ${uploadDir}`)
       cb(null, uploadDir)
     } catch (error) {
+      console.error(`[Multer] Failed to create upload directory: ${uploadDir}`, error)
       cb(error)
     }
   },
@@ -201,6 +204,11 @@ const upload = multer({
 router.get('/categories', async (req, res) => {
   try {
     const username = req.user?.username || 'default'
+    
+    // 确保用户storage目录存在
+    const storagePath = getUserStoragePath(username)
+    await fs.mkdir(storagePath, { recursive: true })
+    
     const metadata = await readMetadata(username)
     
     // 构建分类树形结构
@@ -551,10 +559,32 @@ router.delete('/categories/:category', async (req, res) => {
 })
 
 /**
+ * 中间件：确保storage目录存在
+ */
+const ensureStorageDir = async (req, res, next) => {
+  try {
+    const username = req.user?.username || 'default'
+    const storagePath = getUserStoragePath(username)
+    
+    // 创建storage目录
+    await fs.mkdir(storagePath, { recursive: true })
+    console.log(`[Middleware] Ensured storage directory exists: ${storagePath}`)
+    
+    next()
+  } catch (error) {
+    console.error('[Middleware] Failed to create storage directory:', error)
+    res.status(500).json({
+      success: false,
+      message: '创建存储目录失败'
+    })
+  }
+}
+
+/**
  * POST /api/assets/upload
  * 上传文件
  */
-router.post('/upload', upload.array('files', 10), async (req, res) => {
+router.post('/upload', ensureStorageDir, upload.array('files', 10), async (req, res) => {
   const uploadedFiles = []
   
   try {
@@ -563,6 +593,11 @@ router.post('/upload', upload.array('files', 10), async (req, res) => {
     const encoding = req.body.encoding || 'auto'  // 获取编码标记
     
     console.log(`[Assets Upload] Encoding flag: ${encoding}`)
+    
+    // 确保用户storage目录存在
+    const storagePath = getUserStoragePath(username)
+    await fs.mkdir(storagePath, { recursive: true })
+    console.log(`[Assets Upload] Ensured storage path exists: ${storagePath}`)
     
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({

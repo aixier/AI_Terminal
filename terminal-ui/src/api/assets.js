@@ -156,6 +156,20 @@ export const assetsApi = {
   },
 
   /**
+   * 删除文件
+   * @param {string} fileName - 文件名
+   * @param {string} category - 文件所属分类
+   */
+  deleteFile(fileName, category = '') {
+    return request.delete('/assets/file', {
+      data: { 
+        filename: fileName,  // 注意：后端使用的是 filename 而不是 fileName
+        category: category
+      }
+    })
+  },
+
+  /**
    * 移动文件或文件夹
    * @param {Object} data - 移动数据
    * @param {Array} data.items - 要移动的项目 [{id, type: 'asset'|'folder'}]

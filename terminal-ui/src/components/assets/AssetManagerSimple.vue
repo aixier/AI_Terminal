@@ -567,19 +567,22 @@ const handleFileSelect = async (event) => {
   try {
     const formData = new FormData()
     
-    // 处理每个文件，确保文件名正确编码
+    // 处理每个文件，确保文件名正确编码并替换空格
     files.forEach(file => {
+      // 替换文件名中的空格为下划线
+      let fileName = file.name.replace(/\s+/g, '_')
+      
       // 如果文件名包含中文或特殊字符，需要特别处理
-      // 创建一个新的File对象，使用正确编码的文件名
-      if (file.name && /[^\x00-\x7F]/.test(file.name)) {
+      if (fileName && /[^\x00-\x7F]/.test(fileName)) {
         // 文件名包含非ASCII字符
-        console.log('[AssetManager] Original filename:', file.name)
+        console.log('[AssetManager] Original filename:', file.name, '-> Processed:', fileName)
         
-        // 直接使用原始文件和文件名
-        // FormData会自动处理编码
-        formData.append('files', file, file.name)
+        // 使用处理后的文件名
+        formData.append('files', file, fileName)
       } else {
-        formData.append('files', file)
+        // 即使是纯ASCII文件名，也使用处理后的文件名（已替换空格）
+        console.log('[AssetManager] Original filename:', file.name, '-> Processed:', fileName)
+        formData.append('files', file, fileName)
       }
     })
     
@@ -640,17 +643,15 @@ const renameCategory = async () => {
   }
   
   try {
-    if (renameItem.value.type === 'folder') {
-      await assetsApi.updateFolder(renameItem.value.id, {
-        name: renameName.value
+    if (renameItem.value.type === 'category') {
+      // 使用分类的key而不是id
+      await assetsApi.updateCategory(renameItem.value.key, {
+        label: renameName.value
       })
       ElMessage.success('重命名成功')
     } else {
-      // 如果是文件，使用更新资产的API
-      await assetsApi.updateAsset(renameItem.value.id, {
-        name: renameName.value
-      })
-      ElMessage.success('重命名成功')
+      // 如果是文件，暂不支持重命名
+      ElMessage.warning('暂不支持文件重命名')
     }
     closeRenameDialog()
     loadData()

@@ -62,7 +62,7 @@
           ref="textareaRef"
           v-model="inputText"
           class="input-textarea"
-          :placeholder="placeholder"
+          :placeholder="dynamicPlaceholder"
           :rows="isMobile ? 2 : 3"
           @keydown.ctrl.enter="sendMessage"
           @keydown.meta.enter="sendMessage"
@@ -249,6 +249,14 @@ const referenceValue = ref('')
 // 计算是否可以发送
 const canSend = computed(() => {
   return !props.isGenerating && inputText.value.trim().length > 0
+})
+
+// 动态计算占位符文字
+const dynamicPlaceholder = computed(() => {
+  if (customModeEnabled.value) {
+    return '例如：分析 @产品规格 和 @用户反馈 文件夹的内容，生成 @模板.md 格式的报告'
+  }
+  return props.placeholder
 })
 
 // 显示的模板列表 - 只显示快速和精细两个模板
@@ -860,6 +868,8 @@ const insertAssetReference = (asset) => {
 
 .input-textarea::placeholder {
   color: #999;
+  opacity: 0.6;
+  font-size: 13px;
 }
 
 .send-button {

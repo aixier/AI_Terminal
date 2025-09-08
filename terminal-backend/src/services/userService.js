@@ -136,6 +136,8 @@ class UserService {
     const workspacePath = path.join(userPath, 'workspace')
     const cardPath = path.join(workspacePath, 'card')
     const markdownPath = path.join(workspacePath, 'markdown')
+    const templatesPath = path.join(workspacePath, 'templates')
+    const storagePath = path.join(workspacePath, 'storage')
     
     try {
       // 创建新的workspace目录结构
@@ -143,6 +145,8 @@ class UserService {
       await fs.mkdir(workspacePath, { recursive: true })
       await fs.mkdir(cardPath, { recursive: true })
       await fs.mkdir(markdownPath, { recursive: true })
+      await fs.mkdir(templatesPath, { recursive: true })
+      await fs.mkdir(storagePath, { recursive: true })
       
       // 创建用户设置文件
       const settings = {
@@ -185,7 +189,9 @@ class UserService {
         userPath,
         workspacePath,
         cardPath,
-        markdownPath
+        markdownPath,
+        templatesPath,
+        storagePath
       }
       
     } catch (error) {
@@ -236,6 +242,8 @@ class UserService {
       workspacePath: path.join(userPath, 'workspace'),
       cardPath: path.join(userPath, 'workspace', 'card'),
       markdownPath: path.join(userPath, 'workspace', 'markdown'),
+      templatesPath: path.join(userPath, 'workspace', 'templates'),
+      storagePath: path.join(userPath, 'workspace', 'storage'),
       settingsPath: path.join(userPath, 'settings.json'),
       foldersPath: path.join(userPath, 'folders.json')
     }
@@ -342,6 +350,115 @@ class UserService {
         await fs.copyFile(srcPath, destPath)
       }
     }
+  }
+
+  /**
+   * 检查并创建用户workspace目录（登录时调用）
+   */
+  async ensureUserWorkspace(username) {
+    const { userPath, workspacePath, cardPath, markdownPath, templatesPath, storagePath } = this.getUserWorkspacePath(username)
+    
+    try {
+      // 检查每个目录是否存在，不存在则创建
+      const dirsToCheck = [
+        { path: userPath, name: '用户根目录' },
+        { path: workspacePath, name: 'workspace' },
+        { path: cardPath, name: 'card' },
+        { path: markdownPath, name: 'markdown' },
+        { path: templatesPath, name: 'templates' },
+        { path: storagePath, name: 'storage' }
+      ]
+      
+      const created = []
+      
+      for (const dir of dirsToCheck) {
+        try {
+          await fs.access(dir.path)
+          // 目录存在，跳过
+        } catch {
+          // 目录不存在，创建
+          await fs.mkdir(dir.path, { recursive: true })
+          created.push(dir.name)
+          console.log(`[UserService] Created ${dir.name}: ${dir.path}`)
+        }
+      }
+      
+      // 检查并创建用户设置文件
+      const settingsPath = path.join(userPath, 'settings.json')
+      try {
+        await fs.access(settingsPath)
+      } catch {
+        const settings = {
+          theme: 'dark',
+          language: 'zh-CN',
+          autoSave: true,
+          defaultWorkspace: 'workspace',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+        await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
+        created.push('settings.json')
+        console.log(`[UserService] Created settings.json for ${username}`)
+      }
+      
+      // 检查并创建文件夹配置文件
+      const foldersPath = path.join(userPath, 'folders.json')
+      try {
+        await fs.access(foldersPath)
+      } catch {
+        const folders = {
+          folders: [
+            {
+              id: 'default-cards',
+              name: '📁 卡片收集',
+              description: '默认卡片文件夹',
+              color: '#2196f3',
+              files: []
+            },
+            {
+              id: 'default-notes', 
+              name: '📝 笔记文档',
+              description: '默认笔记文件夹',
+              color: '#4caf50',
+              files: []
+            }
+          ]
+        }
+        await fs.writeFile(foldersPath, JSON.stringify(folders, null, 2), 'utf-8')
+        created.push('folders.json')
+        console.log(`[UserService] Created folders.json for ${username}`)
+      }
+      
+      if (created.length > 0) {
+        console.log(`[UserService] ✅ Ensured workspace for ${username}, created: ${created.join(', ')}`)
+      } else {
+        console.log(`[UserService] ✅ Workspace already exists for ${username}`)
+      }
+      
+      return {
+        userPath,
+        workspacePath,
+        cardPath,
+        markdownPath,
+        templatesPath,
+        storagePath,
+        settingsPath,
+        foldersPath,
+        created
+      }
+      
+    } catch (error) {
+      console.error(`[UserService] Failed to ensure workspace for ${username}:`, error)
+      throw new Error(`用户工作空间检查失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 获取用户模板路径
+   */
+  getUserTemplatePath(username, templateName) {
+    const { templatesPath } = this.getUserWorkspacePath(username)
+    return path.join(templatesPath, templateName)
   }
 
   /**

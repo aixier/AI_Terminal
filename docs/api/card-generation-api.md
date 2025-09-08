@@ -1,23 +1,62 @@
 # Card Generation API Reference
 
 > 统一的卡片生成 API 参考文档  
-> 最后更新：2025-08-27 (v3.63.0)
+> 最后更新：2025-09-08 (v4.0.0)
 
 ## 概述
 
-卡片生成 API 提供了通过 AI (Claude) 生成各种格式知识卡片的能力。支持多种模板、实时流式传输、自动参数生成等高级功能。
+卡片生成 API 提供了通过 AI (Claude) 生成各种格式知识卡片的能力。支持多种模板、实时流式传输、自动参数生成、Pod2Post播客卡片生成、资源管理等高级功能。
 
 ## 端点列表
 
+### 卡片生成服务
 | 端点 | 方法 | 描述 | 响应格式 |
 |-----|------|------|---------|
 | `/api/generate/card` | POST | 标准卡片生成 | JSON |
 | `/api/generate/card/stream` | POST | 流式卡片生成 | SSE |
 | `/api/generate/card/async` | POST | 异步卡片生成 | JSON |
-| `/api/generate/templates` | GET | 获取模板列表 | JSON |
-| `/api/generate/status/:topic` | GET | 检查生成状态 | JSON |
 | `/api/generate/card/query/:folderName` | GET | 查询生成结果 | JSON |
 | `/api/generate/card/content/:folderName` | GET | 获取卡片内容 | JSON |
+
+### 自定义模板生成服务
+| 端点 | 方法 | 描述 | 响应格式 |
+|-----|------|------|---------|
+| `/api/generate/custom/async` | POST | 自定义模板异步生成 | JSON |
+| `/api/generate/custom/status/:taskId` | GET | 查询自定义任务状态 | JSON |
+| `/api/generate/custom/ossasync` | POST | OSS自定义模板生成 | JSON |
+| `/api/generate/custom/ossstatus/:taskId` | GET | OSS任务状态查询 | JSON |
+
+### Pod2Post播客卡片服务
+| 端点 | 方法 | 描述 | 响应格式 |
+|-----|------|------|---------|
+| `/api/generate/pod2post/async` | POST | Pod2Post播客卡片生成 | JSON |
+| `/api/generate/pod2post/status/:taskId` | GET | Pod2Post任务状态查询 | JSON |
+| `/api/generate/pod2post/cdn` | POST/GET/DELETE | CDN图片上传管理 | JSON |
+| `/api/generate/pod2post/pic` | POST/GET/DELETE | 照片上传管理 | JSON |
+| `/api/generate/pod2post/resources` | POST/GET/DELETE | 参考文档上传管理 | JSON |
+
+### 通用服务
+| 端点 | 方法 | 描述 | 响应格式 |
+|-----|------|------|---------|
+| `/api/generate/templates` | GET | 获取模板列表 | JSON |
+| `/api/generate/status/:topic` | GET | 检查生成状态 | JSON |
+| `/api/generate/cc` | POST | Claude执行 | JSON |
+| `/api/generate/share/xiaohongshu` | POST | 分享到小红书 | JSON |
+| `/api/generate/health` | GET | 健康检查 | JSON |
+
+### 音频转录服务 `/api/transcription`
+| 端点 | 方法 | 描述 | 响应格式 |
+|-----|------|------|---------|
+| `/file` | POST | **上传音频/视频文件并转录** | JSON |
+| `/url` | POST | 从URL转录音频/视频 | JSON |
+| `/batch` | POST | 批量转录多个文件 | JSON |
+| `/task/:taskId` | GET | 查询任务状态 | JSON |
+| `/task/:taskId/result` | GET | 获取转录结果 | JSON |
+| `/tasks` | GET | 获取任务列表 | JSON |
+| `/formats` | GET | 获取支持的格式 | JSON |
+| `/task/:taskId` | DELETE | 删除任务 | JSON |
+| `/task/:taskId/retry` | POST | 重试失败的任务 | JSON |
+| `/statistics` | GET | 获取统计信息 | JSON |
 
 ## 1. 标准卡片生成
 
@@ -527,8 +566,439 @@ GET /api/generate/status/:topic
    - 提供完整参数可减少AI调用，提高生成速度
    - style、language、reference 参数支持灵活组合
 
+## 8. 自定义模板生成服务
+
+### Pod2Post播客卡片生成
+
+#### 端点
+```
+POST /api/generate/pod2post/async
+```
+
+#### 请求体
+```json
+{
+  "prompts": [
+    "播客内容概要",
+    "主要观点总结"
+  ],
+  "token": "user_token_123"  // 可选，指定用户
+}
+```
+
+#### 响应格式
+```json
+{
+  "code": 200,
+  "success": true,
+  "data": {
+    "taskId": "pod2post_1234567890_abc123",
+    "folderName": "pod2post_1234567890",
+    "folderPath": "/path/to/user/folder",
+    "status": "submitted",
+    "submittedAt": "2025-01-01T10:00:00Z"
+  },
+  "message": "Pod2Post任务已提交"
+}
+```
+
+#### 查询任务状态
+```
+GET /api/generate/pod2post/status/:taskId
+```
+
+响应包含任务状态、生成进度、文件信息等。
+
+### 资源管理服务
+
+#### CDN图片上传
+```
+POST /api/generate/pod2post/cdn
+Content-Type: multipart/form-data
+
+参数:
+- images: 图片文件（支持多个）
+- clearBase64: "true" | "false" (可选)
+```
+
+#### 照片上传
+```
+POST /api/generate/pod2post/pic
+Content-Type: multipart/form-data
+
+参数:
+- images: 图片文件（支持多个）
+- clearBase64: "true" | "false" (可选)
+```
+
+#### 参考文档上传
+```
+POST /api/generate/pod2post/resources
+Content-Type: multipart/form-data
+
+参数:
+- files: 文档文件（txt, md, pdf, doc等）
+- clearBase64: "true" | "false" (可选)
+```
+
+#### 获取文件列表
+```
+GET /api/generate/pod2post/cdn        # CDN图片列表
+GET /api/generate/pod2post/pic        # 照片列表
+GET /api/generate/pod2post/resources  # 参考文档列表
+```
+
+#### 删除文件
+```
+DELETE /api/generate/pod2post/cdn/:filename
+DELETE /api/generate/pod2post/pic/:filename
+DELETE /api/generate/pod2post/resources/:filename
+```
+
+#### 批量删除文档
+```
+POST /api/generate/pod2post/resources/batch-delete
+{
+  "filenames": ["file1.pdf", "file2.md"]
+}
+```
+
+#### 预览文档内容
+```
+GET /api/generate/pod2post/resources/content/:filename
+```
+
+支持文本类型文件（txt, md, json, xml, yaml等）的内容预览。
+
+### Base64清理机制
+
+所有资源上传接口都支持 `clearBase64=true` 参数，上传成功后会自动清理用户所有Pod2Post任务生成的Base64 HTML文件，避免存储空间浪费。
+
+## 9. 音频转录服务
+
+### 音频转录核心接口
+
+#### 端点
+```
+POST /api/transcription/file
+```
+
+#### 特点
+- 支持多种音视频格式的高精度转录
+- 自动上传到阿里云OSS存储
+- 基于阿里云SenseVoice语音识别
+- 异步处理，支持进度查询
+- 提供句子级和词级时间戳
+
+#### 请求格式
+```http
+POST /api/transcription/file
+Content-Type: multipart/form-data
+
+参数:
+- file: 音频/视频文件（必需，最大100MB）
+- languages: JSON数组，如 ["zh", "en"]（可选）
+- enableWords: "true" 或 "false"（可选）
+- enableTimestamp: "true" 或 "false"（可选，默认true）
+- enablePunctuation: "true" 或 "false"（可选，默认true）
+- removeDisfluency: "true" 或 "false"（可选，默认false）
+- format: "auto" 或指定格式（可选）
+- sampleRate: 采样率，如 16000（可选）
+```
+
+#### 响应格式
+```json
+{
+  "success": true,
+  "taskId": "task-1234567890-abc123",
+  "message": "Task submitted successfully",
+  "status": "processing",
+  "ossPath": "transcription/audio/1234567890-abc123.mp3"
+}
+```
+
+#### 支持的文件格式
+- **音频格式**: WAV, MP3, M4A, AAC, OPUS, FLAC, OGG, AMR
+- **视频格式**: MP4, MOV, AVI, MKV, WMV, FLV, WebM
+- **文件大小限制**: 最大100MB
+- **时长限制**: 最长3小时
+
+### 转录状态查询
+
+#### 端点
+```
+GET /api/transcription/task/:taskId
+```
+
+#### 响应格式
+```json
+{
+  "success": true,
+  "taskId": "task-1234567890-abc123",
+  "status": "processing",  // pending | processing | succeeded | failed
+  "progress": 75,
+  "message": "Processing...",
+  "type": "file",
+  "createdAt": "2024-01-01T10:00:00Z",
+  "updatedAt": "2024-01-01T10:01:30Z",
+  "executionTime": 90000,
+  "hasResult": false
+}
+```
+
+### 获取转录结果
+
+#### 端点
+```
+GET /api/transcription/task/:taskId/result
+```
+
+#### 响应格式（成功）
+```json
+{
+  "success": true,
+  "taskId": "task-1234567890-abc123",
+  "status": "succeeded",
+  "fullText": "完整的转录文本内容...",
+  "sentences": [
+    {
+      "text": "第一句话的内容",
+      "startTime": 0,
+      "endTime": 3.5,
+      "words": [
+        {
+          "word": "第一",
+          "startTime": 0,
+          "endTime": 0.5
+        }
+      ]
+    }
+  ],
+  "language": "zh",
+  "duration": 125.8,
+  "wordCount": 500,
+  "sentenceCount": 25,
+  "metadata": {
+    "model": "sensevoice-v1",
+    "processedAt": "2024-01-01T10:05:00Z"
+  }
+}
+```
+
+### 批量转录
+
+#### 端点
+```
+POST /api/transcription/batch
+```
+
+#### 请求格式
+```http
+Content-Type: multipart/form-data
+
+参数:
+- files: 多个音频文件（最多10个）
+- 其他参数同单文件接口
+```
+
+#### 响应格式
+```json
+{
+  "success": true,
+  "total": 5,
+  "successful": 5,
+  "failed": 0,
+  "batchId": "batch-1234567890-abc123",
+  "results": [
+    {
+      "filename": "audio1.mp3",
+      "taskId": "task-001",
+      "status": "processing",
+      "ossPath": "transcription/batch/batch-xxx/audio/audio1.mp3"
+    }
+  ],
+  "errors": []
+}
+```
+
+### URL转录
+
+#### 端点
+```
+POST /api/transcription/url
+```
+
+#### 请求格式
+```json
+{
+  "url": "https://example.com/audio.mp3",
+  "languages": ["zh", "en"],
+  "enableWords": true,
+  "enableTimestamp": true,
+  "enablePunctuation": true,
+  "removeDisfluency": false
+}
+```
+
+### 任务管理
+
+#### 获取任务列表
+```
+GET /api/transcription/tasks?status=succeeded&page=1&limit=20
+```
+
+#### 删除任务
+```
+DELETE /api/transcription/task/:taskId
+```
+
+#### 重试失败任务
+```
+POST /api/transcription/task/:taskId/retry
+```
+
+#### 获取统计信息
+```
+GET /api/transcription/statistics
+```
+
+#### 获取支持格式
+```
+GET /api/transcription/formats
+```
+
+### 使用示例
+
+#### JavaScript示例
+```javascript
+// 1. 上传文件转录
+const formData = new FormData();
+formData.append('file', audioFile);
+formData.append('languages', JSON.stringify(['zh', 'en']));
+formData.append('enableTimestamp', 'true');
+formData.append('enableWords', 'true');
+
+const response = await fetch('/api/transcription/file', {
+  method: 'POST',
+  body: formData
+});
+
+const { taskId } = await response.json();
+
+// 2. 轮询状态
+const checkStatus = async () => {
+  const response = await fetch(`/api/transcription/task/${taskId}`);
+  const { status, progress } = await response.json();
+  
+  if (status === 'succeeded') {
+    return getResult();
+  } else if (status === 'failed') {
+    throw new Error('Transcription failed');
+  }
+  
+  // 继续等待
+  setTimeout(checkStatus, 5000);
+};
+
+// 3. 获取结果
+const getResult = async () => {
+  const response = await fetch(`/api/transcription/task/${taskId}/result`);
+  const result = await response.json();
+  
+  console.log('转录文本:', result.fullText);
+  console.log('带时间戳的句子:', result.sentences);
+  
+  return result;
+};
+```
+
+#### cURL示例
+```bash
+# 上传文件转录
+curl -X POST http://localhost:6009/api/transcription/file \
+  -F "file=@audio.mp3" \
+  -F "languages=[\"zh\",\"en\"]" \
+  -F "enableTimestamp=true"
+
+# 查询状态
+curl http://localhost:6009/api/transcription/task/task-123/
+
+# 获取结果
+curl http://localhost:6009/api/transcription/task/task-123/result
+```
+
+### 转录流程时序图
+
+```mermaid
+sequenceDiagram
+    participant Client as 客户端
+    participant API as 转录API
+    participant OSS as 阿里云OSS
+    participant SV as SenseVoice
+    
+    Client->>API: POST /file (上传音频)
+    API->>OSS: 上传到OSS存储
+    OSS-->>API: 返回存储路径
+    API->>SV: 提交转录任务
+    SV-->>API: 返回任务ID
+    API-->>Client: 返回taskId
+    
+    loop 状态查询
+        Client->>API: GET /task/:taskId
+        API->>SV: 查询任务状态
+        SV-->>API: 返回状态和进度
+        API-->>Client: 返回状态信息
+    end
+    
+    Note over SV: 转录完成
+    
+    Client->>API: GET /task/:taskId/result
+    API->>SV: 获取转录结果
+    SV-->>API: 返回完整转录数据
+    API-->>Client: 返回转录结果
+```
+
+### 错误处理
+
+| 状态码 | 错误类型 | 描述 |
+|--------|----------|------|
+| 400 | Bad Request | 文件格式不支持或参数错误 |
+| 413 | Payload Too Large | 文件超过100MB限制 |
+| 429 | Too Many Requests | 请求频率超限 |
+| 500 | Internal Server Error | 服务器内部错误 |
+
+### 最佳实践
+
+1. **文件预处理**: 
+   - 推荐使用WAV或MP3格式
+   - 控制文件大小在100MB以内
+   - 音频质量建议16kHz以上
+
+2. **轮询策略**:
+   - 建议5秒间隔轮询状态
+   - 设置合理的超时时间（建议10分钟）
+   - 处理网络异常情况
+
+3. **结果处理**:
+   - 保存完整的转录结果用于分析
+   - 利用时间戳信息进行视频字幕生成
+   - 词级信息可用于精确定位
+
+### 技术架构
+
+- **存储**: 阿里云OSS对象存储
+- **转录引擎**: 阿里云SenseVoice
+- **任务管理**: 本地持久化 + 内存缓存
+- **状态跟踪**: 轮询 + 异步处理
+- **文件处理**: 自动格式检测和转换
+
 ## 版本历史
 
+- **v4.0.0** (2025-09-08):
+  - 新增Pod2Post播客卡片生成服务
+  - 新增资源管理服务（CDN、照片、参考文档）
+  - 新增Base64 HTML文件自动清理机制
+  - 完善自定义模板生成服务
 - **v3.63.0** (2025-08-27): 
   - 添加用户自定义参数支持（style, language, reference）
   - 添加 token 参数支持指定生成到特定用户目录

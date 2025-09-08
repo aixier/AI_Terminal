@@ -103,7 +103,7 @@ class HtmlToBase64Converter {
 
         try {
           // 解析图片路径
-          const imagePath = this.resolveImagePath(src, htmlFileDir, templateBasePath)
+          const imagePath = await this.resolveImagePath(src, htmlFileDir, templateBasePath)
           console.log(`[HtmlToBase64] Processing img ${i + 1}: ${src} -> ${imagePath}`)
 
           // 转换为 base64
@@ -177,10 +177,10 @@ class HtmlToBase64Converter {
    * @param {string} templateBasePath - 模板基础路径
    * @returns {string} 解析后的绝对路径
    */
-  resolveImagePath(src, htmlFileDir, templateBasePath) {
-    // 如果是绝对路径，直接返回
+  async resolveImagePath(src, htmlFileDir, templateBasePath) {
+    // 如果是绝对路径，需要处理中文文件名编码问题
     if (path.isAbsolute(src)) {
-      return src
+      return await this.fixChineseFilename(src)
     }
 
     // 处理相对路径
@@ -244,6 +244,48 @@ class HtmlToBase64Converter {
     } catch (error) {
       console.error(`[HtmlToBase64] Error converting image ${imagePath}:`, error.message)
       return null
+    }
+  }
+
+  /**
+   * 修复中文文件名编码问题
+   * HTML中是正常UTF-8编码的中文，但实际文件系统中可能是双重编码
+   * @param {string} filePath - 原始文件路径
+   * @returns {string} 修复后的文件路径
+   */
+  async fixChineseFilename(filePath) {
+    try {
+      // 分解路径
+      const dir = path.dirname(filePath)
+      const basename = path.basename(filePath)
+      
+      // 检查文件名是否包含中文字符
+      if (!/[\u4e00-\u9fff]/.test(basename)) {
+        return filePath // 不包含中文，直接返回
+      }
+      
+      // 尝试不同的编码方式查找文件
+      const candidates = [
+        filePath, // 原始路径
+        // 将UTF-8字符当作Latin-1再编码为UTF-8 (常见的双重编码问题)
+        path.join(dir, Buffer.from(basename, 'utf8').toString('latin1'))
+      ]
+      
+      // 检查哪个文件存在
+      for (const candidate of candidates) {
+        const exists = await this.fileExists(candidate)
+        if (exists) {
+          console.log(`[HtmlToBase64] Found file with encoding fix: ${filePath} -> ${candidate}`)
+          return candidate
+        }
+      }
+      
+      console.warn(`[HtmlToBase64] No matching file found for: ${filePath}`)
+      return filePath
+      
+    } catch (error) {
+      console.warn(`[HtmlToBase64] Error fixing Chinese filename: ${error.message}`)
+      return filePath
     }
   }
 
@@ -373,7 +415,7 @@ class HtmlToBase64Converter {
       
       try {
         // 解析图片路径
-        const imagePath = this.resolveImagePath(url, htmlFileDir, templateBasePath)
+        const imagePath = await this.resolveImagePath(url, htmlFileDir, templateBasePath)
         console.log(`[HtmlToBase64] Processing CSS url: ${url} -> ${imagePath}`)
         
         // 转换为 base64

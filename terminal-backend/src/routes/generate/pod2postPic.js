@@ -6,19 +6,22 @@ import { authenticateUserOrDefault } from '../../middleware/userAuth.js'
 
 const router = express.Router()
 
-// 获取照片目录路径
-function getPicPath() {
-  const isDocker = process.env.NODE_ENV === 'production' || process.env.DATA_PATH
-  return isDocker 
-    ? '/app/data/public_template/pod2post/照片'
-    : path.join(process.cwd(), 'data', 'public_template', 'pod2post', '照片')
+// 获取用户照片目录路径
+async function getUserPicPath(username) {
+  const userService = await import('../../services/userService.js')
+  return userService.default.getUserTemplatePath(username, 'pod2post/photos')
 }
 
 // 配置multer存储
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const picPath = getPicPath()
     try {
+      // 从req对象获取用户信息（需要确保在认证中间件之后）
+      if (!req.user) {
+        return cb(new Error('用户未认证'))
+      }
+      
+      const picPath = await getUserPicPath(req.user.username)
       await fs.mkdir(picPath, { recursive: true })
       cb(null, picPath)
     } catch (error) {
@@ -26,11 +29,8 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    // 保持原始文件名，如果重复则添加时间戳
-    const ext = path.extname(file.originalname)
-    const name = path.basename(file.originalname, ext)
-    const timestamp = Date.now()
-    cb(null, `${name}_${timestamp}${ext}`)
+    // 用户模板目录使用原始文件名，避免Base64嵌入时找不到文件
+    cb(null, file.originalname)
   }
 })
 
@@ -88,7 +88,7 @@ router.post('/',
       filename: file.filename,
       size: file.size,
       path: file.path,
-      url: `/data/public_template/pod2post/照片/${file.filename}`
+      url: `/data/users/${req.user.username}/workspace/templates/pod2post/photos/${file.filename}`
     }))
     
     console.log(`[Pod2PostPic] Successfully uploaded files:`, uploadedFiles.map(f => f.filename))
@@ -110,7 +110,7 @@ router.post('/',
       data: {
         uploadedFiles,
         total: uploadedFiles.length,
-        picPath: getPicPath()
+        picPath: await getUserPicPath(req.user.username)
       }
     })
     
@@ -133,7 +133,7 @@ router.get('/',
   async (req, res) => {
     
   try {
-    const picPath = getPicPath()
+    const picPath = await getUserPicPath(req.user.username)
     
     // 确保目录存在
     try {
@@ -155,7 +155,7 @@ router.get('/',
           size: stats.size,
           created: stats.birthtime,
           modified: stats.mtime,
-          url: `/data/public_template/pod2post/照片/${file}`
+          url: `/data/users/${req.user.username}/workspace/templates/pod2post/photos/${file}`
         })
       }
     }
@@ -194,7 +194,7 @@ router.delete('/:filename',
   const { filename } = req.params
   
   try {
-    const picPath = getPicPath()
+    const picPath = await getUserPicPath(req.user.username)
     const filePath = path.join(picPath, filename)
     
     // 检查文件是否存在

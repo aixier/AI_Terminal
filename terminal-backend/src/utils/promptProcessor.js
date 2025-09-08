@@ -8,18 +8,18 @@ import path from 'path'
 class PromptProcessor {
   /**
    * 处理prompt中的路径占位符
-   * [path] -> 模板目录中的实际路径
+   * [path] -> 用户模板目录中的实际路径
    * "用户card路径" -> 用户的card工作目录
    * 
    * @param {string} prompt - 原始prompt
-   * @param {string} templateDir - 模板目录
+   * @param {string} userTemplateDir - 用户模板目录
    * @param {string} cardPath - 用户card路径
    * @returns {Promise<string>} 处理后的prompt
    */
-  async processPrompt(prompt, templateDir, cardPath) {
+  async processPrompt(prompt, userTemplateDir, cardPath) {
     console.log('[PromptProcessor] ==========================================')
     console.log('[PromptProcessor] Processing prompt paths')
-    console.log('[PromptProcessor] Template dir:', templateDir)
+    console.log('[PromptProcessor] User template dir:', userTemplateDir)
     console.log('[PromptProcessor] Card path:', cardPath)
     console.log('[PromptProcessor] Original prompt:')
     console.log('[PromptProcessor]  ', prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''))
@@ -38,7 +38,7 @@ class PromptProcessor {
       
       try {
         // 递归查找文件或目录
-        const fullPath = await this.findPath(templateDir, fileName)
+        const fullPath = await this.findPath(userTemplateDir, fileName)
         
         if (fullPath) {
           processed = processed.replace(match, fullPath)
@@ -171,10 +171,10 @@ class PromptProcessor {
   /**
    * 构建路径映射表
    * @param {string} prompt - 原始prompt
-   * @param {string} templateDir - 模板目录
+   * @param {string} userTemplateDir - 用户模板目录
    * @returns {Promise<Object>} 路径映射表
    */
-  async buildPathMapping(prompt, templateDir) {
+  async buildPathMapping(prompt, userTemplateDir) {
     const mapping = {}
     
     // 提取所有方括号路径
@@ -182,7 +182,7 @@ class PromptProcessor {
     
     for (const match of bracketMatches) {
       const fileName = match.slice(1, -1)
-      const fullPath = await this.findPath(templateDir, fileName)
+      const fullPath = await this.findPath(userTemplateDir, fileName)
       if (fullPath) {
         mapping[match] = fullPath
       }

@@ -264,6 +264,17 @@
       "createdAt": "2025-01-01T00:00:00Z",
       "lastLogin": null,
       "status": "active"
+    },
+    {
+      "id": 24,
+      "username": "lijing",
+      "password": "lijing123",
+      "token": "lijing-token-2025-pod2post",
+      "displayName": "李静",
+      "email": "lijing@example.com",
+      "createdAt": "2025-09-08T00:00:00Z",
+      "lastLogin": null,
+      "status": "active"
     }
   ]
 }

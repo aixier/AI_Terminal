@@ -184,13 +184,8 @@ export const ensureUserFolder = async (req, res, next) => {
 
     const { username } = req.user
     
-    // 检查用户文件夹是否存在
-    const folderExists = await userService.userFolderExists(username)
-    
-    if (!folderExists) {
-      console.log(`[UserAuth] Creating folder for user: ${username}`)
-      await userService.createUserFolder(username)
-    }
+    // 使用新的ensureUserWorkspace方法，自动检查和创建所有必要目录
+    await userService.ensureUserWorkspace(username)
 
     next()
     
@@ -199,7 +194,7 @@ export const ensureUserFolder = async (req, res, next) => {
     res.status(500).json({
       code: 500,
       success: false,
-      message: '用户文件夹初始化失败'
+      message: '用户工作空间初始化失败'
     })
   }
 }

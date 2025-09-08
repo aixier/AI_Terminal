@@ -1,0 +1,33 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+    <defs>
+        <!-- 背景渐变 -->
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#FFE55C;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#87CEEB;stop-opacity:1" />
+        </linearGradient>
+        
+        <!-- 定义裁剪路径 - 线性logo的形状作为负形 -->
+        <mask id="logoMask">
+            <!-- 白色背景表示可见区域 -->
+            <rect width="200" height="200" fill="white"/>
+            <!-- 黑色部分表示镂空区域（原logo的线条位置） -->
+            <!-- C形状镂空 -->
+            <path d="M100 40 C60 40, 40 60, 40 100 C40 140, 60 160, 100 160" 
+                  fill="none" 
+                  stroke="black" 
+                  stroke-width="15" 
+                  stroke-linecap="round"/>
+            <!-- P形状镂空 -->
+            <path d="M100 40 L100 160 M100 40 C130 40, 150 50, 150 80 C150 110, 130 120, 100 120" 
+                  fill="none" 
+                  stroke="black" 
+                  stroke-width="15" 
+                  stroke-linecap="round"/>
+        </mask>
+    </defs>
+    
+    <!-- 圆形背景，应用遮罩以创建负形效果 -->
+    <circle cx="100" cy="100" r="90" 
+            fill="url(#bgGrad)" 
+            mask="url(#logoMask)"/>
+</svg>

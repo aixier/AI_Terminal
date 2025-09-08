@@ -1,15 +1,28 @@
 # AI Terminal Backend
 
-音视频转录服务后端，集成阿里云 OSS 存储和 SenseVoice 语音识别服务。
+智能内容生成和音视频转录服务后端，集成阿里云 OSS 存储、SenseVoice 语音识别和多种AI生成服务。
 
 ## 功能特性
 
-- 🎯 **音视频转录**: 支持多种音视频格式的高精度转录
-- 💾 **OSS 存储**: 自动上传文件到阿里云 OSS，生成安全的访问链接
-- ⏱️ **时间戳标注**: 提供句子级和词级时间戳
-- 🌐 **多语言支持**: 支持中英文混合识别
-- 📦 **批量处理**: 支持批量文件转录
-- 🔄 **异步处理**: 任务异步执行，支持进度查询
+### 🎯 音视频转录服务
+- 支持多种音视频格式的高精度转录
+- 自动上传文件到阿里云 OSS，生成安全的访问链接
+- 提供句子级和词级时间戳
+- 支持中英文混合识别
+- 批量处理和异步执行，支持进度查询
+
+### 🎨 智能内容生成服务
+- **卡片生成**: 同步/异步/流式卡片内容生成
+- **自定义模板**: 支持ZIP模板上传和自定义生成
+- **Pod2Post播客卡片**: 专业播客内容卡片生成
+- **资源管理**: CDN图片、照片、参考文档上传管理
+- **Base64嵌入**: 自动图片Base64嵌入和清理机制
+
+### 🛠️ 核心技术特性
+- 异步任务处理和状态跟踪
+- 多用户认证和工作空间隔离
+- 完整的文件管理和清理机制
+- 模块化路由设计和服务架构
 
 ## 快速开始
 
@@ -65,12 +78,42 @@ npm start
 
 ### 主要接口
 
+#### 转录服务 `/api/transcription`
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| POST | `/api/transcription/file` | 上传文件并转录 |
-| POST | `/api/transcription/url` | 从 URL 转录 |
-| GET | `/api/transcription/task/:taskId` | 查询任务状态 |
-| GET | `/api/transcription/task/:taskId/result` | 获取转录结果 |
+| POST | `/file` | 上传文件并转录 |
+| POST | `/url` | 从 URL 转录 |
+| POST | `/batch` | 批量转录多个文件 |
+| GET | `/task/:taskId` | 查询任务状态 |
+| GET | `/task/:taskId/result` | 获取转录结果 |
+| GET | `/tasks` | 获取任务列表 |
+| GET | `/formats` | 获取支持的格式 |
+| DELETE | `/task/:taskId` | 删除任务 |
+| POST | `/task/:taskId/retry` | 重试失败的任务 |
+| GET | `/statistics` | 获取统计信息 |
+
+#### 生成服务 `/api/generate`
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/card` | 同步卡片生成 |
+| POST | `/card/async` | 异步卡片生成 |
+| POST | `/card/stream` | 流式卡片生成 |
+| GET | `/card/query/:folderName` | 查询卡片内容 |
+| GET | `/card/content/:folderName` | 获取格式化内容 |
+| POST | `/custom/async` | 自定义模板异步生成 |
+| GET | `/custom/status/:taskId` | 查询自定义任务状态 |
+| POST | `/custom/ossasync` | OSS自定义模板生成 |
+| GET | `/custom/ossstatus/:taskId` | OSS任务状态查询 |
+| POST | `/pod2post/async` | Pod2Post播客卡片生成 |
+| GET | `/pod2post/status/:taskId` | Pod2Post任务状态查询 |
+| POST | `/pod2post/cdn` | CDN图片上传 |
+| POST | `/pod2post/pic` | 照片上传 |
+| POST | `/pod2post/resources` | 参考文档上传 |
+| GET | `/templates` | 获取模板列表 |
+| GET | `/status/:topic` | 获取生成状态 |
+| POST | `/cc` | Claude执行 |
+| POST | `/share/xiaohongshu` | 分享到小红书 |
+| GET | `/health` | 健康检查 |
 
 详细 API 文档请参考：
 - [转录接口使用说明](./docs/transcription-api-guide.md)
@@ -79,7 +122,9 @@ npm start
 
 ## 使用示例
 
-### 1. 上传文件转录
+### 转录服务示例
+
+#### 1. 上传文件转录
 
 ```javascript
 const formData = new FormData();
@@ -94,14 +139,14 @@ const response = await fetch('http://localhost:6009/api/transcription/file', {
 const { taskId } = await response.json();
 ```
 
-### 2. 查询任务状态
+#### 2. 查询任务状态
 
 ```javascript
 const response = await fetch(`http://localhost:6009/api/transcription/task/${taskId}`);
 const { status, progress } = await response.json();
 ```
 
-### 3. 获取转录结果
+#### 3. 获取转录结果
 
 ```javascript
 const response = await fetch(`http://localhost:6009/api/transcription/task/${taskId}/result`);
@@ -110,20 +155,95 @@ console.log(data.fullText); // 完整转录文本
 console.log(data.sentences); // 带时间戳的句子
 ```
 
+### Pod2Post生成服务示例
+
+#### 1. 播客卡片生成
+
+```javascript
+const response = await fetch('http://localhost:6009/api/generate/pod2post/async', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompts: ['播客内容概要', '主要观点总结'],
+    token: 'user_token'
+  })
+});
+
+const { taskId } = await response.json();
+```
+
+#### 2. 上传CDN图片
+
+```javascript
+const formData = new FormData();
+formData.append('images', file1);
+formData.append('images', file2);
+formData.append('clearBase64', 'true');
+
+const response = await fetch('http://localhost:6009/api/generate/pod2post/cdn', {
+  method: 'POST',
+  body: formData
+});
+```
+
+#### 3. 上传参考文档
+
+```javascript
+const formData = new FormData();
+formData.append('files', pdfFile);
+formData.append('files', mdFile);
+formData.append('clearBase64', 'true');
+
+const response = await fetch('http://localhost:6009/api/generate/pod2post/resources', {
+  method: 'POST',
+  body: formData
+});
+```
+
 ## 项目结构
 
 ```
 terminal-backend/
 ├── src/
 │   ├── routes/           # API 路由
-│   │   └── transcription.js
+│   │   ├── transcription.js     # 转录接口
+│   │   ├── assets.js            # 静态资源
+│   │   └── generate/            # 生成服务路由
+│   │       ├── index.js         # 路由入口
+│   │       ├── card.js          # 卡片生成
+│   │       ├── cardAsync.js     # 异步卡片生成
+│   │       ├── cardStream.js    # 流式卡片生成
+│   │       ├── customAsync.js   # 自定义模板生成
+│   │       ├── pod2postAsync.js # Pod2Post生成
+│   │       ├── pod2postStatus.js # Pod2Post状态查询
+│   │       ├── pod2postCdn.js   # CDN图片上传
+│   │       ├── pod2postPic.js   # 照片上传
+│   │       ├── pod2postResources.js # 参考文档上传
+│   │       ├── templates.js     # 模板管理
+│   │       ├── claude.js        # Claude执行
+│   │       └── share.js         # 分享功能
 │   ├── services/         # 核心服务
 │   │   ├── oss/         # OSS 存储服务
-│   │   └── SenseVoice/  # 语音识别服务
+│   │   ├── SenseVoice/  # 语音识别服务
+│   │   ├── userService.js # 用户服务
+│   │   └── referenceConverter.js # 参考资料转换
 │   ├── utils/           # 工具函数
+│   │   ├── promptProcessor.js   # 提示词处理
+│   │   ├── htmlToBase64Converter.js # HTML转Base64
+│   │   ├── zipProcessor.js      # ZIP处理
+│   │   └── logger.js            # 日志工具
+│   ├── middleware/      # 中间件
+│   │   └── userAuth.js  # 用户认证
 │   └── config/          # 配置文件
-├── docs/                # 文档
-├── test/               # 测试文件
+├── data/                # 数据目录
+│   ├── public_template/ # 公共模板
+│   │   └── pod2post/   # Pod2Post模板
+│   │       ├── CDN/    # CDN图片
+│   │       ├── 照片/    # 照片资源
+│   │       └── resources/ # 参考文档
+│   └── users/          # 用户数据
+├── docs/               # 文档
+├── test/              # 测试文件
 └── package.json
 ```
 

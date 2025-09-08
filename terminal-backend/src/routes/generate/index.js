@@ -8,6 +8,11 @@ import customAsyncRoutes from './customAsync.js'
 import customStatusRoutes from './customStatus.js'
 import customOssAsyncRoutes from './customOssAsync.js'
 import customOssStatusRoutes from './customOssStatus.js'
+import pod2postAsyncRoutes from './pod2postAsync.js'
+import pod2postStatusRoutes from './pod2postStatus.js'
+import pod2postCdnRoutes from './pod2postCdn.js'
+import pod2postPicRoutes from './pod2postPic.js'
+import pod2postResourcesRoutes from './pod2postResources.js'
 import templateRoutes from './templates.js'
 import statusRoutes from './status.js'
 import claudeRoutes from './claude.js'
@@ -34,6 +39,13 @@ router.use('/custom/status', customStatusRoutes) // GET /api/generate/custom/sta
 router.use('/custom/ossasync', customOssAsyncRoutes) // POST /api/generate/custom/ossasync
 router.use('/custom/ossstatus', customOssStatusRoutes) // GET /api/generate/custom/ossstatus/:taskId
 
+// Pod2Post播客卡片路由
+router.use('/pod2post/async', pod2postAsyncRoutes) // POST /api/generate/pod2post/async
+router.use('/pod2post/status', pod2postStatusRoutes) // GET /api/generate/pod2post/status/:taskId
+router.use('/pod2post/cdn', pod2postCdnRoutes) // POST /api/generate/pod2post/cdn (CDN图片上传)
+router.use('/pod2post/pic', pod2postPicRoutes) // POST /api/generate/pod2post/pic (照片上传)
+router.use('/pod2post/resources', pod2postResourcesRoutes) // POST /api/generate/pod2post/resources (参考文档上传)
+
 // 模板和状态路由
 router.use('/templates', templateRoutes)   // GET /api/generate/templates
 router.use('/status', statusRoutes)        // GET /api/generate/status/:topic
@@ -57,6 +69,10 @@ router.get('/health', (req, res) => {
       cardQuery: 'active',
       customAsync: 'active',
       customOssAsync: 'active',
+      pod2postAsync: 'active',
+      pod2postCdn: 'active',
+      pod2postPic: 'active',
+      pod2postResources: 'active',
       templates: 'active',
       status: 'active',
       claude: 'active'

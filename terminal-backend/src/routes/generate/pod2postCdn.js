@@ -30,7 +30,9 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     // 用户模板目录使用原始文件名，避免Base64嵌入时找不到文件
-    cb(null, file.originalname)
+    // 确保中文文件名正确解码
+    const filename = Buffer.from(file.originalname, 'latin1').toString('utf8')
+    cb(null, filename)
   }
 })
 
@@ -66,7 +68,7 @@ const upload = multer({
  */
 router.post('/', 
   authenticateUserOrDefault,
-  upload.array('images', 20), // 最多20个文件
+  upload.array('files', 20), // 最多20个文件，字段名改为files以匹配前端
   async (req, res) => {
     
   console.log(`[Pod2PostCDN] ==================== CDN UPLOAD REQUEST ====================`)
@@ -84,7 +86,7 @@ router.post('/',
     }
     
     const uploadedFiles = req.files.map(file => ({
-      originalName: file.originalname,
+      originalName: Buffer.from(file.originalname, 'latin1').toString('utf8'),
       filename: file.filename,
       size: file.size,
       path: file.path,

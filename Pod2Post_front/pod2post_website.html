@@ -1,0 +1,2235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pod2Post - Transform Podcasts into Shareable Visual Cards</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Inter Font System -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Warm Minimalist Future Aesthetic Color System */
+        :root {
+            /* Main Base - Pure White & Silver */
+            --clean-white: #ffffff;
+            --warm-white: #fefefe;
+            --silver-mist: #f8f9fa;
+            --light-silver: #f5f6f7;
+            
+            /* Warm Accent Colors */
+            --cream-light: #fef9f3;  /* Cream light */
+            --soft-gold: #f4d03f;    /* Soft gold */
+            --warm-gold: #f7dc6f;    /* Warm gold */
+            
+            /* Subtle Secondary Colors */
+            --micro-blue: #f8fbff;   /* Micro blue */
+            --soft-green: #f9fdf9;   /* Soft green */
+            --pearl-glow: #fefcf8;   /* Pearl glow */
+            
+            /* Typography System */
+            --text-primary: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --text-light: #888888;
+            --text-accent: #6B8E23;  /* Natural green for logo */
+            
+            /* Effect System */
+            --glow-shadow: 0 0 20px rgba(244, 208, 63, 0.1);
+            --micro-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            --hover-glow: 0 0 30px rgba(244, 208, 63, 0.15);
+            
+            /* Additional for dashboard */
+            --border-light: rgba(0, 0, 0, 0.06);
+            --success-green: #10b981;
+            --danger-red: #ef4444;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-weight: 400;
+            letter-spacing: 0.01em;
+            
+            /* Warm gradient background - top left gold + bottom left soft green */
+            background: 
+                radial-gradient(ellipse at top left, var(--cream-light) 0%, transparent 50%),
+                radial-gradient(ellipse at top right, var(--micro-blue) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom left, var(--soft-green) 0%, transparent 50%),
+                radial-gradient(ellipse 800px 400px at 25% 85%, rgba(210, 247, 220, 0.4) 0%, transparent 40%),
+                var(--warm-white);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+        
+        /* Container System - Enhanced breathing space */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+        
+        /* Navigation - Transparent background */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: transparent;
+            z-index: 1000;
+            padding: 24px 0;
+            transition: all 0.4s ease;
+        }
+        
+        /* Main content area */
+        .main-page {
+            position: relative;
+            z-index: 10;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        
+        /* Capsule-shaped transparent frosted background */
+        .nav-container::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 64px; /* Button 44px + top/bottom 10px each = 64px */
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: -1;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-accent);  /* Natural green */
+            letter-spacing: 0.02em;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 35px;
+            align-items: center;
+            margin-right: 20px;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 400;
+            transition: all 0.3s ease;
+            letter-spacing: 0.01em;
+        }
+        
+        .nav-links a:hover {
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+        
+        .auth-btn {
+            display: inline-flex;
+            align-items: center;
+            background: transparent !important;
+            color: #8B7500 !important;  /* Deep golden color matching the theme */
+            padding: 10px 20px;
+            border: 1px solid #FFE77B;
+            border-radius: 24px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: none;
+        }
+        
+        .auth-btn:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 231, 123, 0.1) !important;
+            box-shadow: 0 0 12px rgba(255, 231, 123, 0.2);
+            color: #6B5D00 !important;  /* Darker on hover */
+        }
+        
+        /* Hero Section */
+        .hero {
+            padding: 140px 0 40px;
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
+        }
+        
+        .hero-grid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 600;
+            line-height: 1.1;
+            margin-bottom: 32px;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+        
+        .highlight {
+            color: #FFD700;
+            font-weight: 600;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .hero p {
+            font-size: 20px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 48px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #FFE77B 0%, #FFD700 100%);
+            color: #6B5D00;
+            padding: 18px 36px;
+            border-radius: 32px;
+            border: none;
+            font-size: 18px;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 6px 20px rgba(255, 231, 123, 0.4);
+            transition: all 0.3s ease;
+            letter-spacing: 0.01em;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cta-primary:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 30px rgba(255, 231, 123, 0.6);
+        }
+        
+        /* Workflow Section */
+        .workflow {
+            padding: 120px 0;
+        }
+        
+        .workflow h2 {
+            font-size: 48px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+        }
+        
+        .workflow-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 80px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .workflow-steps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 48px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .step-card {
+            background: var(--clean-white);
+            border-radius: 24px;
+            padding: 40px 32px;
+            text-align: center;
+            box-shadow: var(--micro-shadow);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .step-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+        }
+        
+        .step-number {
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .step-icon {
+            font-size: 36px;
+            color: #FFD700;
+            margin-bottom: 24px;
+        }
+        
+        .step-card h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .step-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        
+        /* Output showcase */
+        .output-showcase {
+            padding: 120px 0;
+        }
+        
+        .output-showcase h2 {
+            font-size: 48px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+        }
+        
+        .output-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 80px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .output-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 80px;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .output-info h3 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: var(--text-primary);
+        }
+        
+        .output-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 32px 24px;
+            background: var(--pearl-glow);
+            border-radius: 20px;
+            box-shadow: var(--micro-shadow);
+        }
+        
+        .stat-number {
+            font-size: 48px;
+            font-weight: 600;
+            color: #FFD700;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 16px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .output-features {
+            list-style: none;
+        }
+        
+        .output-features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        
+        .output-features .check-icon {
+            color: #22c55e;
+            font-size: 18px;
+        }
+        
+        /* Demo visualization */
+        .demo-container {
+            position: relative;
+            height: 500px;
+            background: linear-gradient(135deg, var(--cream-light) 0%, var(--micro-blue) 100%);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .demo-flow {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+        
+        .demo-input, .demo-output {
+            background: var(--clean-white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .demo-input {
+            width: 200px;
+            text-align: center;
+        }
+        
+        .demo-output {
+            width: 160px;
+            height: 213px; /* 3:4 ratio */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .demo-arrow {
+            font-size: 32px;
+            color: #FFD700;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        .demo-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        
+        .demo-content {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        
+        /* Examples Showcase */
+        .examples-showcase {
+            padding: 120px 0;
+        }
+        
+        .examples-showcase h2 {
+            font-size: 48px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+        }
+        
+        .examples-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 80px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 48px;
+            max-width: 1000px;
+            margin: 0 auto 60px;
+        }
+        
+        .example-item {
+            text-align: center;
+        }
+        
+        .example-image {
+            margin-bottom: 24px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            aspect-ratio: 3/4;
+            background: var(--pearl-glow);
+        }
+        
+        .example-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .example-item h4 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .example-item p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .examples-cta {
+            text-align: center;
+        }
+        
+        .examples-cta p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+        
+        .cta-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            color: #FFD700;
+            padding: 12px 24px;
+            border: 1px solid #FFE77B;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .cta-secondary:hover {
+            background: rgba(255, 231, 123, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 120px 0;
+        }
+        
+        .features h2 {
+            font-size: 48px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+        }
+        
+        .features-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 80px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 48px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .feature-card {
+            background: var(--clean-white);
+            border-radius: 24px;
+            padding: 40px 32px;
+            text-align: center;
+            box-shadow: var(--micro-shadow);
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+        }
+        
+        .feature-icon-linear {
+            font-size: 36px;
+            color: #FFD700;
+            margin-bottom: 24px;
+            display: block;
+            text-align: center;
+        }
+        
+        .feature-card h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        
+        /* Benefits section */
+        .benefits {
+            padding: 120px 0;
+        }
+        
+        .benefits h2 {
+            font-size: 48px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 80px;
+            letter-spacing: -0.02em;
+        }
+        
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 60px 80px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .benefit-item {
+            display: flex;
+            gap: 24px;
+        }
+        
+        .benefit-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 24px;
+            color: #FFE77B;
+        }
+        
+        .benefit-content h4 {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            letter-spacing: 0.01em;
+        }
+        
+        .benefit-content p {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        /* Target Users Section */
+        .target-users {
+            padding: 120px 0;
+        }
+        
+        .target-users h2 {
+            font-size: 48px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 80px;
+            letter-spacing: -0.02em;
+        }
+        
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 48px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .user-card {
+            background: var(--clean-white);
+            border-radius: 24px;
+            padding: 40px 32px;
+            text-align: center;
+            box-shadow: var(--micro-shadow);
+            transition: all 0.3s ease;
+        }
+        
+        .user-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+        }
+        
+        .user-icon-linear {
+            font-size: 36px;
+            color: #22c55e;
+            margin-bottom: 24px;
+            display: block;
+            text-align: center;
+        }
+        
+        .user-card h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .user-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        
+        /* CTA Section */
+        .final-cta {
+            padding: 140px 0;
+            text-align: center;
+        }
+        
+        .final-cta h2 {
+            font-size: 32px;
+            font-weight: 400;
+            margin-bottom: 24px;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+        
+        .final-cta p {
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+            line-height: 1.6;
+        }
+        
+        /* Footer */
+        footer {
+            padding: 80px 0 40px;
+        }
+        
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 60px;
+            margin-bottom: 60px;
+        }
+        
+        .footer-section h4 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 24px;
+            letter-spacing: 0.01em;
+        }
+        
+        .footer-section ul {
+            list-style: none;
+        }
+        
+        .footer-section ul li {
+            margin-bottom: 12px;
+        }
+        
+        .footer-section ul li a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+        
+        .footer-section ul li a:hover {
+            color: var(--text-secondary);
+        }
+        
+        .footer-bottom {
+            border-top: 1px solid var(--border-light);
+            padding-top: 40px;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 14px;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .workflow-steps {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 32px;
+            }
+            
+            .output-grid {
+                grid-template-columns: 1fr;
+                gap: 60px;
+                text-align: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 48px;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+            
+            .examples-grid {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+            
+            .workflow-steps {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+            
+            .benefits-grid {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .users-grid {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+            
+            .footer-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 40px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .footer-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Product Flow Interface Styles */
+        .product-flow {
+            display: none;
+            min-height: 100vh;
+            padding: 120px 0 60px;
+            position: relative;
+            z-index: 20;
+        }
+
+        .product-flow.active {
+            display: block;
+        }
+
+        .flow-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+
+        .flow-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .flow-title {
+            font-size: 48px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        .flow-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 60px;
+            gap: 16px;
+        }
+
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-light);
+            transition: all 0.3s ease;
+        }
+
+        .step-dot.active {
+            background: linear-gradient(135deg, #FFE77B 0%, #FFD700 100%);
+            transform: scale(1.2);
+        }
+
+        .step-line {
+            width: 60px;
+            height: 2px;
+            background: var(--border-light);
+        }
+
+        /* Upload Interface */
+        .upload-section {
+            background: var(--clean-white);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: var(--micro-shadow);
+            margin-bottom: 32px;
+        }
+
+        .upload-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+        }
+
+        .upload-group {
+            border: 2px dashed var(--border-light);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .upload-group:hover {
+            border-color: #FFE77B;
+            background: var(--cream-light);
+        }
+
+        .upload-group.dragover {
+            border-color: #FFD700;
+            background: var(--cream-light);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 36px;
+            color: #FFD700;
+            margin-bottom: 16px;
+        }
+
+        .upload-label {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .upload-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .upload-button {
+            background: linear-gradient(135deg, #FFE77B 0%, #FFD700 100%);
+            color: #6B5D00;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 231, 123, 0.4);
+        }
+
+        .file-preview {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .file-thumbnail {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid var(--border-light);
+        }
+
+        .file-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .file-remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 20px;
+            height: 20px;
+            background: var(--danger-red);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* User Type Selection */
+        .user-type-selector {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .user-type-option {
+            padding: 12px 24px;
+            border: 2px solid var(--border-light);
+            border-radius: 20px;
+            background: var(--clean-white);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .user-type-option.selected {
+            border-color: #FFD700;
+            background: var(--cream-light);
+            color: #6B5D00;
+        }
+
+        /* Name Input Interface */
+        .name-input-section {
+            background: var(--clean-white);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: var(--micro-shadow);
+            margin-bottom: 32px;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-label {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid var(--border-light);
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: var(--warm-white);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #FFE77B;
+            box-shadow: 0 0 0 4px rgba(255, 231, 123, 0.1);
+        }
+
+        .input-note {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        /* Progress Interface */
+        .progress-section {
+            background: var(--clean-white);
+            border-radius: 24px;
+            padding: 60px 40px;
+            box-shadow: var(--micro-shadow);
+            text-align: center;
+        }
+
+        .progress-circle {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 32px;
+            position: relative;
+        }
+
+        .progress-ring {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-bg {
+            fill: none;
+            stroke: var(--border-light);
+            stroke-width: 8;
+        }
+
+        .progress-ring-fill {
+            fill: none;
+            stroke: url(#progressGrad);
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.5s ease;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .progress-status {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .progress-steps {
+            text-align: left;
+            margin-top: 40px;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        .progress-step.completed {
+            color: var(--success-green);
+        }
+
+        .progress-step.active {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Result Interface */
+        .result-section {
+            margin-bottom: 32px;
+        }
+
+        .result-preview {
+            background: var(--clean-white);
+            border-radius: 16px;
+            border: 2px solid var(--border-light);
+            height: 600px;
+            overflow-y: auto;
+            margin-bottom: 24px;
+        }
+
+        .correction-section {
+            background: var(--cream-light);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .correction-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .correction-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .correction-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .add-correction-btn {
+            background: transparent;
+            color: #FFD700;
+            border: 1px solid #FFE77B;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .add-correction-btn:hover {
+            background: rgba(255, 231, 123, 0.1);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #FFE77B 0%, #FFD700 100%);
+            color: #6B5D00;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 231, 123, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 2px solid var(--border-light);
+            padding: 16px 32px;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            border-color: #FFE77B;
+            color: var(--text-primary);
+        }
+
+        /* Loading Animation */
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-light);
+            border-top: 4px solid #FFD700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Example Images */
+        .example-images {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .example-img {
+            width: 100%;
+            height: 120px;
+            background: var(--silver-mist);
+            border: 2px dashed var(--border-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="container nav-container">
+            <div class="logo" style="cursor: pointer;" onclick="goToHome(); return false;">
+<svg class="logo-icon" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+                    <!-- Pod2Post Logo: P2P设计 -->
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#FFE55C;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#87CEEB;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <!-- P形状 -->
+                    <path d="M8 8 L8 32 M8 8 C14 8, 18 10, 18 16 C18 22, 14 24, 8 24" 
+                          fill="none" 
+                          stroke="url(#logoGrad)" 
+                          stroke-width="2.5" 
+                          stroke-linecap="round"/>
+                    <!-- 第二个P形状 -->
+                    <path d="M22 8 L22 32 M22 8 C28 8, 32 10, 32 16 C32 22, 28 24, 22 24" 
+                          fill="none" 
+                          stroke="url(#logoGrad)" 
+                          stroke-width="2.5" 
+                          stroke-linecap="round"/>
+                    <!-- 删除C形状，改为两个P -->
+                </svg>
+                Pod2Post
+            </div>
+            <div class="nav-links">
+                <a href="#workflow">How it Works</a>
+                <a href="#features">Features</a>
+                <a href="#users">For Who</a>
+                <button class="auth-btn" onclick="startProductFlow()">Start</button>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main page -->
+    <div class="main-page">
+        <!-- Hero -->
+        <section class="hero">
+            <div class="container">
+                <div class="hero-grid">
+                    <div class="hero-content">
+                        <h1>
+                            Your AI Content Team for<br>
+                            <span class="highlight">podcast marketing</span>
+                        </h1>
+                        <p>
+                            Pod2Post acts as your dedicated AI content team, transforming podcast episodes into professional visual content. 
+                            Intelligent quote extraction, automated design layouts, and social media optimization. 
+                            Get a full content marketing package from every episode.
+                        </p>
+                        <a href="#" class="cta-primary">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="margin-right: 8px;">
+                                <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" fill="#6B5D00"/>
+                            </svg>
+                            Start Creating Free
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="margin-left: 4px;">
+                                <path d="M5 12h14M12 5l7 7-7 7" stroke="#6B5D00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Workflow Section -->
+        <section class="workflow" id="workflow">
+            <div class="container">
+                <h2>Simple 4-Step Process</h2>
+                <p class="workflow-subtitle">
+                    Your AI team handles everything from transcript analysis to final design
+                </p>
+                <div class="workflow-steps">
+                    <div class="step-card">
+                        <div class="step-number">1</div>
+                        <div class="step-icon">
+                            <i class="bi bi-upload"></i>
+                        </div>
+                        <h3>Upload Content</h3>
+                        <p>Upload your podcast audio, show notes, guest photos, and episode images</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">2</div>
+                        <div class="step-icon">
+                            <i class="bi bi-person-check"></i>
+                        </div>
+                        <h3>AI Processing</h3>
+                        <p>AI analyzes content structure and identifies the best moments for card generation</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">3</div>
+                        <div class="step-icon">
+                            <i class="bi bi-palette"></i>
+                        </div>
+                        <h3>Visual Design</h3>
+                        <p>AI extracts key quotes and applies professional layouts with your branding and photos</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">4</div>
+                        <div class="step-icon">
+                            <i class="bi bi-send"></i>
+                        </div>
+                        <h3>One-Click Publishing</h3>
+                        <p>One-click publishing to LinkedIn, Instagram, Pinterest, TikTok, RedNote, WeChat and more platforms</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Examples Showcase -->
+        <section class="examples-showcase">
+            <div class="container">
+                <h2>See Pod2Post in Action</h2>
+                <p class="examples-subtitle">
+                    Real podcast episodes transformed into engaging visual content
+                </p>
+                <div class="examples-grid">
+                    <div class="example-item">
+                        <div class="example-image">
+                            <img src="samples/example-cover.png" alt="Podcast Cover Card Example" />
+                        </div>
+                        <h4>Episode Cover</h4>
+                        <p>Professional cover with guest photos and episode highlights</p>
+                    </div>
+                    <div class="example-item">
+                        <div class="example-image">
+                            <img src="samples/example-quote1.png" alt="Quote Card Example 1" />
+                        </div>
+                        <h4>Key Quote Cards</h4>
+                        <p>Memorable quotes with beautiful typography and layouts</p>
+                    </div>
+                    <div class="example-item">
+                        <div class="example-image">
+                            <img src="samples/example-quote2.png" alt="Quote Card Example 2" />
+                        </div>
+                        <h4>Insight Cards</h4>
+                        <p>Important insights formatted for maximum social engagement</p>
+                    </div>
+                </div>
+                <div class="examples-cta">
+                    <p>Want to see your podcast transformed?</p>
+                    <a href="#" class="cta-secondary">View More Examples</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features" id="features">
+            <div class="container">
+                <h2>Why Pod2Post?</h2>
+                <p class="features-subtitle">
+                    Like having a dedicated content team that never sleeps
+                </p>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <i class="bi bi-mic feature-icon-linear"></i>
+                        <h3>Podcast-Optimized</h3>
+                        <p>Specifically designed for podcast content with intelligent quote extraction and speaker recognition technology</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-magic feature-icon-linear"></i>
+                        <h3>Fully Automated</h3>
+                        <p>From transcript analysis to visual design - complete automation with zero design skills required</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-share feature-icon-linear"></i>
+                        <h3>Social-Optimized</h3>
+                        <p>Perfect 3:4 ratio cards designed for maximum engagement on Instagram, Twitter, LinkedIn and all platforms</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-clock feature-icon-linear"></i>
+                        <h3>Save Hours of Work</h3>
+                        <p>Transform hours of manual design work into minutes of automated processing</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-graph-up feature-icon-linear"></i>
+                        <h3>Maximize Content Value</h3>
+                        <p>Turn one podcast episode into 11 shareable pieces of content for sustained engagement</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-people feature-icon-linear"></i>
+                        <h3>Grow Your Audience</h3>
+                        <p>Professional-quality cards increase shareability and help attract new podcast listeners</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Target Users -->
+        <section class="target-users" id="users">
+            <div class="container">
+                <h2>Perfect For</h2>
+                <div class="users-grid">
+                    <div class="user-card">
+                        <i class="bi bi-broadcast user-icon-linear"></i>
+                        <h3>Podcast Creators</h3>
+                        <p>Transform your episodes into engaging social content that drives new listener discovery and episode promotion</p>
+                    </div>
+                    <div class="user-card">
+                        <i class="bi bi-megaphone user-icon-linear"></i>
+                        <h3>Content Marketers</h3>
+                        <p>Generate consistent, professional social media content from podcast interviews and thought leadership content</p>
+                    </div>
+                    <div class="user-card">
+                        <i class="bi bi-people user-icon-linear"></i>
+                        <h3>Social Media Teams</h3>
+                        <p>Streamline content production with automated design workflows and standardized brand presentation</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final CTA -->
+        <section class="final-cta">
+            <div class="container">
+                <h2>Ready for Your AI Content Team?</h2>
+                <p>Join podcast creators who have their dedicated AI team working 24/7</p>
+                <a href="#" class="cta-primary">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="margin-right: 8px;">
+                        <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" fill="#6B5D00"/>
+                    </svg>
+                    Get Started Free
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="margin-left: 4px;">
+                        <path d="M5 12h14M12 5l7 7-7 7" stroke="#6B5D00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="container">
+                <div class="footer-grid">
+                    <div class="footer-section">
+                        <h4>Product</h4>
+                        <ul>
+                            <li><a href="#workflow">How it Works</a></li>
+                            <li><a href="#features">Features</a></li>
+                            <li><a href="#pricing">Pricing</a></li>
+                            <li><a href="#examples">Examples</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Resources</h4>
+                        <ul>
+                            <li><a href="#help">Help Center</a></li>
+                            <li><a href="#tutorials">Tutorials</a></li>
+                            <li><a href="#api">API Docs</a></li>
+                            <li><a href="#blog">Blog</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Support</h4>
+                        <ul>
+                            <li><a href="#contact">Contact Us</a></li>
+                            <li><a href="#feedback">Feedback</a></li>
+                            <li><a href="#community">Community</a></li>
+                            <li><a href="#status">Status</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Company</h4>
+                        <ul>
+                            <li><a href="#about">About</a></li>
+                            <li><a href="#careers">Careers</a></li>
+                            <li><a href="#press">Press</a></li>
+                            <li><a href="#legal">Legal</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>© 2024 Pod2Post. Podcast-to-Visual Content Platform.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Product Flow Interface -->
+    <div class="product-flow" id="productFlow">
+        <div class="flow-container">
+            <!-- Flow Header -->
+            <div class="flow-header">
+                <h1 class="flow-title">Create Your Podcast Cards</h1>
+                <p class="flow-subtitle">Transform your podcast into shareable visual content in minutes</p>
+            </div>
+            
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step-dot active" id="dot1"></div>
+                <div class="step-line"></div>
+                <div class="step-dot" id="dot2"></div>
+                <div class="step-line"></div>
+                <div class="step-dot" id="dot3"></div>
+                <div class="step-line"></div>
+                <div class="step-dot" id="dot4"></div>
+                <div class="step-line"></div>
+                <div class="step-dot" id="dot5"></div>
+                <div class="step-line"></div>
+                <div class="step-dot" id="dot6"></div>
+            </div>
+            
+            <!-- Step 1: Upload Materials -->
+            <div class="flow-step" id="step1">
+                <div class="upload-section">
+                    <h2 class="upload-title">Upload Photos</h2>
+                    
+                    <!-- Content Photos -->
+                    <div class="upload-group" id="contentPhotos">
+                        <div class="upload-icon">
+                            <i class="bi bi-images"></i>
+                        </div>
+                        <div class="upload-label">Content Photos</div>
+                        <div class="upload-description">Upload up to 10 photos from your podcast recording (max 5MB each)</div>
+                        <button class="upload-button" onclick="triggerFileUpload('content')">Choose Files</button>
+                        <input type="file" id="contentFilesInput" multiple accept="image/*" style="display: none;" onchange="handleFileUpload(event, 'content')">
+                        <div class="file-preview" id="contentPreview"></div>
+                    </div>
+                    
+                    <!-- Cover Top Photo -->
+                    <div class="upload-group" id="coverTopPhoto">
+                        <div class="upload-icon">
+                            <i class="bi bi-image"></i>
+                        </div>
+                        <div class="upload-label">Cover Top Photo</div>
+                        <div class="upload-description">Upload 1 photo for the top of your cover (recommended: landscape)</div>
+                        <button class="upload-button" onclick="triggerFileUpload('coverTop')">Choose File</button>
+                        <input type="file" id="coverTopInput" accept="image/*" style="display: none;" onchange="handleFileUpload(event, 'coverTop')">
+                        <div class="example-images">
+                            <div class="example-img">Example Image Position</div>
+                        </div>
+                        <div class="file-preview" id="coverTopPreview"></div>
+                    </div>
+                    
+                    <!-- User Type Selection -->
+                    <div class="user-type-selector">
+                        <div class="user-type-option selected" onclick="selectUserType('basic')" id="basicType">
+                            Basic User
+                        </div>
+                        <div class="user-type-option" onclick="selectUserType('pro')" id="proType">
+                            Pro User
+                        </div>
+                    </div>
+                    
+                    <!-- Cover Bottom Photo -->
+                    <div class="upload-group" id="coverBottomPhoto">
+                        <div class="upload-icon">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div class="upload-label">Cover Bottom Photo</div>
+                        <div class="upload-description" id="coverBottomDescription">
+                            Upload 1 photo that's already been background-removed (Basic users)
+                        </div>
+                        <button class="upload-button" onclick="triggerFileUpload('coverBottom')">Choose File</button>
+                        <input type="file" id="coverBottomInput" accept="image/*" style="display: none;" onchange="handleFileUpload(event, 'coverBottom')">
+                        <div class="example-images" id="coverBottomExamples">
+                            <div class="example-img">Basic: Pre-cut Image</div>
+                            <div class="example-img">Pro: Original Photo</div>
+                        </div>
+                        <div class="file-preview" id="coverBottomPreview"></div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn-primary" onclick="goToStep(2)" id="step1NextBtn" disabled>Next: Upload Audio</button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Upload Audio -->
+            <div class="flow-step" id="step2" style="display: none;">
+                <div class="upload-section">
+                    <h2 class="upload-title">Upload Podcast Audio</h2>
+                    
+                    <div class="upload-group" id="audioUpload">
+                        <div class="upload-icon">
+                            <i class="bi bi-music-note-beamed"></i>
+                        </div>
+                        <div class="upload-label">MP3 Audio File</div>
+                        <div class="upload-description">Upload your podcast episode (MP3 format, max 100MB)</div>
+                        <button class="upload-button" onclick="triggerFileUpload('audio')">Choose File</button>
+                        <input type="file" id="audioInput" accept=".mp3,audio/mpeg" style="display: none;" onchange="handleFileUpload(event, 'audio')">
+                        <div class="file-preview" id="audioPreview"></div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn-secondary" onclick="goToStep(1)">Back</button>
+                    <button class="btn-primary" onclick="goToStep(3)" id="step2NextBtn" disabled>Next: Enter Names</button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Enter Names -->
+            <div class="flow-step" id="step3" style="display: none;">
+                <div class="name-input-section">
+                    <h2 class="upload-title">Enter Host & Guest Names</h2>
+                    
+                    <div class="input-group">
+                        <label class="input-label" for="hostName">Host Name</label>
+                        <input type="text" id="hostName" class="input-field" placeholder="Enter host's full name">
+                        <div class="input-note">Required for name correction in transcript</div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label" for="guestName">Guest Name</label>
+                        <input type="text" id="guestName" class="input-field" placeholder="Enter guest's full name">
+                        <div class="input-note">Required for name correction in transcript</div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn-secondary" onclick="goToStep(2)">Back</button>
+                    <button class="btn-primary" onclick="goToStep(4)" id="step3NextBtn" disabled>Start Processing</button>
+                </div>
+            </div>
+            
+            <!-- Step 4: Processing -->
+            <div class="flow-step" id="step4" style="display: none;">
+                <div class="progress-section">
+                    <h2 class="upload-title">Processing Your Podcast</h2>
+                    <p class="progress-status" id="progressStatus">Initializing...</p>
+                    
+                    <!-- Progress Circle -->
+                    <div class="progress-circle">
+                        <svg class="progress-ring" width="120" height="120">
+                            <defs>
+                                <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#FFE77B;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#FFD700;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <circle class="progress-ring-bg" cx="60" cy="60" r="52"></circle>
+                            <circle class="progress-ring-fill" cx="60" cy="60" r="52" 
+                                    stroke-dasharray="0 327" 
+                                    id="progressRing"></circle>
+                        </svg>
+                        <div class="progress-text" id="progressText">0%</div>
+                    </div>
+                    
+                    <!-- Progress Steps -->
+                    <div class="progress-steps">
+                        <div class="progress-step active" id="progressStep1">
+                            <i class="bi bi-check-circle"></i>
+                            <span>Processing audio transcript...</span>
+                        </div>
+                        <div class="progress-step" id="progressStep2">
+                            <i class="bi bi-circle"></i>
+                            <span>Extracting key quotes...</span>
+                        </div>
+                        <div class="progress-step" id="progressStep3">
+                            <i class="bi bi-circle"></i>
+                            <span>Designing visual layouts...</span>
+                        </div>
+                        <div class="progress-step" id="progressStep4">
+                            <i class="bi bi-circle"></i>
+                            <span>Generating final cards...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 5: Results & Correction -->
+            <div class="flow-step" id="step5" style="display: none;">
+                <div class="result-section">
+                    <h2 class="upload-title">Review Generated Cards</h2>
+                    
+                    <!-- Results Preview Frame -->
+                    <div class="result-preview" id="resultPreview">
+                        <p style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            Generated cards will appear here...
+                        </p>
+                    </div>
+                    
+                    <!-- Name Correction Section -->
+                    <div class="correction-section">
+                        <div class="correction-title">Name Correction (Optional)</div>
+                        <div id="correctionList">
+                            <div class="correction-item">
+                                <span style="min-width: 60px; font-size: 14px;">Change</span>
+                                <input type="text" class="correction-input" placeholder="Incorrect name">
+                                <span style="min-width: 20px; text-align: center;">To</span>
+                                <input type="text" class="correction-input" placeholder="Correct name">
+                                <button class="file-remove" onclick="removeCorrection(this)">×</button>
+                            </div>
+                        </div>
+                        <button class="add-correction-btn" onclick="addCorrection()">+ Add Another Correction</button>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="btn-secondary" onclick="goToStep(3)">Back</button>
+                        <button class="btn-primary" onclick="goToStep(6)">Use Generated Cards</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 6: Final Loading -->
+            <div class="flow-step" id="step6" style="display: none;">
+                <div class="progress-section">
+                    <h2 class="upload-title">Preparing Your Cards</h2>
+                    <p class="progress-status">Applying corrections and preparing final output...</p>
+                    
+                    <div class="loading-spinner"></div>
+                    
+                    <p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">
+                        This will redirect to the sharing platform shortly...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Navigation and Home Functions
+        function handleNavClick(section) {
+            document.getElementById(section).scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function openDashboard() {
+            alert('Dashboard functionality coming soon!');
+        }
+        
+        function goToHome() {
+            const mainPage = document.querySelector('.main-page');
+            const productFlow = document.getElementById('productFlow');
+            
+            mainPage.style.display = 'block';
+            productFlow.classList.remove('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Product Flow Functions
+        let currentStep = 1;
+        let userType = 'basic';
+        let uploadedFiles = {
+            content: [],
+            coverTop: null,
+            coverBottom: null,
+            audio: null
+        };
+
+        function startProductFlow() {
+            const mainPage = document.querySelector('.main-page');
+            const productFlow = document.getElementById('productFlow');
+            
+            mainPage.style.display = 'none';
+            productFlow.classList.add('active');
+            
+            // Reset to step 1
+            goToStep(1);
+        }
+
+        function goToStep(stepNumber) {
+            // Hide all steps
+            for (let i = 1; i <= 6; i++) {
+                const step = document.getElementById('step' + i);
+                const dot = document.getElementById('dot' + i);
+                if (step) step.style.display = 'none';
+                if (dot) dot.classList.remove('active');
+            }
+            
+            // Show current step
+            const currentStepEl = document.getElementById('step' + stepNumber);
+            const currentDot = document.getElementById('dot' + stepNumber);
+            if (currentStepEl) currentStepEl.style.display = 'block';
+            if (currentDot) currentDot.classList.add('active');
+            
+            currentStep = stepNumber;
+
+            // Handle special step logic
+            if (stepNumber === 4) {
+                startProcessing();
+            } else if (stepNumber === 6) {
+                startFinalProcessing();
+            }
+        }
+
+        // User Type Selection
+        function selectUserType(type) {
+            userType = type;
+            
+            // Update UI
+            document.getElementById('basicType').classList.toggle('selected', type === 'basic');
+            document.getElementById('proType').classList.toggle('selected', type === 'pro');
+            
+            // Update cover bottom description and examples
+            const description = document.getElementById('coverBottomDescription');
+            const examples = document.getElementById('coverBottomExamples');
+            
+            if (type === 'basic') {
+                description.textContent = 'Upload 1 photo that\'s already been background-removed (Basic users)';
+                examples.innerHTML = `
+                    <div class="example-img">Basic: Pre-cut Image</div>
+                    <div class="example-img">With Background Removed</div>
+                `;
+            } else {
+                description.textContent = 'Upload 1 photo for cover bottom (Pro users - we\'ll handle background removal)';
+                examples.innerHTML = `
+                    <div class="example-img">Pro: Original Photo</div>
+                    <div class="example-img">We Remove Background</div>
+                `;
+            }
+        }
+
+        // File Upload Functions
+        function triggerFileUpload(type) {
+            const inputMap = {
+                'content': 'contentFilesInput',
+                'coverTop': 'coverTopInput',
+                'coverBottom': 'coverBottomInput',
+                'audio': 'audioInput'
+            };
+            document.getElementById(inputMap[type]).click();
+        }
+
+        function handleFileUpload(event, type) {
+            const files = event.target.files;
+            
+            if (type === 'content') {
+                // Handle multiple content photos (max 10)
+                if (uploadedFiles.content.length + files.length > 10) {
+                    alert('Maximum 10 content photos allowed');
+                    return;
+                }
+                
+                for (let i = 0; i < files.length; i++) {
+                    uploadedFiles.content.push(files[i]);
+                }
+                updateFilePreview('content');
+                
+            } else {
+                // Handle single file uploads
+                uploadedFiles[type] = files[0];
+                updateFilePreview(type);
+            }
+            
+            checkStepCompletion();
+        }
+
+        function updateFilePreview(type) {
+            const previewMap = {
+                'content': 'contentPreview',
+                'coverTop': 'coverTopPreview', 
+                'coverBottom': 'coverBottomPreview',
+                'audio': 'audioPreview'
+            };
+            
+            const preview = document.getElementById(previewMap[type]);
+            
+            if (type === 'content') {
+                preview.innerHTML = '';
+                uploadedFiles.content.forEach((file, index) => {
+                    const thumbnail = createThumbnail(file, () => removeFile('content', index));
+                    preview.appendChild(thumbnail);
+                });
+            } else if (uploadedFiles[type]) {
+                preview.innerHTML = '';
+                if (type === 'audio') {
+                    preview.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px; justify-content: center; padding: 16px; background: var(--cream-light); border-radius: 12px;">
+                            <i class="bi bi-music-note-beamed" style="font-size: 24px; color: #FFD700;"></i>
+                            <span style="font-weight: 500;">${uploadedFiles[type].name}</span>
+                            <button class="file-remove" onclick="removeFile('${type}')">×</button>
+                        </div>
+                    `;
+                } else {
+                    const thumbnail = createThumbnail(uploadedFiles[type], () => removeFile(type));
+                    preview.appendChild(thumbnail);
+                }
+            }
+        }
+
+        function createThumbnail(file, onRemove) {
+            const div = document.createElement('div');
+            div.className = 'file-thumbnail';
+            
+            const img = document.createElement('img');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'file-remove';
+            removeBtn.textContent = '×';
+            removeBtn.onclick = onRemove;
+            
+            div.appendChild(img);
+            div.appendChild(removeBtn);
+            
+            return div;
+        }
+
+        function removeFile(type, index = null) {
+            if (type === 'content' && index !== null) {
+                uploadedFiles.content.splice(index, 1);
+            } else {
+                uploadedFiles[type] = null;
+            }
+            
+            updateFilePreview(type);
+            checkStepCompletion();
+        }
+
+        function checkStepCompletion() {
+            const step1Btn = document.getElementById('step1NextBtn');
+            const step2Btn = document.getElementById('step2NextBtn');
+            const step3Btn = document.getElementById('step3NextBtn');
+            
+            // Step 1: Need at least 1 content photo, 1 cover top, 1 cover bottom
+            if (currentStep === 1) {
+                const hasRequired = uploadedFiles.content.length > 0 && 
+                                 uploadedFiles.coverTop && 
+                                 uploadedFiles.coverBottom;
+                step1Btn.disabled = !hasRequired;
+            }
+            
+            // Step 2: Need audio file
+            if (currentStep === 2) {
+                step2Btn.disabled = !uploadedFiles.audio;
+            }
+            
+            // Step 3: Need both names
+            if (currentStep === 3) {
+                const hostName = document.getElementById('hostName').value.trim();
+                const guestName = document.getElementById('guestName').value.trim();
+                step3Btn.disabled = !hostName || !guestName;
+            }
+        }
+
+        // Name input validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const hostInput = document.getElementById('hostName');
+            const guestInput = document.getElementById('guestName');
+            
+            if (hostInput) {
+                hostInput.addEventListener('input', checkStepCompletion);
+            }
+            if (guestInput) {
+                guestInput.addEventListener('input', checkStepCompletion);
+            }
+        });
+
+        // Processing Simulation
+        function startProcessing() {
+            const progressRing = document.getElementById('progressRing');
+            const progressText = document.getElementById('progressText');
+            const progressStatus = document.getElementById('progressStatus');
+            const steps = ['progressStep1', 'progressStep2', 'progressStep3', 'progressStep4'];
+            
+            let progress = 0;
+            let stepIndex = 0;
+            const radius = 52;
+            const circumference = 2 * Math.PI * radius;
+            
+            const interval = setInterval(() => {
+                progress += 2;
+                
+                // Update progress ring
+                const offset = circumference - (progress / 100) * circumference;
+                progressRing.style.strokeDasharray = `${circumference - offset} ${circumference}`;
+                progressText.textContent = progress + '%';
+                
+                // Update status text
+                const statusTexts = [
+                    'Processing audio transcript...',
+                    'Extracting key quotes...',
+                    'Designing visual layouts...',
+                    'Generating final cards...'
+                ];
+                
+                if (progress === 25 || progress === 50 || progress === 75) {
+                    // Mark previous step complete
+                    if (stepIndex > 0) {
+                        const prevStep = document.getElementById(steps[stepIndex - 1]);
+                        prevStep.classList.remove('active');
+                        prevStep.classList.add('completed');
+                        prevStep.querySelector('i').className = 'bi bi-check-circle-fill';
+                    }
+                    
+                    // Activate current step
+                    if (stepIndex < steps.length) {
+                        const currentStepEl = document.getElementById(steps[stepIndex]);
+                        currentStepEl.classList.add('active');
+                        progressStatus.textContent = statusTexts[stepIndex];
+                        stepIndex++;
+                    }
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    
+                    // Mark last step complete
+                    const lastStep = document.getElementById(steps[steps.length - 1]);
+                    lastStep.classList.remove('active');
+                    lastStep.classList.add('completed');
+                    lastStep.querySelector('i').className = 'bi bi-check-circle-fill';
+                    
+                    progressStatus.textContent = 'Processing complete!';
+                    
+                    // Auto advance to results after 2 seconds
+                    setTimeout(() => {
+                        goToStep(5);
+                        loadMockResults();
+                    }, 2000);
+                }
+            }, 100);
+        }
+
+        function loadMockResults() {
+            const resultPreview = document.getElementById('resultPreview');
+            resultPreview.innerHTML = `
+                <iframe 
+                    src="data:text/html;charset=utf-8,<html><body style='margin:0;padding:20px;font-family:Inter,sans-serif;background:#f8f9fa;'><h3 style='text-align:center;color:#333;margin-bottom:20px;'>Generated Podcast Cards Preview</h3><div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;'><div style='aspect-ratio:3/4;background:linear-gradient(135deg,#FFE77B,#FFD700);border-radius:16px;padding:20px;display:flex;flex-direction:column;justify-content:space-between;color:#6B5D00;'><h4>Cover Card</h4><p>Episode title and guest info</p></div><div style='aspect-ratio:3/4;background:#fff;border-radius:16px;padding:20px;border:1px solid #e5e5e5;display:flex;flex-direction:column;justify-content:space-between;'><h4>Quote Card 1</h4><p style='font-style:italic;color:#666;'>Key quote from conversation...</p></div><div style='aspect-ratio:3/4;background:#fff;border-radius:16px;padding:20px;border:1px solid #e5e5e5;display:flex;flex-direction:column;justify-content:space-between;'><h4>Quote Card 2</h4><p style='font-style:italic;color:#666;'>Another insightful moment...</p></div><div style='aspect-ratio:3/4;background:#fff;border-radius:16px;padding:20px;border:1px solid #e5e5e5;display:flex;flex-direction:column;justify-content:space-between;'><h4>Quote Card 3</h4><p style='font-style:italic;color:#666;'>Final highlight...</p></div></div></body></html>"
+                    style="width: 100%; height: 100%; border: none; border-radius: 16px;"
+                    title="Generated Cards Preview">
+                </iframe>
+            `;
+        }
+
+        function startFinalProcessing() {
+            // Simulate final processing
+            setTimeout(() => {
+                alert('Redirecting to sharing platform...');
+                // In real implementation, this would redirect to the sharing interface
+                goToHome();
+            }, 3000);
+        }
+
+        // Name Correction Functions
+        function addCorrection() {
+            const correctionList = document.getElementById('correctionList');
+            const newCorrection = document.createElement('div');
+            newCorrection.className = 'correction-item';
+            newCorrection.innerHTML = `
+                <span style="min-width: 60px; font-size: 14px;">Change</span>
+                <input type="text" class="correction-input" placeholder="Incorrect name">
+                <span style="min-width: 20px; text-align: center;">To</span>
+                <input type="text" class="correction-input" placeholder="Correct name">
+                <button class="file-remove" onclick="removeCorrection(this)">×</button>
+            `;
+            correctionList.appendChild(newCorrection);
+        }
+
+        function removeCorrection(button) {
+            button.closest('.correction-item').remove();
+        }
+
+        // Update CTA buttons to use product flow
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update all "Get Started" and "Start Creating" buttons to use the product flow
+            const ctaButtons = document.querySelectorAll('.cta-primary');
+            ctaButtons.forEach(button => {
+                button.onclick = function(e) {
+                    e.preventDefault();
+                    startProductFlow();
+                };
+            });
+
+            // Add drag and drop functionality
+            setupDragAndDrop();
+        });
+
+        // Drag and Drop Setup
+        function setupDragAndDrop() {
+            const uploadGroups = document.querySelectorAll('.upload-group');
+            
+            uploadGroups.forEach(group => {
+                group.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('dragover');
+                });
+                
+                group.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('dragover');
+                });
+                
+                group.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('dragover');
+                    
+                    const files = e.dataTransfer.files;
+                    const groupId = this.id;
+                    
+                    // Determine upload type based on group ID
+                    let uploadType;
+                    if (groupId === 'contentPhotos') uploadType = 'content';
+                    else if (groupId === 'coverTopPhoto') uploadType = 'coverTop';
+                    else if (groupId === 'coverBottomPhoto') uploadType = 'coverBottom';
+                    else if (groupId === 'audioUpload') uploadType = 'audio';
+                    
+                    if (uploadType) {
+                        // Simulate file input change event
+                        const inputMap = {
+                            'content': 'contentFilesInput',
+                            'coverTop': 'coverTopInput',
+                            'coverBottom': 'coverBottomInput',
+                            'audio': 'audioInput'
+                        };
+                        
+                        const input = document.getElementById(inputMap[uploadType]);
+                        Object.defineProperty(input, 'files', {
+                            value: files,
+                            writable: false
+                        });
+                        
+                        handleFileUpload({ target: input }, uploadType);
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

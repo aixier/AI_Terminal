@@ -78,10 +78,15 @@ POST /api/generate/pod2post/pic
 Content-Type: multipart/form-data
 
 Parameters:
-- images: 图片文件（支持多个）
+- images: 图片文件（支持多个）  // 注意：照片上传使用images字段
 - clearBase64: "true" | "false" (可选，清理已生成的Base64文件)
 - token: "lijing-token-2025-pod2post" (可选，用户认证)
 ```
+
+⚠️ **注意事项**：
+- 支持中文文件名（服务器会自动处理UTF-8编码）
+- 单个文件大小限制：50MB
+- 最多支持20个文件同时上传
 
 #### 响应示例
 ```json
@@ -119,10 +124,15 @@ POST /api/generate/pod2post/cdn
 Content-Type: multipart/form-data
 
 Parameters:
-- images: 图片文件（支持多个）
+- files: 图片文件（支持多个）  // 重要：CDN上传使用files字段，不是images
 - clearBase64: "true" | "false" (可选)
 - token: "lijing-token-2025-pod2post" (可选)
 ```
+
+⚠️ **注意事项**：
+- CDN上传的字段名是`files`，不同于照片上传的`images`
+- 支持中文文件名（服务器会自动处理UTF-8编码）
+- 单个文件大小限制：50MB
 
 ### 参考文档上传
 
@@ -375,7 +385,7 @@ class Pod2PostClient {
     const formData = new FormData()
     
     for (const cdnPath of cdnPaths) {
-      formData.append('images', fs.createReadStream(cdnPath))
+      formData.append('files', fs.createReadStream(cdnPath))  // 注意：CDN使用files字段
     }
     formData.append('token', this.token)
 
@@ -580,10 +590,11 @@ curl -X POST http://8.130.86.152:8083/api/generate/pod2post/pic \
   -F "token=lijing-token-2025-pod2post" \
   -F "clearBase64=true"
 
-# 2. 上传CDN素材
+# 2. 上传CDN素材  
+# 注意：CDN上传使用files字段，不是images
 curl -X POST http://8.130.86.152:8083/api/generate/pod2post/cdn \
-  -F "images=@/path/to/background.jpg" \
-  -F "images=@/path/to/logo.svg" \
+  -F "files=@/path/to/background.jpg" \
+  -F "files=@/path/to/logo.svg" \
   -F "token=lijing-token-2025-pod2post"
 
 # 3. 提交生成任务

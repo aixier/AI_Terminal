@@ -1,0 +1,66 @@
+/* Pod2Post - CSS Variables and Theme System */
+/* Warm Minimalist Future Aesthetic Color System */
+
+:root {
+    /* Main Base - Pure White & Silver */
+    --clean-white: #ffffff;
+    --warm-white: #fefefe;
+    --silver-mist: #f8f9fa;
+    --light-silver: #f5f6f7;
+    
+    /* Warm Accent Colors */
+    --cream-light: #fef9f3;  /* Cream light */
+    --soft-gold: #f4d03f;    /* Soft gold */
+    --warm-gold: #f7dc6f;    /* Warm gold */
+    
+    /* Subtle Secondary Colors */
+    --micro-blue: #f8fbff;   /* Micro blue */
+    --soft-green: #f9fdf9;   /* Soft green */
+    --pearl-glow: #fefcf8;   /* Pearl glow */
+    
+    /* Typography System */
+    --text-primary: #1a1a1a;
+    --text-secondary: #4a4a4a;
+    --text-light: #888888;
+    --text-accent: #6B8E23;  /* Natural green for logo */
+    
+    /* Effect System */
+    --glow-shadow: 0 0 20px rgba(244, 208, 63, 0.1);
+    --micro-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    --hover-glow: 0 0 30px rgba(244, 208, 63, 0.15);
+    
+    /* Additional for dashboard */
+    --border-light: rgba(0, 0, 0, 0.06);
+    --success-green: #10b981;
+    --danger-red: #ef4444;
+    
+    /* Spacing System */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    --spacing-3xl: 64px;
+    
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+    --radius-full: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.4s ease;
+    
+    /* Z-index Layers */
+    --z-base: 1;
+    --z-dropdown: 10;
+    --z-sticky: 100;
+    --z-fixed: 1000;
+    --z-modal: 1100;
+    --z-tooltip: 1200;
+}

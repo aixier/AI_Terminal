@@ -1,0 +1,97 @@
+/* Pod2Post - Hero Section Styles */
+
+.hero {
+    padding: 140px 0 40px;
+    min-height: 85vh;
+    display: flex;
+    align-items: center;
+}
+
+.hero-grid {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 64px;
+    font-weight: 600;
+    line-height: 1.1;
+    margin-bottom: 32px;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.highlight {
+    color: #FFD700;
+    font-weight: 600;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.hero p {
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 48px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #FFE77B 0%, #FFD700 100%);
+    color: #6B5D00;
+    padding: 18px 36px;
+    border-radius: 32px;
+    border: none;
+    font-size: 18px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 6px 20px rgba(255, 231, 123, 0.4);
+    transition: all 0.3s ease;
+    letter-spacing: 0.01em;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.cta-primary:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 30px rgba(255, 231, 123, 0.6);
+}
+
+/* Responsive Hero */
+@media (max-width: 768px) {
+    .hero {
+        padding: 100px 0 40px;
+        min-height: auto;
+    }
+    
+    .hero h1 {
+        font-size: 48px;
+    }
+    
+    .hero p {
+        font-size: 18px;
+    }
+    
+    .cta-primary {
+        font-size: 16px;
+        padding: 14px 28px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero h1 {
+        font-size: 36px;
+    }
+    
+    .hero p {
+        font-size: 16px;
+    }
+}

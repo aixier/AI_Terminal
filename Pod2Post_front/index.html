@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pod2Post - Transform Podcasts into Shareable Visual Cards</title>
+    
+    <!-- External Resources -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- CSS Modules -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/navigation.css">
+    <link rel="stylesheet" href="css/hero.css">
+    <link rel="stylesheet" href="css/workflow.css">
+    <link rel="stylesheet" href="css/features.css">
+    <link rel="stylesheet" href="css/examples.css">
+    <link rel="stylesheet" href="css/upload.css">
+    <link rel="stylesheet" href="css/upload-status.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/footer.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#FFE55C;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#87CEEB;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M8 8 L8 32 M8 8 C14 8, 18 10, 18 16 C18 22, 14 24, 8 24" 
+                          fill="none" 
+                          stroke="url(#logoGrad)" 
+                          stroke-width="2.5" 
+                          stroke-linecap="round"/>
+                    <path d="M22 8 L22 32 M22 8 C28 8, 32 10, 32 16 C32 22, 28 24, 22 24" 
+                          fill="none" 
+                          stroke="url(#logoGrad)" 
+                          stroke-width="2.5" 
+                          stroke-linecap="round"/>
+                </svg>
+                Pod2Post
+            </div>
+            <div class="nav-links">
+                <a href="#workflow">How it Works</a>
+                <a href="#features">Features</a>
+                <a href="#users">For Who</a>
+                <button class="auth-btn" id="startBtn">Start</button>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main page -->
+    <div class="main-page">
+        <!-- Hero -->
+        <section class="hero">
+            <div class="container">
+                <div class="hero-grid">
+                    <div class="hero-content">
+                        <h1>
+                            Your AI Content Team for<br>
+                            <span class="highlight">podcast marketing</span>
+                        </h1>
+                        <p>
+                            Pod2Post acts as your dedicated AI content team, transforming podcast episodes into professional visual content. 
+                            Intelligent quote extraction, automated design layouts, and social media optimization. 
+                            Get a full content marketing package from every episode.
+                        </p>
+                        <a href="#" class="cta-primary">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="margin-right: 8px;">
+                                <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" fill="#6B5D00"/>
+                            </svg>
+                            Start Creating Free
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="margin-left: 4px;">
+                                <path d="M5 12h14M12 5l7 7-7 7" stroke="#6B5D00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Workflow Section -->
+        <section class="workflow" id="workflow">
+            <div class="container">
+                <h2>Simple 4-Step Process</h2>
+                <p class="workflow-subtitle">
+                    Your AI team handles everything from transcript analysis to final design
+                </p>
+                <div class="workflow-steps">
+                    <div class="step-card">
+                        <div class="step-number">1</div>
+                        <div class="step-icon">
+                            <i class="bi bi-upload"></i>
+                        </div>
+                        <h3>Upload Content</h3>
+                        <p>Upload your podcast audio, show notes, guest photos, and episode images</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">2</div>
+                        <div class="step-icon">
+                            <i class="bi bi-person-check"></i>
+                        </div>
+                        <h3>AI Processing</h3>
+                        <p>AI analyzes content structure and identifies the best moments for card generation</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">3</div>
+                        <div class="step-icon">
+                            <i class="bi bi-palette"></i>
+                        </div>
+                        <h3>Visual Design</h3>
+                        <p>AI extracts key quotes and applies professional layouts with your branding and photos</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">4</div>
+                        <div class="step-icon">
+                            <i class="bi bi-send"></i>
+                        </div>
+                        <h3>One-Click Publishing</h3>
+                        <p>One-click publishing to LinkedIn, Instagram, Pinterest, TikTok, RedNote, WeChat and more platforms</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Examples Showcase -->
+        <section class="examples-showcase">
+            <div class="container">
+                <h2>See Pod2Post in Action</h2>
+                <p class="examples-subtitle">
+                    Real podcast episodes transformed into engaging visual content
+                </p>
+                <div class="examples-grid">
+                    <div class="example-item">
+                        <div class="example-image">
+                            <img src="assets/images/example-cover.png" alt="Podcast Cover Card Example" />
+                        </div>
+                        <h4>Episode Cover</h4>
+                        <p>Professional cover with guest photos and episode highlights</p>
+                    </div>
+                    <div class="example-item">
+                        <div class="example-image">
+                            <img src="assets/images/example-quote1.png" alt="Quote Card Example 1" />
+                        </div>
+                        <h4>Key Quote Cards</h4>
+                        <p>Memorable quotes with beautiful typography and layouts</p>
+                    </div>
+                    <div class="example-item">
+                        <div class="example-image">
+                            <img src="assets/images/example-quote2.png" alt="Quote Card Example 2" />
+                        </div>
+                        <h4>Insight Cards</h4>
+                        <p>Important insights formatted for maximum social engagement</p>
+                    </div>
+                </div>
+                <div class="examples-cta">
+                    <p>Want to see your podcast transformed?</p>
+                    <a href="#" class="cta-secondary">View More Examples</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features" id="features">
+            <div class="container">
+                <h2>Why Pod2Post?</h2>
+                <p class="features-subtitle">
+                    Like having a dedicated content team that never sleeps
+                </p>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <i class="bi bi-mic feature-icon-linear"></i>
+                        <h3>Podcast-Optimized</h3>
+                        <p>Specifically designed for podcast content with intelligent quote extraction and speaker recognition technology</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-magic feature-icon-linear"></i>
+                        <h3>Fully Automated</h3>
+                        <p>From transcript analysis to visual design - complete automation with zero design skills required</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-share feature-icon-linear"></i>
+                        <h3>Social-Optimized</h3>
+                        <p>Perfect 3:4 ratio cards designed for maximum engagement on Instagram, Twitter, LinkedIn and all platforms</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-clock feature-icon-linear"></i>
+                        <h3>Save Hours of Work</h3>
+                        <p>Transform hours of manual design work into minutes of automated processing</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-graph-up feature-icon-linear"></i>
+                        <h3>Maximize Content Value</h3>
+                        <p>Turn one podcast episode into 11 shareable pieces of content for sustained engagement</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-people feature-icon-linear"></i>
+                        <h3>Grow Your Audience</h3>
+                        <p>Professional-quality cards increase shareability and help attract new podcast listeners</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Target Users -->
+        <section class="target-users" id="users">
+            <div class="container">
+                <h2>Perfect For</h2>
+                <div class="users-grid">
+                    <div class="user-card">
+                        <i class="bi bi-broadcast user-icon-linear"></i>
+                        <h3>Podcast Creators</h3>
+                        <p>Transform your episodes into engaging social content that drives new listener discovery and episode promotion</p>
+                    </div>
+                    <div class="user-card">
+                        <i class="bi bi-megaphone user-icon-linear"></i>
+                        <h3>Content Marketers</h3>
+                        <p>Generate consistent, professional social media content from podcast interviews and thought leadership content</p>
+                    </div>
+                    <div class="user-card">
+                        <i class="bi bi-people user-icon-linear"></i>
+                        <h3>Social Media Teams</h3>
+                        <p>Streamline content production with automated design workflows and standardized brand presentation</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final CTA -->
+        <section class="final-cta">
+            <div class="container">
+                <h2>Ready for Your AI Content Team?</h2>
+                <p>Join podcast creators who have their dedicated AI team working 24/7</p>
+                <a href="#" class="cta-primary">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="margin-right: 8px;">
+                        <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" fill="#6B5D00"/>
+                    </svg>
+                    Get Started Free
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="margin-left: 4px;">
+                        <path d="M5 12h14M12 5l7 7-7 7" stroke="#6B5D00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="container">
+                <div class="footer-grid">
+                    <div class="footer-section">
+                        <h4>Product</h4>
+                        <ul>
+                            <li><a href="#workflow">How it Works</a></li>
+                            <li><a href="#features">Features</a></li>
+                            <li><a href="#pricing">Pricing</a></li>
+                            <li><a href="#examples">Examples</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Resources</h4>
+                        <ul>
+                            <li><a href="#help">Help Center</a></li>
+                            <li><a href="#tutorials">Tutorials</a></li>
+                            <li><a href="#api">API Docs</a></li>
+                            <li><a href="#blog">Blog</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Support</h4>
+                        <ul>
+                            <li><a href="#contact">Contact Us</a></li>
+                            <li><a href="#feedback">Feedback</a></li>
+                            <li><a href="#community">Community</a></li>
+                            <li><a href="#status">Status</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Company</h4>
+                        <ul>
+                            <li><a href="#about">About</a></li>
+                            <li><a href="#careers">Careers</a></li>
+                            <li><a href="#press">Press</a></li>
+                            <li><a href="#legal">Legal</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>© 2024 Pod2Post. Podcast-to-Visual Content Platform.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Product Flow Interface (loaded dynamically) -->
+    <div id="productFlow"></div>
+    
+    <!-- JavaScript Modules -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+/* Pod2Post - Base Styles and Reset */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    
+    /* Warm gradient background - top left gold + bottom left soft green */
+    background: 
+        radial-gradient(ellipse at top left, var(--cream-light) 0%, transparent 50%),
+        radial-gradient(ellipse at top right, var(--micro-blue) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom left, var(--soft-green) 0%, transparent 50%),
+        radial-gradient(ellipse 800px 400px at 25% 85%, rgba(210, 247, 220, 0.4) 0%, transparent 40%),
+        var(--warm-white);
+    background-attachment: fixed;
+    min-height: 100vh;
+    color: var(--text-primary);
+    line-height: 1.7;
+}
+
+/* Container System - Enhanced breathing space */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+/* Common Text Styles */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition-fast);
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Base */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 16px;
+    }
+}

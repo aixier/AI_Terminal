@@ -98,6 +98,7 @@ const io = new Server(httpServer, {
       // 允许所有配置的源以及常见的本地地址
       // 更宽松的Socket.IO CORS策略
       if (!origin || 
+          origin === 'null' ||                          // 支持本地文件访问 (file://)
           config.cors.origins.includes(origin) ||
           origin?.startsWith('http://127.0.0.1:') ||
           origin?.startsWith('http://localhost:') ||
@@ -164,6 +165,7 @@ app.use(cors({
     // 允许所有配置的源以及常见的本地地址，同时允许无origin的直接访问（静态资源）
     // 更宽松的CORS策略
     if (!origin || 
+        origin === 'null' ||                          // 支持本地文件访问 (file://)
         config.cors.origins.includes(origin) ||
         origin?.startsWith('http://127.0.0.1:') ||
         origin?.startsWith('http://localhost:') ||

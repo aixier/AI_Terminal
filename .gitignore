@@ -145,3 +145,9 @@ podcast_cards*.html
 # Chinese named files
 播客*.zip
 《*》*.html
+
+# Audio files
+*.mp3
+record.mp3
+*沐尔*.mp3
+*赵守镇*.mp3

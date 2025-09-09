@@ -140,7 +140,7 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
           console.log(`[Pod2PostContent] 原始HTML较大，上传到OSS: ${result.pod2postFiles.original} (${htmlStats.size} bytes)`)
           
           const ossKey = `pod2post/${username}/${folderName}/${result.pod2postFiles.original}`
-          const uploadResult = await ossService.uploadFile(htmlPath, ossKey, {
+          const uploadResult = await ossService.client.uploadFile(htmlPath, ossKey, {
             headers: {
               'Content-Type': 'text/html; charset=utf-8',
               'Cache-Control': 'public, max-age=31536000',
@@ -149,13 +149,11 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
           })
           
           if (uploadResult.success) {
-            const downloadUrl = await ossService.getSignedUrl(ossKey, {
-              expires: 3600 * 24 * 365
-            })
+            const signedUrlResult = await ossService.client.generateSignedUrl(ossKey, 3600 * 24 * 365)
             
-            contentData.originalHtmlOssUrl = downloadUrl.url
+            contentData.originalHtmlOssUrl = signedUrlResult.url
             contentData.originalHtmlSize = htmlStats.size
-            console.log(`[Pod2PostContent] 原始HTML OSS上传成功: ${downloadUrl.url}`)
+            console.log(`[Pod2PostContent] 原始HTML OSS上传成功: ${signedUrlResult.url}`)
           } else {
             throw new Error(`OSS上传失败: ${uploadResult.error}`)
           }
@@ -184,7 +182,7 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
           const ossKey = `pod2post/${username}/${folderName}/${result.pod2postFiles.withBase64}`
           
           // 上传到OSS
-          const uploadResult = await ossService.uploadFile(base64Path, ossKey, {
+          const uploadResult = await ossService.client.uploadFile(base64Path, ossKey, {
             headers: {
               'Content-Type': 'text/html; charset=utf-8',
               'Cache-Control': 'public, max-age=31536000', // 缓存一年
@@ -194,13 +192,11 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
           
           if (uploadResult.success) {
             // 获取永久访问URL
-            const downloadUrl = await ossService.getSignedUrl(ossKey, {
-              expires: 3600 * 24 * 365 // URL有效期一年
-            })
+            const signedUrlResult = await ossService.client.generateSignedUrl(ossKey, 3600 * 24 * 365)
             
-            contentData.base64HtmlOssUrl = downloadUrl.url
+            contentData.base64HtmlOssUrl = signedUrlResult.url
             contentData.base64HtmlSize = base64Stats.size
-            console.log(`[Pod2PostContent] OSS上传成功，下载地址: ${downloadUrl.url}`)
+            console.log(`[Pod2PostContent] OSS上传成功，下载地址: ${signedUrlResult.url}`)
             
             // 提供预览（前50KB）
             const buffer = Buffer.alloc(50000)

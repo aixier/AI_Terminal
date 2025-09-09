@@ -2,13 +2,14 @@
 
 ## 📌 服务概述
 
-Pod2Post播客卡片服务是一个专门用于将播客内容转化为社媒平台图文卡片的AI生成服务。该服务基于Claude AI，能够自动生成包含封面和内容页的完整卡片集合，支持资源管理、用户隔离和Base64嵌入等高级功能。
+Pod2Post播客卡片服务是一个专门用于将播客内容转化为社媒平台图文卡片的AI生成服务。该服务基于Claude AI，能够自动生成包含封面和内容页的完整卡片集合，支持资源管理、用户隔离、Base64嵌入和OSS大文件处理等高级功能。
 
 ### 🎯 核心特性
 - ✅ **多用户隔离**: 基于token的用户工作空间管理
 - ✅ **资源管理**: 支持照片、CDN素材、参考文档的上传和管理
 - ✅ **异步生成**: 支持长时间任务的异步处理和状态查询
 - ✅ **Base64嵌入**: 自动将图片转换为Base64嵌入HTML
+- ✅ **OSS大文件支持**: 超过5MB的文件自动上传到阿里云OSS，提供签名URL下载
 - ✅ **自动清理**: 生成完成后自动清理临时资源
 - ✅ **并发控制**: 防止同用户多任务冲突
 
@@ -44,6 +45,9 @@ headers: {
 {
   "token": "lijing-token-2025-pod2post"
 }
+
+// 方式3：URL参数
+GET /api/generate/pod2post/content/pod2post_xxx?token=lijing-token-2025-pod2post
 ```
 
 ### 2. 基础工作流程
@@ -164,13 +168,13 @@ POST /api/generate/pod2post/async
 {
   "success": true,
   "data": {
-    "taskId": "pod2post_1757375653794",
+    "taskId": "pod2post_1757375653794_ddrq4mn",
     "topic": "pod2post_1757375653794",
-    "templateName": "cardplanet-Sandra-cover",
+    "templateName": "pod2post-template",
     "status": "submitted",
     "submittedAt": "2025-09-09T07:55:12.903Z",
     "userPath": "/app/data/users/lijing",
-    "cardPath": "/app/data/users/lijing/card"
+    "cardPath": "/app/data/users/lijing/workspace/card"
   },
   "message": "Pod2Post任务已提交，请使用taskId查询状态"
 }
@@ -188,72 +192,154 @@ GET /api/generate/pod2post/status/:taskId
 {
   "success": true,
   "data": {
-    "taskId": "pod2post_1757375653794",
+    "taskId": "pod2post_1757375653794_ddrq4mn",
     "status": "completed", // submitted | processing | completed | failed
     "progress": 100,
+    "phases": {
+      "promptProcessing": "completed",
+      "firstGeneration": "completed", 
+      "base64Embedding": "completed"
+    },
     "startTime": "2025-09-09T07:55:12.903Z",
     "endTime": "2025-09-09T08:00:45.126Z",
     "duration": 332223, // 毫秒
     "result": {
       "topic": "pod2post_1757375653794",
-      "templateName": "cardplanet-Sandra-cover",
-      "fileCount": 2,
+      "templateName": "pod2post-template",
+      "fileCount": 3,
       "files": [
         {
-          "filename": "index.html",
-          "size": 45127,
-          "path": "/app/data/users/lijing/card/pod2post_1757375653794/index.html"
+          "fileName": "podcast_cards.html",
+          "size": 24950,
+          "mtime": "2025-09-09T03:18:04.993Z"
         },
         {
-          "filename": "index_with_base64.html", 
-          "size": 23647639, // Base64嵌入版本
-          "path": "/app/data/users/lijing/card/pod2post_1757375653794/index_with_base64.html"
+          "fileName": "podcast_cards_with_base64.html", 
+          "size": 23768530, // Base64嵌入版本
+          "mtime": "2025-09-09T03:18:11.049Z"
+        },
+        {
+          "fileName": "20250909_031413_lijing_meta.json",
+          "size": 8219,
+          "mtime": "2025-09-09T03:18:11.117Z"
         }
-      ]
+      ],
+      "pod2postFiles": {
+        "original": "podcast_cards.html",
+        "withBase64": "podcast_cards_with_base64.html",
+        "metadata": "20250909_031413_lijing_meta.json"
+      }
     }
   }
 }
 ```
 
-## 📋 资源管理接口
+## 📥 内容获取接口（支持OSS大文件）
 
-### 获取文件列表
+### 获取生成的内容
 
-```javascript
-// 获取照片列表
-GET /api/generate/pod2post/pic?token=lijing-token-2025-pod2post
-
-// 获取CDN素材列表  
-GET /api/generate/pod2post/cdn?token=lijing-token-2025-pod2post
-
-// 获取参考文档列表
-GET /api/generate/pod2post/resources?token=lijing-token-2025-pod2post
+#### 端点
+```
+GET /api/generate/pod2post/content/:folderName
 ```
 
-### 删除文件
+#### 请求参数
+- `folderName`: Pod2Post文件夹名称（例如：pod2post_1757375653794）
+- `token`: 用户认证token（可选，通过URL参数或请求头传递）
 
-```javascript
-// 删除单个文件
-DELETE /api/generate/pod2post/pic/filename.jpg?token=lijing-token-2025-pod2post
+#### 响应格式（小文件）
+当文件小于5MB时，直接返回内容：
 
-// 批量删除文档
-POST /api/generate/pod2post/resources/batch-delete
+```json
 {
-  "filenames": ["file1.pdf", "file2.md"],
-  "token": "lijing-token-2025-pod2post"
+  "code": 200,
+  "success": true,
+  "data": {
+    "folderName": "pod2post_1757388375054",
+    "allFiles": [
+      {
+        "fileName": "podcast_cards.html",
+        "size": 24590,
+        "mtime": "2025-09-09T03:29:57.919Z"
+      }
+    ],
+    "pod2postFiles": {
+      "original": "podcast_cards.html",
+      "withBase64": "podcast_cards_with_base64.html",
+      "metadata": "20250909_032615_lijing_meta.json"
+    },
+    "content": {
+      "originalHtml": "<!DOCTYPE html>...", // 原始HTML内容
+      "base64Html": "<!DOCTYPE html>...", // Base64嵌入的HTML内容
+      "metadata": { // 元数据JSON对象
+        "sessionInfo": {...},
+        "request": {...},
+        "output": {...}
+      },
+      "base64Analysis": {
+        "base64ImageCount": 20,
+        "unconvertedPathCount": 0,
+        "conversionSuccess": true,
+        "sampleUnconvertedPaths": []
+      }
+    }
+  }
 }
 ```
 
-### 预览文档内容
+#### 响应格式（大文件）
+当文件超过5MB时，自动上传到OSS并返回签名URL：
 
-```javascript
-// 预览文本类型文档
-GET /api/generate/pod2post/resources/content/filename.md?token=lijing-token-2025-pod2post
+```json
+{
+  "code": 200,
+  "success": true,
+  "data": {
+    "folderName": "pod2post_1757388375054",
+    "allFiles": [...],
+    "pod2postFiles": {
+      "original": "podcast_cards.html",
+      "withBase64": "podcast_cards_with_base64.html",
+      "metadata": "20250909_032615_lijing_meta.json"
+    },
+    "content": {
+      "originalHtml": "<!DOCTYPE html>...", // 原始HTML（如果<5MB）
+      "originalHtmlOssUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/...", // 原始HTML OSS URL（如果>5MB）
+      "originalHtmlSize": 27402,
+      
+      "base64HtmlOssUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/lijing/pod2post_xxx/podcast_cards_with_base64.html?...",
+      "base64HtmlSize": 23768530, // 文件大小（字节）
+      "base64HtmlPreview": "<!DOCTYPE html>...", // 前50KB预览内容
+      
+      "metadata": {...},
+      "base64Analysis": {
+        "base64ImageCount": 20,
+        "unconvertedPathCount": 0,
+        "conversionSuccess": true,
+        "sampleUnconvertedPaths": []
+      }
+    }
+  }
+}
+```
+
+### OSS签名URL说明
+
+当文件超过5MB时，系统会自动将文件上传到阿里云OSS，并返回签名URL：
+
+- **URL有效期**: 1年
+- **访问方式**: 直接使用浏览器或HTTP客户端下载
+- **文件路径**: `pod2post/{username}/{folderName}/{filename}`
+- **签名参数**: 包含在URL中，无需额外认证
+
+示例URL：
+```
+https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/lijing/pod2post_1757388375054/podcast_cards_with_base64.html?OSSAccessKeyId=xxx&Expires=1788925019&Signature=xxx
 ```
 
 ## 💻 JavaScript示例代码
 
-### 完整工作流程示例
+### 完整工作流程示例（包含OSS处理）
 
 ```javascript
 import fetch from 'node-fetch'
@@ -323,7 +409,45 @@ class Pod2PostClient {
     return await response.json()
   }
 
-  // 5. 轮询等待任务完成
+  // 5. 获取生成的内容（支持OSS大文件）
+  async getContent(folderName) {
+    const response = await fetch(`${this.baseUrl}/generate/pod2post/content/${folderName}?token=${this.token}`)
+    const result = await response.json()
+    
+    if (result.success && result.data?.content) {
+      const content = result.data.content
+      
+      // 检查是否有OSS URL
+      if (content.base64HtmlOssUrl) {
+        console.log(`📦 Base64 HTML文件较大(${(content.base64HtmlSize / 1024 / 1024).toFixed(2)}MB)，请通过OSS URL下载:`)
+        console.log(`   ${content.base64HtmlOssUrl}`)
+        
+        // 可选：自动下载大文件
+        // await this.downloadFromOSS(content.base64HtmlOssUrl, 'podcast_cards_with_base64.html')
+      }
+      
+      if (content.originalHtmlOssUrl) {
+        console.log(`📦 原始HTML文件通过OSS提供:`)
+        console.log(`   ${content.originalHtmlOssUrl}`)
+      }
+    }
+    
+    return result
+  }
+
+  // 6. 从OSS下载文件（可选）
+  async downloadFromOSS(ossUrl, localPath) {
+    const response = await fetch(ossUrl)
+    if (!response.ok) {
+      throw new Error(`OSS下载失败: ${response.status}`)
+    }
+    
+    const buffer = await response.buffer()
+    await fs.promises.writeFile(localPath, buffer)
+    console.log(`✅ 文件已下载到: ${localPath}`)
+  }
+
+  // 7. 轮询等待任务完成
   async waitForCompletion(taskId, maxWaitTime = 1800000) {
     const startTime = Date.now()
     const pollInterval = 3000
@@ -345,7 +469,7 @@ class Pod2PostClient {
     throw new Error('任务超时')
   }
 
-  // 完整流程
+  // 完整流程（包含内容获取）
   async generatePod2PostCards(photoPaths, cdnPaths, prompt) {
     try {
       console.log('🚀 开始Pod2Post卡片生成流程...')
@@ -364,6 +488,7 @@ class Pod2PostClient {
       console.log('⚡ 提交生成任务...')
       const taskResult = await this.submitTask(prompt)
       const taskId = taskResult.data?.taskId
+      const folderName = taskResult.data?.topic // 获取文件夹名称
 
       if (!taskId) {
         throw new Error('任务提交失败')
@@ -378,7 +503,39 @@ class Pod2PostClient {
       console.log(`📁 生成文件数: ${result.result?.fileCount || 0}`)
       console.log(`⏱️ 耗时: ${Math.round(result.duration / 1000)}秒`)
 
-      return result
+      // 5. 获取生成的内容
+      console.log('📥 获取生成内容...')
+      const contentResult = await this.getContent(folderName)
+      
+      if (contentResult.success) {
+        const { content } = contentResult.data
+        
+        // 处理Base64分析结果
+        if (content.base64Analysis) {
+          console.log('📊 Base64嵌入分析:')
+          console.log(`   - Base64图片数: ${content.base64Analysis.base64ImageCount}`)
+          console.log(`   - 转换成功: ${content.base64Analysis.conversionSuccess ? '✅' : '❌'}`)
+        }
+        
+        // 保存文件（根据是否有OSS URL决定）
+        if (content.base64Html) {
+          // 小文件，直接保存
+          await fs.promises.writeFile('output/podcast_cards_with_base64.html', content.base64Html)
+          console.log('✅ Base64 HTML已保存到本地')
+        } else if (content.base64HtmlOssUrl) {
+          // 大文件，从OSS下载
+          console.log('📦 下载Base64 HTML从OSS...')
+          await this.downloadFromOSS(content.base64HtmlOssUrl, 'output/podcast_cards_with_base64.html')
+        }
+        
+        // 保存元数据
+        if (content.metadata) {
+          await fs.promises.writeFile('output/metadata.json', JSON.stringify(content.metadata, null, 2))
+          console.log('✅ 元数据已保存')
+        }
+      }
+
+      return { taskResult: result, contentResult }
 
     } catch (error) {
       console.error('❌ 生成失败:', error.message)
@@ -438,10 +595,30 @@ curl -X POST http://8.130.86.152:8083/api/generate/pod2post/async \
   }'
 
 # 4. 查询任务状态
-curl "http://8.130.86.152:8083/api/generate/pod2post/status/pod2post_1234567890?token=lijing-token-2025-pod2post"
+curl "http://8.130.86.152:8083/api/generate/pod2post/status/pod2post_1234567890_xxx?token=lijing-token-2025-pod2post"
+
+# 5. 获取生成内容（支持OSS大文件）
+curl "http://8.130.86.152:8083/api/generate/pod2post/content/pod2post_1234567890?token=lijing-token-2025-pod2post"
+
+# 6. 下载OSS文件（如果返回了OSS URL）
+curl -o podcast_cards_with_base64.html "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/..."
 ```
 
 ## 🔧 高级功能
+
+### OSS大文件处理
+
+系统自动检测文件大小，超过5MB的文件会：
+1. 自动上传到阿里云OSS
+2. 返回签名URL而不是文件内容
+3. 提供前50KB预览内容
+4. URL有效期为1年
+
+优势：
+- 避免API响应过大导致超时
+- 减少网络传输时间
+- 支持断点续传
+- 提供CDN加速
 
 ### Base64自动清理
 
@@ -470,8 +647,9 @@ formData.append('clearBase64', 'true')
 |-------|------|---------|
 | 400 | 请求参数错误 | 检查请求格式和必需参数 |
 | 401 | 认证失败 | 检查token是否正确 |
+| 404 | 文件夹不存在 | 检查folderName是否正确 |
 | 409 | 任务冲突 | 等待当前任务完成 |
-| 413 | 文件过大 | 压缩文件或分批上传 |
+| 413 | 文件过大 | 文件会自动通过OSS处理 |
 | 500 | 服务器内部错误 | 联系技术支持 |
 
 #### 错误响应格式
@@ -494,6 +672,7 @@ formData.append('clearBase64', 'true')
 - **单文件大小**: 最大50MB
 - **批量上传**: 最多20个文件
 - **总存储**: 每用户1GB
+- **OSS自动处理**: >5MB文件
 
 ### 生成时间
 - **简单任务**: 2-5分钟
@@ -504,6 +683,7 @@ formData.append('clearBase64', 'true')
 - **HTML文件**: 包含原始路径和Base64嵌入两个版本
 - **JSON文案**: 包含标题、内容、标签等社媒发布信息
 - **图片数量**: 封面1张 + 内容页10张
+- **大文件处理**: 自动上传OSS，提供签名URL
 
 ## 🚨 注意事项
 
@@ -512,6 +692,8 @@ formData.append('clearBase64', 'true')
 3. **文件命名**: 支持中文文件名，系统会自动处理编码问题
 4. **任务状态**: 请妥善保存taskId，用于查询任务状态和结果
 5. **并发限制**: 同一用户同时只能执行一个Pod2Post任务
+6. **OSS URL**: 大文件的OSS URL有效期为1年，请及时下载
+7. **网络优化**: 建议使用流式下载处理大文件
 
 ## 📞 技术支持
 
@@ -522,6 +704,7 @@ formData.append('clearBase64', 'true')
 
 ---
 
-**文档版本**: v4.6.0  
+**文档版本**: v5.0.0  
 **更新时间**: 2025-09-09  
+**更新内容**: 新增OSS大文件支持和内容获取API  
 **适用环境**: 生产环境

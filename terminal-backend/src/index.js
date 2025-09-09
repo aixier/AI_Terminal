@@ -96,6 +96,7 @@ const io = new Server(httpServer, {
   cors: {
     origin: (origin, callback) => {
       // 允许所有配置的源以及常见的本地地址
+      // 更宽松的Socket.IO CORS策略
       if (!origin || 
           config.cors.origins.includes(origin) ||
           origin?.startsWith('http://127.0.0.1:') ||
@@ -104,18 +105,21 @@ const io = new Server(httpServer, {
           origin?.startsWith('http://192.168.') ||     // 局域网地址
           origin?.startsWith('http://10.') ||          // 局域网地址
           origin?.startsWith('http://172.') ||         // 局域网地址
-          origin === 'http://8.130.86.152' ||          // 云服务器IP
-          origin === 'http://8.130.86.152:5173' ||     // 云服务器IP:端口
-          origin === 'http://8.130.86.152:8100' ||     // 新增：前端端口
-          origin === 'http://8.130.86.152:8083' ||     // 新增：后端端口
+          origin?.startsWith('http://8.130.') ||       // 阿里云服务器IP段
+          origin?.startsWith('https://8.130.') ||      // HTTPS阿里云服务器
           origin === 'http://188.8.9.99:5173' ||       // 本地IP
           origin === 'http://card.paitongai.com' ||    // 域名支持
           origin === 'https://card.paitongai.com' ||  // HTTPS域名支持
           origin === 'http://aicard.paitongai.com' ||  // 新域名支持
-          origin === 'https://aicard.paitongai.com') { // 新域名HTTPS支持
+          origin === 'https://aicard.paitongai.com' || // 新域名HTTPS支持
+          origin === 'http://cardapi.paitongai.com' || // 新增API域名
+          origin === 'https://cardapi.paitongai.com' || // 新增API域名HTTPS
+          origin?.includes('paitongai.com')) {         // 允许所有paitongai.com子域名
         callback(null, true)
       } else {
         logger.warn(`Socket.IO CORS rejected origin: ${origin}`)
+        // 如果需要完全开放，可以取消下面的注释
+        // callback(null, true)
         callback(new Error('Not allowed by CORS'))
       }
     },
@@ -140,6 +144,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*')
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    res.header('Access-Control-Allow-Credentials', 'true')
   }
   next()
 })
@@ -157,6 +162,7 @@ app.use(cors({
     // }
     
     // 允许所有配置的源以及常见的本地地址，同时允许无origin的直接访问（静态资源）
+    // 更宽松的CORS策略
     if (!origin || 
         config.cors.origins.includes(origin) ||
         origin?.startsWith('http://127.0.0.1:') ||
@@ -165,19 +171,22 @@ app.use(cors({
         origin?.startsWith('http://192.168.') ||     // 局域网地址
         origin?.startsWith('http://10.') ||          // 局域网地址
         origin?.startsWith('http://172.') ||         // 局域网地址
-        origin === 'http://8.130.86.152' ||          // 云服务器IP
-        origin === 'http://8.130.86.152:5173' ||     // 云服务器IP:端口
-        origin === 'http://8.130.86.152:8100' ||     // 新增：前端端口
-        origin === 'http://8.130.86.152:8083' ||     // 新增：后端端口
+        origin?.startsWith('http://8.130.') ||       // 阿里云服务器IP段
+        origin?.startsWith('https://8.130.') ||      // HTTPS阿里云服务器
         origin === 'http://188.8.9.99:5173' ||       // 本地IP
         origin === 'http://card.paitongai.com' ||    // 域名支持
         origin === 'https://card.paitongai.com' ||  // HTTPS域名支持
         origin === 'http://aicard.paitongai.com' ||  // 新域名支持
         origin === 'https://aicard.paitongai.com' || // 新域名HTTPS支持
-        origin?.startsWith('http://8.130.13.226')) { // 新部署服务器IP
+        origin === 'http://cardapi.paitongai.com' || // 新增API域名
+        origin === 'https://cardapi.paitongai.com' || // 新增API域名HTTPS
+        origin?.includes('paitongai.com')) {         // 允许所有paitongai.com子域名
       callback(null, true)
     } else {
+      // 在生产环境可以考虑直接允许所有源
       logger.warn(`CORS rejected origin: ${origin}`)
+      // 如果需要完全开放CORS，可以取消下面的注释
+      // callback(null, true)
       callback(new Error('Not allowed by CORS'))
     }
   },
@@ -245,6 +254,40 @@ console.log('  4️⃣ Security middleware: DISABLED (for debugging)')
 // app.use(auditLog)
 // app.use(rateLimit)
 // app.use(preventCommandInjection)
+
+// ========================================
+// 静态资源路由（优先处理）
+// ========================================
+console.log('📂 REGISTERING STATIC ASSET ROUTES:')
+
+// 专门处理 /assets 路径
+app.use('/assets', (req, res, next) => {
+  const staticPath = process.env.STATIC_PATH || '/app/static'
+  const assetPath = path.join(staticPath, 'assets', req.path)
+  
+  console.log(`  📁 Asset request: ${req.path}`)
+  console.log(`  📁 Looking for: ${assetPath}`)
+  
+  if (fs.existsSync(assetPath)) {
+    // 设置正确的Content-Type
+    if (req.path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+    } else if (req.path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8')
+    }
+    
+    // 设置CORS
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Cache-Control', 'public, max-age=31536000')
+    
+    // 发送文件
+    return res.sendFile(assetPath)
+  } else {
+    console.log(`  ⚠️ Asset not found: ${assetPath}`)
+    return res.status(404).send('Asset not found')
+  }
+})
+console.log('     ✓ /assets route registered')
 
 // ========================================
 // API路由注册
@@ -393,15 +436,42 @@ if (shouldServeStatic) {
     
     // 注册静态文件中间件 - 必须在错误处理中间件之前
     console.log(`     Registering express.static middleware...`)
-    app.use(express.static(staticPath, {
-      setHeaders: (res, path) => {
-        // 为静态文件设置合适的缓存头
-        if (path.endsWith('.html')) {
-          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
-        } else if (path.endsWith('.js') || path.endsWith('.css')) {
-          res.setHeader('Cache-Control', 'public, max-age=31536000')
+    
+    // 添加静态文件错误处理
+    app.use((req, res, next) => {
+      // 只处理静态资源请求
+      if (req.path.startsWith('/assets') || req.path.endsWith('.js') || req.path.endsWith('.css') || req.path.endsWith('.html')) {
+        const filePath = path.join(staticPath, req.path)
+        if (!fs.existsSync(filePath)) {
+          console.log(`     ⚠️ Static file not found: ${req.path}`)
+          // 对于.js和.css文件，返回404而不是500
+          if (req.path.endsWith('.js') || req.path.endsWith('.css')) {
+            return res.status(404).send('File not found')
+          }
         }
       }
+      next()
+    })
+    
+    app.use(express.static(staticPath, {
+      setHeaders: (res, path) => {
+        // 为静态文件设置合适的缓存头和CORS
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        
+        if (path.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+          res.setHeader('Content-Type', 'text/html; charset=utf-8')
+        } else if (path.endsWith('.js')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000')
+          res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+        } else if (path.endsWith('.css')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000')
+          res.setHeader('Content-Type', 'text/css; charset=utf-8')
+        }
+      },
+      fallthrough: true,  // 允许继续到下一个中间件
+      index: false        // 不自动服务index.html
     }))
     console.log(`     ✓ express.static middleware registered`)
     

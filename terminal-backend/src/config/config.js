@@ -34,6 +34,10 @@ export default {
       'http://card.paitongai.com',
       'https://card.paitongai.com',
       'http://card.paitongai.com:80',
+      'http://cardapi.paitongai.com',      // 新增API域名
+      'https://cardapi.paitongai.com',     // 新增API域名HTTPS
+      'http://aicard.paitongai.com',       // AI卡片域名
+      'https://aicard.paitongai.com',      // AI卡片域名HTTPS
       'http://ai-terminal-xnbmzvtedv.ap-northeast-1.fcapp.run',
       'https://ai-terminal-xnbmzvtedv.ap-northeast-1.fcapp.run'
     ]

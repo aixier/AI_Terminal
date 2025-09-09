@@ -10,7 +10,7 @@ import TaskManager from './TaskManager.js'
 class SenseVoiceService {
   constructor() {
     this.baseUrl = 'https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription'
-    this.apiKey = process.env.ALIYUN_API_KEY || config.aliyun?.apiKey
+    this.apiKey = process.env.DASHSCOPE_API_KEY || process.env.ALIYUN_API_KEY || config.aliyun?.apiKey
     this.taskManager = TaskManager
     
     // 启动定期清理任务

@@ -29,6 +29,8 @@ export default {
       'http://188.8.9.99:5173',
       'http://8.130.86.152',
       'http://8.130.86.152:5173',
+      'http://8.130.86.152:8100',
+      'http://8.130.86.152:8083',
       'http://card.paitongai.com',
       'https://card.paitongai.com',
       'http://card.paitongai.com:80',

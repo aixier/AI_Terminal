@@ -209,12 +209,16 @@ class HtmlToBase64Converter {
    */
   async imageToBase64(imagePath) {
     try {
+      console.log(`[HtmlToBase64] Converting image to base64: ${imagePath}`)
+      
       // 检查文件是否存在
       const exists = await this.fileExists(imagePath)
       if (!exists) {
-        console.warn(`[HtmlToBase64] Image file not found: ${imagePath}`)
+        console.warn(`[HtmlToBase64] ❌ Image file not found: ${imagePath}`)
         return null
       }
+      
+      console.log(`[HtmlToBase64] ✅ Image file exists: ${imagePath}`)
 
       // 检查文件格式
       const ext = path.extname(imagePath).toLowerCase().substring(1)
@@ -222,9 +226,12 @@ class HtmlToBase64Converter {
         console.warn(`[HtmlToBase64] Unsupported image format: ${ext}`)
         return null
       }
+      
+      console.log(`[HtmlToBase64] Format supported: ${ext}`)
 
       // 读取文件
       const imageBuffer = await fs.readFile(imagePath)
+      console.log(`[HtmlToBase64] File read successfully, size: ${imageBuffer.length} bytes`)
       
       // SVG 文件特殊处理
       if (ext === 'svg') {
@@ -259,8 +266,13 @@ class HtmlToBase64Converter {
       const dir = path.dirname(filePath)
       const basename = path.basename(filePath)
       
+      console.log(`[HtmlToBase64] Fixing Chinese filename: ${filePath}`)
+      console.log(`[HtmlToBase64] Directory: ${dir}`)
+      console.log(`[HtmlToBase64] Basename: ${basename}`)
+      
       // 检查文件名是否包含中文字符
       if (!/[\u4e00-\u9fff]/.test(basename)) {
+        console.log(`[HtmlToBase64] No Chinese chars detected, returning original path`)
         return filePath // 不包含中文，直接返回
       }
       
@@ -268,19 +280,50 @@ class HtmlToBase64Converter {
       const candidates = [
         filePath, // 原始路径
         // 将UTF-8字符当作Latin-1再编码为UTF-8 (常见的双重编码问题)
-        path.join(dir, Buffer.from(basename, 'utf8').toString('latin1'))
+        path.join(dir, Buffer.from(basename, 'utf8').toString('latin1')),
+        // 尝试URL编码
+        path.join(dir, encodeURIComponent(basename)),
+        // 尝试URL解码
+        path.join(dir, decodeURIComponent(basename))
       ]
       
+      console.log(`[HtmlToBase64] Testing ${candidates.length} filename candidates:`)
+      
       // 检查哪个文件存在
-      for (const candidate of candidates) {
+      for (let i = 0; i < candidates.length; i++) {
+        const candidate = candidates[i]
+        console.log(`[HtmlToBase64] Candidate ${i + 1}: ${candidate}`)
+        
         const exists = await this.fileExists(candidate)
         if (exists) {
-          console.log(`[HtmlToBase64] Found file with encoding fix: ${filePath} -> ${candidate}`)
+          console.log(`[HtmlToBase64] ✅ Found existing file: ${candidate}`)
           return candidate
+        } else {
+          console.log(`[HtmlToBase64] ❌ File not found: ${candidate}`)
         }
       }
       
-      console.warn(`[HtmlToBase64] No matching file found for: ${filePath}`)
+      // 如果都不存在，尝试列出目录内容查看实际文件名
+      try {
+        const files = await fs.readdir(dir)
+        console.log(`[HtmlToBase64] Directory contents:`, files)
+        
+        // 尝试模糊匹配
+        const targetBasename = basename.toLowerCase()
+        const matchingFile = files.find(file => 
+          file.toLowerCase().includes(targetBasename.substring(0, Math.min(3, targetBasename.length)))
+        )
+        
+        if (matchingFile) {
+          const matchedPath = path.join(dir, matchingFile)
+          console.log(`[HtmlToBase64] 🔍 Found similar file: ${matchedPath}`)
+          return matchedPath
+        }
+      } catch (dirError) {
+        console.warn(`[HtmlToBase64] Error reading directory ${dir}:`, dirError.message)
+      }
+      
+      console.warn(`[HtmlToBase64] ⚠️ No matching file found for: ${filePath}`)
       return filePath
       
     } catch (error) {

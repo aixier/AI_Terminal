@@ -8,6 +8,50 @@ import { SessionMetadata } from './utils/sessionMetadata.js'
 const router = express.Router()
 
 /**
+ * 计算任务进度百分比
+ * @param {string} status - 任务状态
+ * @param {Object} phases - 阶段信息
+ * @returns {number} 进度百分比 (0-100)
+ */
+function calculateProgress(status, phases = {}) {
+  // 如果任务已完成
+  if (status === 'completed') {
+    return 100
+  }
+  
+  // 如果任务失败
+  if (status === 'failed' || status === 'error') {
+    return 0
+  }
+  
+  // 根据阶段计算进度
+  let progress = 0
+  const phaseWeights = {
+    promptProcessing: 10,    // Prompt处理占10%
+    firstGeneration: 60,     // 第一次AI生成占60%
+    base64Embedding: 30      // Base64嵌入占30%
+  }
+  
+  // 计算每个阶段的进度
+  Object.entries(phaseWeights).forEach(([phase, weight]) => {
+    const phaseStatus = phases[phase]
+    if (phaseStatus === 'completed') {
+      progress += weight
+    } else if (phaseStatus === 'processing' || phaseStatus === 'in_progress') {
+      progress += weight * 0.5  // 正在处理的阶段算50%
+    }
+    // pending或其他状态不加分
+  })
+  
+  // 如果没有阶段信息但状态是processing，至少显示5%
+  if (progress === 0 && status === 'processing') {
+    progress = 5
+  }
+  
+  return Math.min(Math.round(progress), 99)  // 最多显示99%，直到真正完成
+}
+
+/**
  * 查询Pod2Post任务状态
  * GET /api/generate/pod2post/status/:taskId
  * 
@@ -103,12 +147,16 @@ router.get('/:taskId',
       !f.includes('_meta')
     )
     
-    // 8. 构建响应数据
+    // 8. 计算进度
+    const progress = calculateProgress(metadata.status, metadata.data.custom?.phases)
+    
+    // 9. 构建响应数据
     const responseData = {
       taskId,
       folderName: expectedFolderName,
       folderPath: userCardPath,
       status: metadata.status || 'unknown',
+      progress,  // 添加进度字段
       topic: metadata.data.topic || `播客小红书图文卡片`,
       templateName: metadata.data.templateName || 'pod2post-template',
       

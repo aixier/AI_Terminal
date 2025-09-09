@@ -183,6 +183,9 @@ router.post('/',
       }
     }
     
+    // 设置初始状态为processing
+    metadata.status = 'processing'
+    
     await metadata.save(userCardPath)
     await updateFolderStatus(userCardPath, 'processing', { 
       taskId,
@@ -271,6 +274,7 @@ async function processInBackground(
     console.log('[Pod2PostAsync Background] Phase 1: First AI generation (HTML creation)')
     await updateFolderStatus(userCardPath, 'generating', { taskId, phase: 'first_generation' })
     metadata.data.custom.phases.firstGeneration = 'processing'
+    metadata.status = 'processing'  // 更新整体状态
     await metadata.save(userCardPath)
     
     const firstResult = await generateWithAI(processedPrompt, userCardPath, username, folderName, { apiId })
@@ -287,6 +291,7 @@ async function processInBackground(
     console.log('[Pod2PostAsync Background] Phase 2: Base64 conversion using component')
     await updateFolderStatus(userCardPath, 'embedding', { taskId })
     metadata.data.custom.phases.base64Embedding = 'processing'
+    metadata.status = 'processing'  // 保持processing状态
     await metadata.save(userCardPath)
     
     const htmlFilePath = path.join(userCardPath, firstResult.fileName)

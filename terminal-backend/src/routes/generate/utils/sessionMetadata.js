@@ -289,6 +289,22 @@ export class SessionMetadata {
   }
 
   /**
+   * 获取当前状态
+   * @returns {string} 当前状态
+   */
+  get status() {
+    return this.data.execution.finalStatus || 'unknown'
+  }
+  
+  /**
+   * 设置当前状态
+   * @param {string} status - 新状态
+   */
+  set status(status) {
+    this.data.execution.finalStatus = status
+  }
+  
+  /**
    * 完成会话
    * @param {string} finalStatus - 最终状态 (success|partial_success|failed)
    */

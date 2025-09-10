@@ -121,15 +121,14 @@ router.post('/',
           message: 'Invalid taskId format. Expected format: pod2post_{timestamp}_{random}'
         })
       }
-      // 从taskId提取时间戳作为文件夹名
-      const parts = taskId.split('_')
-      folderName = `pod2post_${parts[1]}`
+      // 使用完整的taskId作为文件夹名
+      folderName = taskId
       console.log(`[Pod2PostAsync] Using client-provided taskId: ${taskId}`)
     } else {
       // 生成新的taskId
       const timestamp = Date.now()
       taskId = `pod2post_${timestamp}_${Math.random().toString(36).substring(2, 9)}`
-      folderName = `pod2post_${timestamp}`
+      folderName = taskId  // 使用完整的taskId作为文件夹名
       console.log(`[Pod2PostAsync] Generated new taskId: ${taskId}`)
     }
     

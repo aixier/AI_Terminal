@@ -65,6 +65,13 @@ const workflow = {
   "7": "获取生成结果 → /api/generate/pod2post/content/:folderName",
   "8": "下载内容 → Base64嵌入HTML + JSON文案 (大文件通过OSS URL下载)"
 }
+
+// TaskId生成示例
+function generateTaskId() {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 8)
+  return `pod2post_${timestamp}_${random}`
+}
 ```
 
 ## 📤 资源上传接口
@@ -84,6 +91,9 @@ Parameters:
 - images: 图片文件（支持多个）  // 注意：照片上传使用images字段
 - clearBase64: "true" | "false" (可选，清理已生成的Base64文件)
 - token: "lijing-token-2025-pod2post" (可选，用户认证)
+
+Query Parameters:
+- taskId: "pod2post_1757482406080_abc123" (可选，任务ID，用于任务级资源隔离)
 ```
 
 ⚠️ **注意事项**：
@@ -130,6 +140,9 @@ Parameters:
 - files: 图片文件（支持多个）  // 重要：CDN上传使用files字段，不是images
 - clearBase64: "true" | "false" (可选)
 - token: "lijing-token-2025-pod2post" (可选)
+
+Query Parameters:
+- taskId: "pod2post_1757482406080_abc123" (可选，任务ID，用于任务级资源隔离)
 ```
 
 ⚠️ **注意事项**：
@@ -157,6 +170,9 @@ Parameters:
 - files: 文档文件（支持多个）
 - clearBase64: "true" | "false" (可选)
 - token: "lijing-token-2025-pod2post" (可选)
+
+Query Parameters:
+- taskId: "pod2post_1757482406080_abc123" (可选，任务ID，用于任务级资源隔离)
 ```
 
 ## 🎯 播客卡片生成
@@ -172,7 +188,8 @@ POST /api/generate/pod2post/async
 ```json
 {
   "prompt": "阅读[播客小红书图文卡片需求文档.md]，按文档要求使用[新闻感封面.md]和[内容页模板规范.md]，在[用户card路径]生成html和json文档。需要使用的照片请遍历[photos]文件夹下的所有子目录寻找照片资源，html图片资源使用绝对路径。需要使用的其他素材在[CDN]文件夹中。本期主播：李静、养鸡。本期嘉宾：戴军、艳艳。",
-  "token": "lijing-token-2025-pod2post"
+  "token": "lijing-token-2025-pod2post",
+  "taskId": "pod2post_1757482406080_abc123"  // 可选，用于任务级资源隔离
 }
 ```
 
@@ -365,8 +382,15 @@ class Pod2PostClient {
     this.token = token
   }
 
+  // 生成任务ID
+  generateTaskId() {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 8)
+    return `pod2post_${timestamp}_${random}`
+  }
+
   // 1. 上传照片
-  async uploadPhotos(photoPaths) {
+  async uploadPhotos(photoPaths, taskId) {
     const formData = new FormData()
     
     for (const photoPath of photoPaths) {
@@ -375,7 +399,11 @@ class Pod2PostClient {
     formData.append('token', this.token)
     formData.append('clearBase64', 'true')
 
-    const response = await fetch(`${this.baseUrl}/generate/pod2post/pic`, {
+    const url = taskId 
+      ? `${this.baseUrl}/generate/pod2post/pic?taskId=${taskId}`
+      : `${this.baseUrl}/generate/pod2post/pic`
+
+    const response = await fetch(url, {
       method: 'POST',
       body: formData
     })
@@ -384,7 +412,7 @@ class Pod2PostClient {
   }
 
   // 2. 上传CDN素材
-  async uploadCDN(cdnPaths) {
+  async uploadCDN(cdnPaths, taskId) {
     const formData = new FormData()
     
     for (const cdnPath of cdnPaths) {
@@ -392,7 +420,11 @@ class Pod2PostClient {
     }
     formData.append('token', this.token)
 
-    const response = await fetch(`${this.baseUrl}/generate/pod2post/cdn`, {
+    const url = taskId
+      ? `${this.baseUrl}/generate/pod2post/cdn?taskId=${taskId}`
+      : `${this.baseUrl}/generate/pod2post/cdn`
+
+    const response = await fetch(url, {
       method: 'POST',
       body: formData
     })
@@ -401,7 +433,7 @@ class Pod2PostClient {
   }
 
   // 3. 提交生成任务
-  async submitTask(prompt) {
+  async submitTask(prompt, taskId) {
     const response = await fetch(`${this.baseUrl}/generate/pod2post/async`, {
       method: 'POST',
       headers: {
@@ -409,7 +441,8 @@ class Pod2PostClient {
       },
       body: JSON.stringify({
         prompt: prompt,
-        token: this.token
+        token: this.token,
+        taskId: taskId  // 包含taskId以使用任务特定资源
       })
     })
 
@@ -487,20 +520,24 @@ class Pod2PostClient {
     try {
       console.log('🚀 开始Pod2Post卡片生成流程...')
 
-      // 1. 上传照片
+      // 0. 生成任务ID
+      const taskId = this.generateTaskId()
+      console.log(`📝 任务ID: ${taskId}`)
+
+      // 1. 上传照片（带taskId）
       console.log('📸 上传照片...')
-      const photoResult = await this.uploadPhotos(photoPaths)
+      const photoResult = await this.uploadPhotos(photoPaths, taskId)
       console.log(`✅ 照片上传成功: ${photoResult.data?.total || 0} 个文件`)
 
-      // 2. 上传CDN素材
+      // 2. 上传CDN素材（带taskId）
       console.log('🎨 上传CDN素材...')
-      const cdnResult = await this.uploadCDN(cdnPaths)
+      const cdnResult = await this.uploadCDN(cdnPaths, taskId)
       console.log(`✅ CDN素材上传成功: ${cdnResult.data?.total || 0} 个文件`)
 
-      // 3. 提交生成任务
+      // 3. 提交生成任务（带taskId）
       console.log('⚡ 提交生成任务...')
-      const taskResult = await this.submitTask(prompt)
-      const taskId = taskResult.data?.taskId
+      const taskResult = await this.submitTask(prompt, taskId)
+      const returnedTaskId = taskResult.data?.taskId
       const folderName = taskResult.data?.topic // 获取文件夹名称
 
       if (!taskId) {
@@ -586,27 +623,32 @@ async function example() {
 ### cURL示例
 
 ```bash
-# 1. 上传照片
-curl -X POST http://8.130.86.152:8083/api/generate/pod2post/pic \
+# 0. 生成taskId (在客户端生成)
+taskId="pod2post_$(date +%s)_$(openssl rand -hex 3)"
+echo "TaskId: $taskId"
+
+# 1. 上传照片（带taskId）
+curl -X POST "http://8.130.86.152:8083/api/generate/pod2post/pic?taskId=$taskId" \
   -F "images=@/path/to/photo1.jpg" \
   -F "images=@/path/to/photo2.jpg" \
   -F "token=lijing-token-2025-pod2post" \
   -F "clearBase64=true"
 
-# 2. 上传CDN素材  
+# 2. 上传CDN素材（带taskId）  
 # 注意：CDN上传使用files字段，不是images
-curl -X POST http://8.130.86.152:8083/api/generate/pod2post/cdn \
+curl -X POST "http://8.130.86.152:8083/api/generate/pod2post/cdn?taskId=$taskId" \
   -F "files=@/path/to/background.jpg" \
   -F "files=@/path/to/logo.svg" \
   -F "token=lijing-token-2025-pod2post"
 
-# 3. 提交生成任务
+# 3. 提交生成任务（带taskId）
 curl -X POST http://8.130.86.152:8083/api/generate/pod2post/async \
   -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "生成播客卡片...",
-    "token": "lijing-token-2025-pod2post"
-  }'
+  -d "{
+    \"prompt\": \"生成播客卡片...\",
+    \"token\": \"lijing-token-2025-pod2post\",
+    \"taskId\": \"$taskId\"
+  }"
 
 # 4. 查询任务状态
 curl "http://8.130.86.152:8083/api/generate/pod2post/status/pod2post_1234567890_xxx?token=lijing-token-2025-pod2post"
@@ -644,12 +686,28 @@ formData.append('clearBase64', 'true')
 
 ### 并发控制
 
-系统自动防止同一用户同时执行多个Pod2Post任务，确保文件不会被覆盖：
+#### 多任务并发支持
+系统支持同一用户最多5个Pod2Post任务并发执行，通过taskId实现任务级资源隔离：
 
+- **任务ID格式**: `pod2post_{timestamp}_{random}`
+- **最大并发数**: 每用户5个任务
+- **资源隔离**: 每个任务使用独立的资源目录
+- **自动清理**: 任务完成后自动清理任务资源
+
+#### TaskId使用说明
+1. **客户端生成**: taskId由客户端生成，确保唯一性
+2. **资源上传**: 上传资源时携带taskId参数，资源会保存到任务专属目录
+3. **任务提交**: 提交任务时包含taskId，确保使用正确的资源路径
+4. **路径映射**: 
+   - 无taskId: `/templates/pod2post/photos`
+   - 有taskId: `/templates/pod2post/tasks/{taskId}/photos`
+
+#### 并发限制响应
+当超过最大并发数时：
 ```json
 {
   "success": false,
-  "error": "用户lijing已有Pod2Post任务正在进行中，请等待完成后再提交新任务"
+  "error": "用户lijing已达到最大并发任务数(5)，请等待部分任务完成后再提交新任务"
 }
 ```
 
@@ -705,7 +763,7 @@ formData.append('clearBase64', 'true')
 2. **资源清理**: 建议定期使用 `clearBase64=true` 清理历史文件
 3. **文件命名**: 支持中文文件名，系统会自动处理编码问题
 4. **任务状态**: 请妥善保存taskId，用于查询任务状态和结果
-5. **并发支持**: 同一用户支持最多5个Pod2Post任务并发执行
+5. **并发支持**: 同一用户支持最多5个Pod2Post任务并发执行（需使用taskId）
 6. **OSS URL**: 大文件的OSS URL有效期为1年，请及时下载
 7. **网络优化**: 建议使用流式下载处理大文件
 
@@ -718,7 +776,7 @@ formData.append('clearBase64', 'true')
 
 ---
 
-**文档版本**: v5.0.0  
-**更新时间**: 2025-09-09  
-**更新内容**: 新增OSS大文件支持和内容获取API  
+**文档版本**: v5.1.0  
+**更新时间**: 2025-01-10  
+**更新内容**: 新增任务级资源隔离和多任务并发支持（通过taskId）  
 **适用环境**: 生产环境

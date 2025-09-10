@@ -138,10 +138,178 @@ class SenseVoiceService {
   }
 
   /**
-   * 提交URL转录任务
+   * 提交URL转录任务（同步模式） - 适用于短音频
+   */
+  async submitUrlTranscriptionTaskSync(url, options = {}) {
+    let taskId = null
+    
+    try {
+      logger.info('========================================')
+      logger.info('SenseVoice服务 - 提交URL转录任务（同步模式）')
+      logger.info('========================================')
+      
+      if (!this.apiKey) {
+        throw new Error('Aliyun API key not configured')
+      }
+
+      // 创建任务记录
+      taskId = await this.taskManager.createTask('url', {
+        url,
+        options,
+        mode: 'sync'
+      })
+      
+      logger.info(`创建本地任务ID: ${taskId}`)
+      logger.info(`使用同步模式处理短音频`)
+
+      // 更新任务状态
+      await this.taskManager.updateTask(taskId, {
+        status: 'processing',
+        progress: 20,
+        message: 'Submitting URL to Aliyun (Sync Mode)'
+      })
+
+      const parameters = {
+        language_hints: options.languages || ['zh', 'en'],
+        format: options.format || 'auto',
+        sample_rate: options.sampleRate || 16000,
+        enable_words: options.enableWords !== false,
+        enable_timestamp: options.enableTimestamp !== false,
+        disfluency_removal: options.removeDisfluency || false,
+        enable_punctuation: options.enablePunctuation !== false,
+      }
+
+      logger.info('提交到阿里云API (同步模式):')
+      logger.info(`  - API端点: ${this.baseUrl}`)
+      logger.info(`  - 模型: sensevoice-v1`)
+      logger.info(`  - URL: ${url.substring(0, 150)}...`)
+
+      const startTime = Date.now()
+      
+      // 同步请求 - 不设置 X-DashScope-Async 头
+      const response = await axios.post(
+        this.baseUrl,
+        {
+          model: 'sensevoice-v1',
+          input: {
+            file_urls: [url]
+          },
+          parameters
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+            // 注意：不设置 'X-DashScope-Async' 头，使用同步模式
+          },
+          timeout: 120000 // 2分钟超时
+        }
+      )
+      
+      const processTime = ((Date.now() - startTime) / 1000).toFixed(2)
+      logger.info(`同步处理完成，耗时: ${processTime}秒`)
+      logger.info(`阿里云API响应:`)
+      logger.info(`  - 状态码: ${response.status}`)
+      logger.info(`  - 响应数据: ${JSON.stringify(response.data).substring(0, 200)}...`)
+
+      // 直接处理同步响应
+      if (response.data.output) {
+        const result = this.formatSyncResponse(response.data)
+        
+        await this.taskManager.updateTask(taskId, {
+          status: 'succeeded',
+          progress: 100,
+          result,
+          message: 'Transcription completed (Sync Mode)'
+        })
+
+        logger.info(`同步任务 ${taskId} 完成，转录文本长度: ${result.transcription?.length || 0}`)
+        
+        return {
+          success: true,
+          taskId,
+          message: 'Transcription completed successfully',
+          status: 'succeeded',
+          ...result
+        }
+      } else {
+        throw new Error('Unexpected sync response format')
+      }
+    } catch (error) {
+      logger.error('Submit sync URL transcription task error:', error)
+      
+      if (taskId) {
+        await this.taskManager.updateTask(taskId, {
+          status: 'failed',
+          error: error.message,
+          message: 'Sync task failed'
+        })
+      }
+      
+      throw this.handleError(error)
+    }
+  }
+
+  /**
+   * 格式化同步响应数据
+   */
+  formatSyncResponse(data) {
+    if (!data.output) {
+      throw new Error('Invalid sync response format')
+    }
+
+    const output = data.output
+    
+    // 提取文本
+    let fullText = ''
+    const sentences = []
+    
+    if (output.results && Array.isArray(output.results)) {
+      output.results.forEach(result => {
+        if (result.text) {
+          // 清理标签
+          const cleanText = result.text.replace(/<\|[^>]*\|>/g, '')
+          fullText += cleanText + ' '
+          
+          sentences.push({
+            text: cleanText,
+            startTime: result.begin_time || 0,
+            endTime: result.end_time || 0
+          })
+        }
+      })
+    } else if (output.text) {
+      // 直接文本结果
+      fullText = output.text.replace(/<\|[^>]*\|>/g, '')
+    }
+
+    fullText = fullText.trim()
+    
+    return {
+      transcription: fullText,
+      fullText,
+      sentences,
+      language: output.language || 'zh',
+      duration: output.duration || 0,
+      wordCount: fullText.length,
+      sentenceCount: sentences.length,
+      metadata: {
+        model: 'sensevoice-v1',
+        mode: 'sync',
+        processedAt: new Date().toISOString()
+      }
+    }
+  }
+
+  /**
+   * 提交URL转录任务（异步模式） - 默认模式
    */
   async submitUrlTranscriptionTask(url, options = {}) {
     try {
+      logger.info('========================================')
+      logger.info('SenseVoice服务 - 提交URL转录任务（异步模式）')
+      logger.info('========================================')
+      
       if (!this.apiKey) {
         throw new Error('Aliyun API key not configured')
       }
@@ -151,6 +319,9 @@ class SenseVoiceService {
         url,
         options
       })
+      
+      logger.info(`创建本地任务ID: ${taskId}`)
+      logger.info(`输入URL长度: ${url.length} 字符`)
 
       // 更新任务状态
       await this.taskManager.updateTask(taskId, {
@@ -160,23 +331,28 @@ class SenseVoiceService {
       })
 
       const parameters = {
-        file_urls: [url],
+        language_hints: options.languages || ['zh', 'en'],
         format: options.format || 'auto',
         sample_rate: options.sampleRate || 16000,
-        language_hints: options.languages || ['zh', 'en'],
         enable_words: options.enableWords !== false,
         enable_timestamp: options.enableTimestamp !== false,
         disfluency_removal: options.removeDisfluency || false,
         enable_punctuation: options.enablePunctuation !== false,
       }
 
-      logger.info(`Submitting URL transcription task ${taskId} for: ${url}`)
+      logger.info('提交到阿里云API:')
+      logger.info(`  - API端点: ${this.baseUrl}`)
+      logger.info(`  - 模型: sensevoice-v1`)
+      logger.info(`  - URL: ${url.substring(0, 150)}...`)
+      logger.info(`  - 参数: ${JSON.stringify(parameters)}`)
 
       const response = await axios.post(
         this.baseUrl,
         {
           model: 'sensevoice-v1',
-          input: {},
+          input: {
+            file_urls: [url]
+          },
           parameters
         },
         {
@@ -187,16 +363,26 @@ class SenseVoiceService {
           }
         }
       )
+      
+      logger.info(`阿里云API响应:`)
+      logger.info(`  - 状态码: ${response.status}`)
+      logger.info(`  - 响应数据: ${JSON.stringify(response.data).substring(0, 200)}...`)
 
       if (response.data.output?.task_id) {
+        const aliyunTaskId = response.data.output.task_id
+        logger.info(`获得阿里云任务ID: ${aliyunTaskId}`)
+        
         await this.taskManager.updateTask(taskId, {
-          aliyunTaskId: response.data.output.task_id,
+          aliyunTaskId: aliyunTaskId,
           progress: 30,
           message: 'Task submitted to Aliyun, processing...'
         })
 
+        logger.info(`启动异步轮询任务: ${taskId} -> ${aliyunTaskId}`)
+        logger.info('========================================')
+        
         // 启动异步轮询
-        this.pollTaskStatus(taskId, response.data.output.task_id)
+        this.pollTaskStatus(taskId, aliyunTaskId)
       } else {
         const result = this.formatResponse(response.data)
         await this.taskManager.updateTask(taskId, {
@@ -235,10 +421,19 @@ class SenseVoiceService {
     const maxAttempts = 120 // 最多10分钟
     const interval = 5000 // 每5秒查询一次
     
+    logger.info(`----------------------------------------`)
+    logger.info(`开始轮询阿里云任务: ${aliyunTaskId}`)
+    logger.info(`本地任务ID: ${taskId}`)
+    logger.info(`----------------------------------------`)
+    
     for (let i = 0; i < maxAttempts; i++) {
       try {
+        if (i > 0 && i % 12 === 0) { // 每分钟记录一次
+          logger.info(`轮询进行中... 已轮询 ${i * 5} 秒 (${i}/${maxAttempts})`)
+        }
+        
         const response = await axios.get(
-          `${this.baseUrl}/${aliyunTaskId}`,
+          `https://dashscope.aliyuncs.com/api/v1/tasks/${aliyunTaskId}`,
           {
             headers: {
               'Authorization': `Bearer ${this.apiKey}`
@@ -248,6 +443,12 @@ class SenseVoiceService {
 
         const status = response.data.output?.task_status
         const progress = this.calculateProgress(status, i, maxAttempts)
+        
+        // 记录状态变化
+        if (!this.lastStatus || status !== this.lastStatus) {
+          logger.info(`任务状态: ${this.lastStatus || 'INITIAL'} -> ${status} (进度: ${progress}%)`)
+          this.lastStatus = status
+        }
 
         await this.taskManager.addLog(taskId, 'status_check', `Aliyun task status: ${status}`, {
           attempt: i + 1,
@@ -255,25 +456,89 @@ class SenseVoiceService {
         })
 
         if (status === 'SUCCEEDED') {
-          const result = this.formatResponse(response.data)
-          await this.taskManager.updateTask(taskId, {
-            status: 'succeeded',
-            progress: 100,
-            result,
-            message: 'Transcription completed successfully'
-          })
+          logger.info('✅ 转录任务成功')
           
-          logger.info(`Task ${taskId} completed successfully`)
-          return
+          // 获取转录结果URL
+          const transcriptionUrl = response.data.output?.results?.[0]?.transcription_url
+          
+          if (transcriptionUrl) {
+            try {
+              // 下载实际的转录结果
+              logger.info(`下载转录结果: ${transcriptionUrl}`)
+              const transcriptionResponse = await axios.get(transcriptionUrl)
+              const transcriptionData = transcriptionResponse.data
+              
+              logger.info(`转录结果获取成功，原始数据大小: ${JSON.stringify(transcriptionData).length} 字符`)
+              
+              // 格式化转录数据
+              const result = this.formatTranscriptionData(transcriptionData)
+              
+              logger.info(`格式化后文本长度: ${result.transcription ? result.transcription.length : 0} 字符`)
+              if (result.transcription) {
+                logger.info(`转录文本前200字符: ${result.transcription.substring(0, 200)}`)
+              }
+              
+              await this.taskManager.updateTask(taskId, {
+                status: 'succeeded',
+                progress: 100,
+                result,
+                message: 'Transcription completed successfully'
+              })
+              
+              logger.info(`----------------------------------------`)
+              logger.info(`✅ 任务 ${taskId} 完成`)
+              logger.info(`----------------------------------------`)
+              return
+            } catch (fetchError) {
+              logger.error(`Failed to fetch transcription result: ${fetchError.message}`)
+              // 如果获取失败，使用原始响应
+              const result = this.formatResponse(response.data)
+              await this.taskManager.updateTask(taskId, {
+                status: 'succeeded',
+                progress: 100,
+                result,
+                message: 'Transcription completed (result fetch failed)'
+              })
+              return
+            }
+          } else {
+            // 如果没有URL，尝试使用原始响应
+            const result = this.formatResponse(response.data)
+            await this.taskManager.updateTask(taskId, {
+              status: 'succeeded',
+              progress: 100,
+              result,
+              message: 'Transcription completed successfully'
+            })
+            
+            logger.info(`Task ${taskId} completed successfully`)
+            return
+          }
         } else if (status === 'FAILED') {
-          const errorMessage = response.data.output?.message || 'Unknown error'
+          const errorMessage = response.data.output?.message || response.data.output?.code || 'Unknown error'
+          const errorCode = response.data.output?.code || 'UNKNOWN'
+          
+          logger.error(`❌ 转录任务失败`)
+          logger.error(`  - 错误代码: ${errorCode}`)
+          logger.error(`  - 错误信息: ${errorMessage}`)
+          
+          // 特别处理文件无法下载的错误
+          if (errorMessage.includes('cannot be downloaded') || errorMessage.includes('download')) {
+            logger.error('  - 提示: 文件无法被阿里云下载，可能原因：')
+            logger.error('    1. OSS文件权限不足（需要设置public-read）')
+            logger.error('    2. 签名URL已过期')
+            logger.error('    3. OSS bucket的CORS配置问题')
+          }
+          
           await this.taskManager.updateTask(taskId, {
             status: 'failed',
             error: errorMessage,
             message: `Transcription failed: ${errorMessage}`
           })
           
-          logger.error(`Task ${taskId} failed: ${errorMessage}`)
+          logger.error(`----------------------------------------`)
+          logger.error(`❌ 任务 ${taskId} 失败`)
+          logger.error(`----------------------------------------`)
           return
         } else {
           // 更新进度
@@ -374,7 +639,124 @@ class SenseVoiceService {
   }
 
   /**
-   * 格式化响应数据
+   * 格式化从URL获取的转录数据
+   */
+  formatTranscriptionData(data) {
+    logger.info('开始格式化转录数据...')
+    logger.info(`原始数据结构: ${JSON.stringify(Object.keys(data))}`)
+    
+    // 打印数据结构帮助调试
+    if (data.transcripts) {
+      logger.info(`transcripts数组长度: ${data.transcripts.length}`)
+      if (data.transcripts.length > 0) {
+        const firstTranscript = data.transcripts[0]
+        logger.info(`第一个transcript的键: ${JSON.stringify(Object.keys(firstTranscript))}`)
+        logger.info(`transcript.text存在: ${!!firstTranscript.text}`)
+        logger.info(`transcript.sentences数量: ${firstTranscript.sentences?.length || 0}`)
+      }
+    }
+    
+    // 处理从transcription_url获取的实际转录结果
+    if (data.transcripts && data.transcripts.length > 0) {
+      const transcript = data.transcripts[0]
+      const sentences = transcript.sentences || []
+      
+      // 提取完整文本（清理标签）
+      let fullText = transcript.text || ''
+      fullText = fullText.replace(/<\|[^>]*\|>/g, '')
+      
+      logger.info(`提取的文本长度: ${fullText.length} 字符`)
+      logger.info(`前100字符: ${fullText.substring(0, 100)}`)
+      
+      // 格式化句子
+      const formattedSentences = sentences.map(sentence => ({
+        text: (sentence.text || '').replace(/<\|[^>]*\|>/g, ''),
+        startTime: sentence.begin_time || 0,
+        endTime: sentence.end_time || 0,
+        words: sentence.words || []
+      }))
+      
+      const result = {
+        transcription: fullText,  // 添加 transcription 字段
+        fullText,
+        sentences: formattedSentences,
+        language: data.properties?.language || 'zh',
+        duration: transcript.content_duration_in_milliseconds || 0,
+        wordCount: fullText.length,
+        sentenceCount: sentences.length,
+        metadata: {
+          model: 'sensevoice-v1',
+          processedAt: new Date().toISOString(),
+          audioFormat: data.properties?.audio_format,
+          originalDuration: data.properties?.original_duration_in_milliseconds
+        }
+      }
+      
+      logger.info(`格式化完成，返回结果包含 transcription: ${!!result.transcription}`)
+      return result
+    }
+    
+    // 如果格式不匹配，尝试其他可能的数据结构
+    logger.warn('数据不符合预期格式，尝试备用解析...')
+    
+    // 检查是否是直接的文本结果
+    if (typeof data === 'string') {
+      logger.info('数据是字符串，直接作为转录结果')
+      return {
+        transcription: data,
+        fullText: data,
+        sentences: [],
+        language: 'zh',
+        duration: 0,
+        wordCount: data.length,
+        sentenceCount: 0,
+        metadata: {
+          model: 'sensevoice-v1',
+          processedAt: new Date().toISOString()
+        }
+      }
+    }
+    
+    // 检查是否有text字段
+    if (data.text) {
+      logger.info('找到text字段，使用该字段作为转录结果')
+      const text = data.text.replace(/<\|[^>]*\|>/g, '')
+      return {
+        transcription: text,
+        fullText: text,
+        sentences: [],
+        language: data.language || 'zh',
+        duration: data.duration || 0,
+        wordCount: text.length,
+        sentenceCount: 0,
+        metadata: {
+          model: 'sensevoice-v1',
+          processedAt: new Date().toISOString()
+        }
+      }
+    }
+    
+    // 最后的fallback
+    logger.warn('无法解析数据，返回原始JSON')
+    const jsonStr = JSON.stringify(data)
+    return {
+      transcription: jsonStr,
+      fullText: jsonStr,
+      sentences: [],
+      language: 'unknown',
+      duration: 0,
+      wordCount: jsonStr.length,
+      sentenceCount: 0,
+      metadata: {
+        model: 'sensevoice-v1',
+        processedAt: new Date().toISOString(),
+        rawData: true
+      }
+    }
+  }
+
+  /**
+   * 格式化响应数据（旧方法，保留兼容）
    */
   formatResponse(data) {
     if (!data.output?.results) {

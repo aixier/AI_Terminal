@@ -19,6 +19,8 @@ import uploadRoutes from './routes/upload.js'
 import workspaceRoutes from './routes/workspace.js'
 import transcriptionRoutes from './routes/transcription.js'
 import assetsRoutes from './routes/assets.js'
+import stsRoutes from './routes/sts.js'
+import ossDirectRoutes from './routes/oss-direct.js'
 import { setupSocketHandlers } from './services/socketService.js'
 import websocketService from './services/websocketService.js'
 // import { preventCommandInjection, limitRequestSize, auditLog, rateLimit } from './middleware/security.js'
@@ -95,34 +97,12 @@ const io = new Server(httpServer, {
   perMessageDeflate: false,
   cors: {
     origin: (origin, callback) => {
-      // 允许所有配置的源以及常见的本地地址
-      // 更宽松的Socket.IO CORS策略
-      if (!origin || 
-          origin === 'null' ||                          // 支持本地文件访问 (file://)
-          config.cors.origins.includes(origin) ||
-          origin?.startsWith('http://127.0.0.1:') ||
-          origin?.startsWith('http://localhost:') ||
-          origin?.startsWith('http://0.0.0.0:') ||
-          origin?.startsWith('http://192.168.') ||     // 局域网地址
-          origin?.startsWith('http://10.') ||          // 局域网地址
-          origin?.startsWith('http://172.') ||         // 局域网地址
-          origin?.startsWith('http://8.130.') ||       // 阿里云服务器IP段
-          origin?.startsWith('https://8.130.') ||      // HTTPS阿里云服务器
-          origin === 'http://188.8.9.99:5173' ||       // 本地IP
-          origin === 'http://card.paitongai.com' ||    // 域名支持
-          origin === 'https://card.paitongai.com' ||  // HTTPS域名支持
-          origin === 'http://aicard.paitongai.com' ||  // 新域名支持
-          origin === 'https://aicard.paitongai.com' || // 新域名HTTPS支持
-          origin === 'http://cardapi.paitongai.com' || // 新增API域名
-          origin === 'https://cardapi.paitongai.com' || // 新增API域名HTTPS
-          origin?.includes('paitongai.com')) {         // 允许所有paitongai.com子域名
-        callback(null, true)
-      } else {
-        logger.warn(`Socket.IO CORS rejected origin: ${origin}`)
-        // 如果需要完全开放，可以取消下面的注释
-        // callback(null, true)
-        callback(new Error('Not allowed by CORS'))
+      // 完全开放Socket.IO CORS - 允许所有来源
+      // 支持所有域名包括 netlify.app 等
+      if (origin && config.nodeEnv === 'development') {
+        logger.debug(`Socket.IO CORS check for origin: ${origin}`)
       }
+      callback(null, true)
     },
     credentials: true,
     methods: ['GET', 'POST']
@@ -155,48 +135,22 @@ console.log('     ✓ Pre-processing middleware registered')
 console.log('  1️⃣ Registering CORS middleware...')
 app.use(cors({
   origin: (origin, callback) => {
-    // 记录所有 CORS 请求
-    // if (origin) {
-    //   logger.debug(`CORS check for origin: ${origin}`)
-    // } else {
-    //   logger.debug(`CORS check for direct access (no origin)`)
-    // }
-    
-    // 允许所有配置的源以及常见的本地地址，同时允许无origin的直接访问（静态资源）
-    // 更宽松的CORS策略
-    if (!origin || 
-        origin === 'null' ||                          // 支持本地文件访问 (file://)
-        config.cors.origins.includes(origin) ||
-        origin?.startsWith('http://127.0.0.1:') ||
-        origin?.startsWith('http://localhost:') ||
-        origin?.startsWith('http://0.0.0.0:') ||
-        origin?.startsWith('http://192.168.') ||     // 局域网地址
-        origin?.startsWith('http://10.') ||          // 局域网地址
-        origin?.startsWith('http://172.') ||         // 局域网地址
-        origin?.startsWith('http://8.130.') ||       // 阿里云服务器IP段
-        origin?.startsWith('https://8.130.') ||      // HTTPS阿里云服务器
-        origin === 'http://188.8.9.99:5173' ||       // 本地IP
-        origin === 'http://card.paitongai.com' ||    // 域名支持
-        origin === 'https://card.paitongai.com' ||  // HTTPS域名支持
-        origin === 'http://aicard.paitongai.com' ||  // 新域名支持
-        origin === 'https://aicard.paitongai.com' || // 新域名HTTPS支持
-        origin === 'http://cardapi.paitongai.com' || // 新增API域名
-        origin === 'https://cardapi.paitongai.com' || // 新增API域名HTTPS
-        origin?.includes('paitongai.com')) {         // 允许所有paitongai.com子域名
-      callback(null, true)
-    } else {
-      // 在生产环境可以考虑直接允许所有源
-      logger.warn(`CORS rejected origin: ${origin}`)
-      // 如果需要完全开放CORS，可以取消下面的注释
-      // callback(null, true)
-      callback(new Error('Not allowed by CORS'))
+    // 记录所有 CORS 请求（可选）
+    if (origin && config.nodeEnv === 'development') {
+      logger.debug(`CORS check for origin: ${origin}`)
     }
+    
+    // 完全开放CORS - 允许所有来源
+    // 这样可以支持来自任何域名的请求，包括 netlify.app 等
+    callback(null, true)
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Length', 'Content-Type', 'X-Request-Id'],
+  maxAge: 86400 // 预检请求缓存24小时
 }))
-console.log('     ✓ CORS middleware registered')
+console.log('     ✓ CORS middleware registered (fully open)')
 
 // 2. Body Parser中间件
 console.log('  2️⃣ Registering Body Parser middleware...')
@@ -326,6 +280,8 @@ app.use('/api/workspace', workspaceRoutes)
 console.log('     ✓ /api/workspace route registered')
 
 app.use('/api/transcription', transcriptionRoutes)
+app.use('/api/sts', stsRoutes)
+app.use('/api/oss-direct', ossDirectRoutes)
 console.log('     ✓ /api/transcription route registered')
 
 app.use('/api/assets', assetsRoutes)

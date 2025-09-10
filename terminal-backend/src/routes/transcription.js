@@ -159,28 +159,121 @@ router.post('/file', upload.single('file'), async (req, res) => {
  * 从URL转录音频/视频
  */
 router.post('/url', async (req, res) => {
+  logger.info('========================================')
+  logger.info('音频转录请求开始 (URL模式)')
+  logger.info('========================================')
+  
   try {
-    const { url, ...options } = req.body
+    const { url, ossPath, ...options } = req.body
 
     if (!url) {
+      logger.error('缺少必需参数: URL')
       return res.status(400).json({
         success: false,
         error: 'URL is required'
       })
     }
 
-    logger.info(`Processing transcription from URL: ${url}`)
+    logger.info('转录请求参数:')
+    logger.info(`  - URL: ${url.substring(0, 100)}...`)
+    logger.info(`  - OSS路径: ${ossPath || '未提供'}`)
+    logger.info(`  - 启用时间戳: ${options.enableTimestamp !== false}`)
+    logger.info(`  - 启用标点: ${options.enablePunctuation !== false}`)
+    logger.info(`  - 移除语气词: ${options.removeDisfluency === true}`)
 
-    // 提交URL转录任务
-    const result = await senseVoiceService.submitUrlTranscriptionTask(url, options)
+    // 提交URL转录任务，包含ossPath以便追踪
+    logger.info('提交转录任务到阿里云SenseVoice...')
+    const result = await senseVoiceService.submitUrlTranscriptionTask(url, {
+      ...options,
+      ossPath: ossPath
+    })
+    
+    logger.info(`转录任务提交成功:`)
+    logger.info(`  - 任务ID: ${result.taskId}`)
+    logger.info(`  - 阿里云任务ID: ${result.aliyunTaskId || '等待分配'}`)
+    logger.info(`  - 状态: ${result.status}`)
+    logger.info('========================================')
 
     res.json(result)
   } catch (error) {
-    logger.error('URL transcription route error:', error)
+    logger.error('========================================')
+    logger.error('URL转录请求失败')
+    logger.error(`错误信息: ${error.message}`)
+    logger.error(`错误堆栈: ${error.stack}`)
+    logger.error('========================================')
     
     res.status(error.status || 500).json({
       success: false,
       error: error.message || 'Transcription failed'
+    })
+  }
+})
+
+/**
+ * POST /api/transcription/url-sync
+ * 提交URL进行同步转录（适用于短音频）
+ */
+router.post('/url-sync', async (req, res) => {
+  try {
+    logger.info('========================================')
+    logger.info('音频转录请求开始 (同步模式)')
+    logger.info('========================================')
+    logger.info(`时间: ${new Date().toISOString()}`)
+    logger.info(`客户端IP: ${req.ip}`)
+    logger.info(`请求体: ${JSON.stringify(req.body)}`)
+    
+    const { url, ossPath } = req.body
+    
+    if (!url) {
+      logger.warn('缺少必需的URL参数')
+      return res.status(400).json({
+        success: false,
+        error: 'URL is required'
+      })
+    }
+    
+    logger.info('请求参数:')
+    logger.info(`  - URL: ${url.substring(0, 150)}...`)
+    logger.info(`  - OSS路径: ${ossPath || '无'}`)
+    logger.info(`  - 使用同步模式处理`)
+    
+    // 解析选项
+    const options = {
+      format: req.body.format,
+      sampleRate: req.body.sampleRate,
+      languages: req.body.languages,
+      enableWords: req.body.enableWords !== false,
+      enableTimestamp: req.body.enableTimestamp !== false,
+      removeDisfluency: req.body.removeDisfluency || false,
+      enablePunctuation: req.body.enablePunctuation !== false
+    }
+    
+    logger.info(`选项: ${JSON.stringify(options)}`)
+    logger.info('调用SenseVoice服务...')
+    
+    // 使用同步模式提交转录任务
+    const result = await senseVoiceService.submitUrlTranscriptionTaskSync(url, {
+      ...options,
+      ossPath: ossPath
+    })
+    
+    logger.info('========================================')
+    logger.info('同步转录请求成功')
+    logger.info(`任务ID: ${result.taskId}`)
+    logger.info(`转录文本长度: ${result.transcription?.length || 0} 字符`)
+    logger.info('========================================')
+    
+    res.json(result)
+  } catch (error) {
+    logger.error('========================================')
+    logger.error('同步URL转录请求失败')
+    logger.error(`错误信息: ${error.message}`)
+    logger.error(`错误堆栈: ${error.stack}`)
+    logger.error('========================================')
+    
+    res.status(error.status || 500).json({
+      success: false,
+      error: error.message || 'Sync transcription failed'
     })
   }
 })
@@ -351,7 +444,21 @@ router.get('/task/:taskId', async (req, res) => {
 router.get('/task/:taskId/result', async (req, res) => {
   try {
     const { taskId } = req.params
+    
+    logger.info(`----------------------------------------`)
+    logger.info(`获取任务结果: ${taskId}`)
+    
     const result = await senseVoiceService.getTaskResult(taskId)
+    
+    logger.info(`任务状态: ${result.status}`)
+    if (result.status === 'succeeded') {
+      logger.info(`转录成功，结果长度: ${result.transcription ? result.transcription.length : 0} 字符`)
+    } else if (result.status === 'failed') {
+      logger.error(`任务失败: ${result.error}`)
+    } else {
+      logger.info(`任务进行中，进度: ${result.progress || 0}%`)
+    }
+    logger.info(`----------------------------------------`)
     
     if (!result.success && result.status !== 'succeeded') {
       return res.status(result.status === 'failed' ? 400 : 202).json(result)
@@ -359,7 +466,7 @@ router.get('/task/:taskId/result', async (req, res) => {
     
     res.json(result)
   } catch (error) {
-    logger.error('Get task result error:', error)
+    logger.error(`获取任务结果错误: ${error.message}`)
     res.status(404).json({
       success: false,
       error: error.message || 'Task not found'

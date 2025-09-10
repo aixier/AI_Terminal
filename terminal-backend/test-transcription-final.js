@@ -28,7 +28,7 @@ const ossConfig = {
 };
 
 const ALIYUN_API_KEY = process.env.ALIYUN_API_KEY;
-const TEST_VIDEO = '/mnt/d/work/AI_Terminal/2025-04-18 16.11.02-视频-科言说科研-美国人把英伟达逼上绝路，黄仁勋却...CEO黄仁勋 #中美科技 #科言说科研.mp4';
+const TEST_VIDEO = process.argv[2] || '/mnt/d/work/AI_Terminal/（新版本）《你，静不下来》（上集）沐尔、赵守镇.mp3';
 
 // 颜色输出
 const colors = {
@@ -97,7 +97,8 @@ async function uploadToOSS(filePath) {
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const ext = path.extname(fileName);
-    const ossPath = `transcription/video/${timestamp}-${randomStr}${ext}`;
+    const isAudio = ['.mp3', '.wav', '.m4a', '.aac', '.opus', '.flac', '.ogg', '.amr'].includes(ext.toLowerCase());
+    const ossPath = `transcription/${isAudio ? 'audio' : 'video'}/${timestamp}-${randomStr}${ext}`;
     
     log(`OSS路径: ${ossPath}`, 'cyan');
     
@@ -271,9 +272,15 @@ async function generateTimestampedMarkdown(transcriptionResult, videoPath) {
   
   try {
     let sentences = [];
+    let fullText = '';
     
     // 尝试从不同的位置提取转录结果
-    if (transcriptionResult.transcription) {
+    if (transcriptionResult.transcripts && transcriptionResult.transcripts[0]) {
+      // 新格式：transcripts数组
+      const transcript = transcriptionResult.transcripts[0];
+      fullText = transcript.text || '';
+      sentences = transcript.sentences || [];
+    } else if (transcriptionResult.transcription) {
       // 直接的转录结果
       sentences = transcriptionResult.transcription;
     } else if (transcriptionResult.output?.transcription) {
@@ -322,7 +329,18 @@ async function generateTimestampedMarkdown(transcriptionResult, videoPath) {
     // 添加完整文本
     mdContent += `---\n\n`;
     mdContent += `## 完整文本（无时间戳）\n\n`;
-    const fullText = sentences.map(s => s.text || s.transcript || '').join(' ');
+    // 如果已经有完整文本，直接使用；否则从句子拼接
+    if (!fullText) {
+      fullText = sentences.map(s => {
+        let text = s.text || s.transcript || '';
+        // 清理文本中的标签
+        text = text.replace(/<\|[^>]*\|>/g, '');
+        return text.trim();
+      }).filter(t => t).join(' ');
+    } else {
+      // 清理fullText中的标签
+      fullText = fullText.replace(/<\|[^>]*\|>/g, '');
+    }
     mdContent += `${fullText}\n\n`;
     
     // 添加统计信息

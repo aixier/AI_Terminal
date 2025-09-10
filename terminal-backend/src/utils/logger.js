@@ -17,14 +17,14 @@ const logger = winston.createLogger({
   ]
 })
 
-// 在非生产环境添加控制台输出
-if (config.nodeEnv !== 'production') {
+// 添加控制台输出（包括生产环境）
+// if (config.nodeEnv !== 'production') {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize(),
       winston.format.simple()
     )
   }))
-}
+// }
 
 export default logger

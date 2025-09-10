@@ -34,6 +34,8 @@ export class OSSUploader {
       originalHtml: null,
       withBase64: null,
       metadata: null,
+      contentJson: null,  // 新增：支持content.json或其他JSON文件
+      otherFiles: [],     // 新增：其他文件列表
       success: false,
       error: null,
       uploadedFiles: []
@@ -50,19 +52,23 @@ export class OSSUploader {
         // 跳过目录
         if (stats.isDirectory()) continue
 
-        // 确定文件类型和OSS键名
-        const ossKey = `pod2post/${username}/${folderName}/${fileName}`
+        // 对中文文件名进行URL编码，避免OSS header错误
+        const encodedFileName = encodeURIComponent(fileName)
+        // OSS键名使用编码后的文件名
+        const ossKey = `pod2post/${username}/${folderName}/${encodedFileName}`
         const mimeType = this.getMimeType(fileName)
 
         console.log(`[OSSUploader] 正在上传: ${fileName} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`)
 
         try {
-          // 上传到OSS
+          // 上传到OSS - 修复中文文件名问题
+          // Content-Disposition使用RFC 5987编码格式处理中文
           const uploadResult = await this.ossService.client.uploadFile(filePath, ossKey, {
             headers: {
               'Content-Type': mimeType,
               'Cache-Control': 'public, max-age=31536000',
-              'Content-Disposition': `attachment; filename="${fileName}"`
+              // 使用filename*参数支持中文，同时提供ASCII fallback
+              'Content-Disposition': `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
             }
           })
 
@@ -80,7 +86,7 @@ export class OSSUploader {
 
             uploadResults.uploadedFiles.push(fileResult)
 
-            // 分类保存结果
+            // 分类保存结果 - 扩展支持所有文件类型
             // 原始HTML：不包含base64且是HTML文件
             if (fileName.endsWith('.html') && !fileName.includes('base64') && !fileName.includes('response')) {
               uploadResults.originalHtml = fileResult
@@ -88,6 +94,13 @@ export class OSSUploader {
               uploadResults.withBase64 = fileResult
             } else if (fileName.includes('meta') && fileName.endsWith('.json')) {
               uploadResults.metadata = fileResult
+            } else if (fileName.endsWith('.json') && !fileName.includes('meta')) {
+              // 支持content.json、社媒文案.json等其他JSON文件
+              uploadResults.contentJson = fileResult
+              uploadResults.otherFiles.push(fileResult)
+            } else {
+              // 其他所有文件也都上传
+              uploadResults.otherFiles.push(fileResult)
             }
 
             console.log(`[OSSUploader] ✅ ${fileName} 上传成功，OSS URL: ${signedUrlResult.url.substring(0, 80)}...`)

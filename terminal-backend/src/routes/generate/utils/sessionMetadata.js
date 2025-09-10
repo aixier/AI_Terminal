@@ -290,12 +290,22 @@ export class SessionMetadata {
       urls: {
         originalHtml: ossResults.originalHtml?.ossUrl || null,
         withBase64: ossResults.withBase64?.ossUrl || null,
-        metadata: ossResults.metadata?.ossUrl || null
+        metadata: ossResults.metadata?.ossUrl || null,
+        contentJson: ossResults.contentJson?.ossUrl || null,  // 新增：content.json的URL
+        otherFiles: ossResults.otherFiles?.map(f => ({
+          fileName: f.fileName,
+          ossUrl: f.ossUrl
+        })) || []  // 新增：其他文件的URL列表
       },
       fileSizes: {
         originalHtml: ossResults.originalHtml?.fileSize || null,
         withBase64: ossResults.withBase64?.fileSize || null,
-        metadata: ossResults.metadata?.fileSize || null
+        metadata: ossResults.metadata?.fileSize || null,
+        contentJson: ossResults.contentJson?.fileSize || null,  // 新增：content.json的大小
+        otherFiles: ossResults.otherFiles?.map(f => ({
+          fileName: f.fileName,
+          fileSize: f.fileSize
+        })) || []  // 新增：其他文件的大小列表
       }
     }
     
@@ -303,7 +313,9 @@ export class SessionMetadata {
       success: ossResults.success,
       filesCount: ossResults.uploadedFiles?.length || 0,
       hasBase64Url: !!ossResults.withBase64?.ossUrl,
-      hasOriginalUrl: !!ossResults.originalHtml?.ossUrl
+      hasOriginalUrl: !!ossResults.originalHtml?.ossUrl,
+      hasContentJson: !!ossResults.contentJson?.ossUrl,
+      otherFilesCount: ossResults.otherFiles?.length || 0
     })
   }
 

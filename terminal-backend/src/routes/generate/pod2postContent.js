@@ -135,9 +135,13 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
           originalHtmlOssUrl: metadataContent.custom.ossUpload.urls?.originalHtml,
           base64HtmlOssUrl: metadataContent.custom.ossUpload.urls?.withBase64,
           metadataOssUrl: metadataContent.custom.ossUpload.urls?.metadata,
+          contentJsonOssUrl: metadataContent.custom.ossUpload.urls?.contentJson,  // 新增
+          otherFilesOssUrls: metadataContent.custom.ossUpload.urls?.otherFiles || [],  // 新增
           originalHtmlSize: metadataContent.custom.ossUpload.fileSizes?.originalHtml,
           base64HtmlSize: metadataContent.custom.ossUpload.fileSizes?.withBase64,
           metadataSize: metadataContent.custom.ossUpload.fileSizes?.metadata,
+          contentJsonSize: metadataContent.custom.ossUpload.fileSizes?.contentJson,  // 新增
+          otherFilesSizes: metadataContent.custom.ossUpload.fileSizes?.otherFiles || [],  // 新增
           ossUploadSuccess: metadataContent.custom.ossUpload.success,
           ossUploadedAt: metadataContent.custom.ossUpload.uploadedAt
         } : {}),

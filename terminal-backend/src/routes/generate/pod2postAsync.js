@@ -384,6 +384,19 @@ async function processInBackground(
     // =============== 阶段3：OSS自动上传 ===============
     console.log('[Pod2PostAsync Background] Phase 3: Auto uploading to OSS')
     try {
+      // 智能检测关键文件是否生成完成
+      console.log('[Pod2PostAsync Background] Detecting required files before OSS upload...')
+      const requiredFilesReady = await waitForRequiredFiles(userCardPath, {
+        base64HtmlFile: secondResult.fileName,  // 等待base64版本的HTML
+        checkInterval: 2000   // 每2秒检查一次
+      })
+      
+      if (!requiredFilesReady.success) {
+        console.warn(`[Pod2PostAsync Background] Some files not ready: ${requiredFilesReady.message}`)
+      } else {
+        console.log(`[Pod2PostAsync Background] All required files ready in ${requiredFilesReady.waitTime}ms`)
+      }
+      
       // 标记OSS上传开始
       if (!metadata.data.custom.phases) {
         metadata.data.custom.phases = {}
@@ -730,6 +743,116 @@ async function cleanUserTemplateResources(username, taskId = null) {
     } catch (error) {
       console.warn(`[Pod2PostAsync] Failed to clean directory ${dirPath}:`, error.message)
     }
+  }
+}
+
+/**
+ * 智能等待必需文件生成完成
+ * 检测content.json和base64版本的HTML文件
+ * @param {string} folderPath - 文件夹路径
+ * @param {Object} options - 配置选项
+ * @returns {Promise<Object>} 检测结果
+ */
+async function waitForRequiredFiles(folderPath, options = {}) {
+  const {
+    base64HtmlFile,  // base64版本的HTML文件名
+    checkInterval = 2000,  // 检查间隔（毫秒）
+    maxChecks = 30  // 最多检查30次（1分钟）
+  } = options
+  
+  const startTime = Date.now()
+  let checkCount = 0
+  let contentJsonDetected = false
+  let base64HtmlStable = false
+  let lastBase64Size = 0
+  let stableCount = 0
+  
+  console.log(`[WaitForFiles] Starting detection for required files`)
+  console.log(`[WaitForFiles] Base64 HTML: ${base64HtmlFile}`)
+  console.log(`[WaitForFiles] Looking for: content.json or similar`)
+  
+  while (checkCount < maxChecks) {
+    checkCount++
+    
+    try {
+      const files = await fs.readdir(folderPath)
+      
+      // 1. 检测content相关的JSON文件
+      if (!contentJsonDetected) {
+        const contentFiles = files.filter(f => 
+          f.toLowerCase().includes('content') && 
+          f.endsWith('.json') && 
+          !f.includes('meta')
+        )
+        
+        if (contentFiles.length > 0) {
+          contentJsonDetected = true
+          console.log(`[WaitForFiles] ✓ Content JSON detected: ${contentFiles.join(', ')}`)
+        }
+      }
+      
+      // 2. 检测base64 HTML文件是否稳定（大小不再变化）
+      if (base64HtmlFile && files.includes(base64HtmlFile)) {
+        const filePath = path.join(folderPath, base64HtmlFile)
+        try {
+          const stats = await fs.stat(filePath)
+          const currentSize = stats.size
+          
+          if (currentSize === lastBase64Size && currentSize > 0) {
+            stableCount++
+            if (stableCount >= 2) {  // 连续2次检查大小不变，认为文件稳定
+              base64HtmlStable = true
+              console.log(`[WaitForFiles] ✓ Base64 HTML stable: ${base64HtmlFile} (${currentSize} bytes)`)
+            }
+          } else {
+            stableCount = 0  // 大小变化，重置计数
+            lastBase64Size = currentSize
+          }
+        } catch (error) {
+          console.log(`[WaitForFiles] Cannot read ${base64HtmlFile}: ${error.message}`)
+        }
+      }
+      
+      // 3. 如果base64文件稳定且content.json已检测到（或已等待足够时间），返回成功
+      if (base64HtmlStable) {
+        const waitTime = Date.now() - startTime
+        
+        // 如果content.json还未检测到，再额外等待5秒
+        if (!contentJsonDetected && checkCount < 5) {
+          console.log(`[WaitForFiles] Base64 ready, waiting for content.json (check ${checkCount}/5)...`)
+          await new Promise(resolve => setTimeout(resolve, checkInterval))
+          continue
+        }
+        
+        return {
+          success: true,
+          contentJsonDetected,
+          base64HtmlStable,
+          waitTime,
+          message: contentJsonDetected 
+            ? 'All files ready' 
+            : 'Base64 ready, content.json not detected'
+        }
+      }
+      
+    } catch (error) {
+      console.error(`[WaitForFiles] Check ${checkCount} error:`, error.message)
+    }
+    
+    // 等待下一次检查
+    if (checkCount < maxChecks) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval))
+    }
+  }
+  
+  // 超过最大检查次数
+  const waitTime = Date.now() - startTime
+  return {
+    success: false,
+    contentJsonDetected,
+    base64HtmlStable,
+    waitTime,
+    message: `Timeout after ${checkCount} checks (${waitTime}ms)`
   }
 }
 

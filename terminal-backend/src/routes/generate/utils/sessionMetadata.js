@@ -414,8 +414,8 @@ export class SessionMetadata {
     // 创建新实例并填充数据
     const metadata = new SessionMetadata(
       metaData.sessionInfo?.userId || 'unknown',
-      metaData.sessionInfo?.topic || 'unknown',
-      metaData.sessionInfo?.templateName || 'unknown'
+      metaData.sessionInfo?.topic || metaData.request?.topic || 'unknown',
+      metaData.sessionInfo?.templateName || metaData.request?.templateName || 'unknown'
     )
     
     // 恢复所有数据
@@ -423,7 +423,43 @@ export class SessionMetadata {
     metadata.sessionId = metaData.sessionInfo?.sessionId
     metadata.startTime = metaData.sessionInfo?.startTime
     metadata.endTime = metaData.sessionInfo?.endTime
-    metadata.status = metaData.sessionInfo?.status || 'unknown'
+    
+    // 智能推断状态
+    // 1. 优先使用 execution.finalStatus
+    // 2. 其次使用 sessionInfo.status
+    // 3. 最后根据文件内容推断
+    let inferredStatus = metaData.execution?.finalStatus || 
+                         metaData.sessionInfo?.status ||
+                         metaData.custom?.status
+    
+    // 如果还是没有状态，根据phases或文件推断
+    if (!inferredStatus || inferredStatus === 'unknown') {
+      const phases = metaData.custom?.phases || {}
+      
+      // 检查所有阶段是否完成
+      if (phases.base64Embedding === 'completed' && 
+          phases.firstGeneration === 'completed' && 
+          phases.promptProcessing === 'completed') {
+        inferredStatus = 'completed'
+      } else if (phases.promptProcessing || phases.firstGeneration || phases.base64Embedding) {
+        // 有任何阶段信息说明在处理中
+        inferredStatus = 'processing'
+      } else {
+        // 检查生成的文件
+        const generatedFiles = metaData.output?.generatedFiles || []
+        const customFiles = metaData.custom?.generatedFiles
+        
+        if (customFiles?.withBase64 || generatedFiles.some(f => f.fileName?.includes('base64'))) {
+          inferredStatus = 'completed'
+        } else if (generatedFiles.length > 0) {
+          inferredStatus = 'processing'
+        } else {
+          inferredStatus = 'unknown'
+        }
+      }
+    }
+    
+    metadata.status = inferredStatus
     
     return metadata
   }

@@ -140,6 +140,9 @@ router.post('/',
       }
     }
     
+    // 从query参数获取taskId
+    const taskId = req.query.taskId
+    
     res.json({
       code: 200,
       success: true,

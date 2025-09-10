@@ -39,16 +39,13 @@ class PromptProcessor {
       const fileName = match.slice(1, -1) // 去除方括号
       
       try {
-        // 如果有taskId且是资源目录，优先使用任务特定路径
+        // 如果有taskId且是资源目录，直接使用任务特定路径
+        // 不检查目录是否存在，因为目录会在资源上传时自动创建
         if (taskId && ['CDN', 'photos', 'resources'].includes(fileName)) {
           const taskPath = path.join(userTemplateDir, 'tasks', taskId, fileName)
-          const taskDirExists = await fs.access(taskPath).then(() => true).catch(() => false)
-          
-          if (taskDirExists) {
-            processed = processed.replace(match, taskPath)
-            console.log(`[PromptProcessor] Replaced [${fileName}] -> ${taskPath} (task-specific)`)
-            continue
-          }
+          processed = processed.replace(match, taskPath)
+          console.log(`[PromptProcessor] Replaced [${fileName}] -> ${taskPath} (task-specific)`)
+          continue
         }
         
         // 递归查找文件或目录

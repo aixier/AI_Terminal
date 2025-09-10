@@ -7,9 +7,17 @@ import { authenticateUserOrDefault } from '../../middleware/userAuth.js'
 const router = express.Router()
 
 // 获取用户CDN目录路径
-async function getUserCdnPath(username) {
+async function getUserCdnPath(username, taskId = null) {
   const userService = await import('../../services/userService.js')
-  return userService.default.getUserTemplatePath(username, 'pod2post/CDN')
+  const basePath = userService.default.getUserTemplatePath(username, 'pod2post')
+  
+  // 如果有taskId，使用任务特定目录
+  if (taskId && taskId.startsWith('pod2post_')) {
+    return path.join(basePath, 'tasks', taskId, 'CDN')
+  }
+  
+  // 默认路径
+  return path.join(basePath, 'CDN')
 }
 
 // 配置multer存储
@@ -21,7 +29,9 @@ const storage = multer.diskStorage({
         return cb(new Error('用户未认证'))
       }
       
-      const cdnPath = await getUserCdnPath(req.user.username)
+      // 从query参数获取taskId
+      const taskId = req.query.taskId
+      const cdnPath = await getUserCdnPath(req.user.username, taskId)
       await fs.mkdir(cdnPath, { recursive: true })
       cb(null, cdnPath)
     } catch (error) {
@@ -62,7 +72,10 @@ const upload = multer({
  * 支持单个或多个文件上传
  * Content-Type: multipart/form-data
  * 
- * 可选参数:
+ * Query参数:
+ * - taskId: 任务ID（可选，格式: pod2post_{timestamp}_{random}）
+ * 
+ * Body参数:
  * - token: 用户token（用于权限验证）
  * - clearBase64: 是否清理Base64 HTML文件（默认false）
  */
@@ -73,6 +86,7 @@ router.post('/',
     
   console.log(`[Pod2PostCDN] ==================== CDN UPLOAD REQUEST ====================`)
   console.log(`[Pod2PostCDN] User: ${req.user.username}`)
+  console.log(`[Pod2PostCDN] TaskId: ${req.query.taskId || 'none (using default)'}`)
   console.log(`[Pod2PostCDN] Files uploaded: ${req.files?.length || 0}`)
   console.log(`[Pod2PostCDN] Clear Base64: ${req.body.clearBase64 === 'true'}`)
   

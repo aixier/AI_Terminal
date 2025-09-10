@@ -12,8 +12,8 @@ import htmlToBase64Converter from '../../utils/htmlToBase64Converter.js'
 
 const router = express.Router()
 
-// 用户任务状态跟踪 - 防止并发执行
-const userTaskStatus = new Map()
+// 用户任务状态跟踪 - 支持多任务并发
+const userTaskStatus = new Map() // key: username, value: Set of taskIds
 
 /**
  * 获取用户的Pod2Post模板路径
@@ -68,6 +68,7 @@ async function validateTemplatePath(templatePath) {
  * {
  *   "prompt": "string",           // 必需，提示词内容
  *   "templateName": "string",     // 可选，默认 "pod2post-template" 
+ *   "taskId": "string",           // 可选，任务ID（格式: pod2post_{timestamp}_{random}）
  *   "token": "string"             // 可选，用户token
  * }
  */
@@ -76,11 +77,12 @@ router.post('/',
   ensureUserFolder,
   async (req, res) => {
     
-  const { prompt, templateName = 'pod2post-template', token } = req.body
+  const { prompt, templateName = 'pod2post-template', token, taskId: clientTaskId } = req.body
   
   console.log('[Pod2PostAsync] ==================== NEW REQUEST ====================')
   console.log('[Pod2PostAsync] User:', req.user.username)
   console.log('[Pod2PostAsync] Template:', templateName)
+  console.log('[Pod2PostAsync] Client TaskId:', clientTaskId || 'none (will generate new)')
   console.log('[Pod2PostAsync] Prompt length:', prompt?.length)
   
   try {
@@ -106,35 +108,60 @@ router.post('/',
       }
     }
     
-    // 检查用户是否已有正在执行的任务
-    if (userTaskStatus.has(targetUser.username)) {
-      const existingTask = userTaskStatus.get(targetUser.username)
-      console.log(`[Pod2PostAsync] User ${targetUser.username} already has running task: ${existingTask.taskId}`)
+    // 3. 处理任务ID
+    let taskId = clientTaskId
+    let folderName
+    
+    // 如果客户端提供了taskId，验证格式
+    if (taskId) {
+      if (!taskId.startsWith('pod2post_')) {
+        return res.status(400).json({
+          code: 400,
+          success: false,
+          message: 'Invalid taskId format. Expected format: pod2post_{timestamp}_{random}'
+        })
+      }
+      // 从taskId提取时间戳作为文件夹名
+      const parts = taskId.split('_')
+      folderName = `pod2post_${parts[1]}`
+      console.log(`[Pod2PostAsync] Using client-provided taskId: ${taskId}`)
+    } else {
+      // 生成新的taskId
+      const timestamp = Date.now()
+      taskId = `pod2post_${timestamp}_${Math.random().toString(36).substring(2, 9)}`
+      folderName = `pod2post_${timestamp}`
+      console.log(`[Pod2PostAsync] Generated new taskId: ${taskId}`)
+    }
+    
+    // 4. 更新用户任务跟踪（支持多任务）
+    if (!userTaskStatus.has(targetUser.username)) {
+      userTaskStatus.set(targetUser.username, new Set())
+    }
+    const userTasks = userTaskStatus.get(targetUser.username)
+    
+    // 可选：检查并发数量限制（软限制，可配置）
+    const MAX_CONCURRENT_TASKS = 5
+    if (userTasks.size >= MAX_CONCURRENT_TASKS) {
+      console.log(`[Pod2PostAsync] User ${targetUser.username} reached max concurrent tasks: ${userTasks.size}`)
       return res.status(429).json({
         code: 429,
         success: false,
-        message: '用户已有正在执行的Pod2Post任务，请等待当前任务完成后再试',
+        message: `已达到最大并发任务数限制（${MAX_CONCURRENT_TASKS}个），请等待部分任务完成后再试`,
         data: {
-          existingTaskId: existingTask.taskId,
-          startTime: existingTask.startTime
+          currentTasks: Array.from(userTasks),
+          maxConcurrent: MAX_CONCURRENT_TASKS
         }
       })
     }
     
-    // 3. 生成路径和任务ID
-    const timestamp = Date.now()
-    const taskId = `pod2post_${timestamp}_${Math.random().toString(36).substring(2, 9)}`
-    const folderName = `pod2post_${timestamp}`
+    userTasks.add(taskId)
+    console.log(`[Pod2PostAsync] User ${targetUser.username} now has ${userTasks.size} active task(s)`)
     
     // 使用目标用户生成路径
     const userCardPath = userService.getUserCardPath(targetUser.username, folderName)
     const templatePath = getUserPod2PostTemplatePath(targetUser.username)
     
-    // 标记任务开始
-    userTaskStatus.set(targetUser.username, {
-      taskId: taskId,
-      startTime: new Date().toISOString()
-    })
+    // 任务已经在前面添加到Set中了，这里删除旧的Map设置逻辑
     
     console.log('[Pod2PostAsync] Task ID:', taskId)
     console.log('[Pod2PostAsync] Target user:', targetUser.username)
@@ -144,17 +171,19 @@ router.post('/',
     // 4. 验证模板路径存在
     await validateTemplatePath(templatePath)
     
-    // 5. 立即处理Prompt路径替换
+    // 5. 立即处理Prompt路径替换（传入taskId）
     console.log('[Pod2PostAsync] ==================== PROMPT PROCESSING ====================')
     console.log('[Pod2PostAsync] Original prompt:')
     console.log('[Pod2PostAsync]', prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''))
     console.log('[Pod2PostAsync] Template path:', templatePath)
     console.log('[Pod2PostAsync] User card path:', userCardPath)
+    console.log('[Pod2PostAsync] Task ID for prompt processing:', taskId)
     
     const processedPrompt = await promptProcessor.processPrompt(
       prompt,
       templatePath,    // Pod2Post固定模板路径
-      userCardPath     // 用户输出路径
+      userCardPath,    // 用户输出路径
+      taskId          // 传入taskId以使用任务特定资源路径
     )
     
     console.log('[Pod2PostAsync] ==================== PROCESSED PROMPT ====================')
@@ -230,8 +259,14 @@ router.post('/',
     
     // 请求失败时也要清理用户任务状态
     if (targetUser && userTaskStatus.has(targetUser.username)) {
-      userTaskStatus.delete(targetUser.username)
-      console.log(`[Pod2PostAsync] Request failed, status cleared for user: ${targetUser.username}`)
+      const userTasks = userTaskStatus.get(targetUser.username)
+      if (userTasks && taskId) {
+        userTasks.delete(taskId)
+        if (userTasks.size === 0) {
+          userTaskStatus.delete(targetUser.username)
+        }
+        console.log(`[Pod2PostAsync] Request failed, removed taskId ${taskId} for user: ${targetUser.username}`)
+      }
     }
     
     return res.status(500).json({
@@ -342,13 +377,13 @@ async function processInBackground(
     
     await metadata.save(userCardPath)
     
-    // =============== 阶段3：清理模板资源 ===============
-    console.log('[Pod2PostAsync Background] Phase 3: Cleaning template resources')
+    // =============== 阶段3：清理任务资源 ===============
+    console.log('[Pod2PostAsync Background] Phase 3: Cleaning task resources')
     try {
-      await cleanUserTemplateResources(username)
-      console.log('[Pod2PostAsync Background] Template resources cleaned successfully')
+      await cleanUserTemplateResources(username, taskId)
+      console.log('[Pod2PostAsync Background] Task resources cleaned successfully')
     } catch (error) {
-      console.warn('[Pod2PostAsync Background] Failed to clean template resources:', error.message)
+      console.warn('[Pod2PostAsync Background] Failed to clean task resources:', error.message)
     }
     
     // =============== 阶段4：任务完成 ===============
@@ -356,9 +391,17 @@ async function processInBackground(
     metadata.addLog('info', '任务处理完成')
     metadata.data.custom.endTime = new Date().toISOString()
     
-    // 清理用户任务状态
-    userTaskStatus.delete(username)
-    console.log(`[Pod2PostAsync Background] Task completed, status cleared for user: ${username}`)
+    // 清理用户任务状态（从Set中删除taskId）
+    if (userTaskStatus.has(username)) {
+      const userTasks = userTaskStatus.get(username)
+      if (userTasks) {
+        userTasks.delete(taskId)
+        if (userTasks.size === 0) {
+          userTaskStatus.delete(username)
+        }
+        console.log(`[Pod2PostAsync Background] Task ${taskId} completed, user ${username} has ${userTasks.size} remaining task(s)`)
+      }
+    }
     metadata.data.custom.generatedFiles = {
       original: firstResult.fileName,
       withBase64: secondResult.fileName
@@ -382,9 +425,17 @@ async function processInBackground(
   } catch (error) {
     console.error(`[Pod2PostAsync Background] Task ${taskId} failed:`, error)
     
-    // 错误时清理用户任务状态
-    userTaskStatus.delete(username)
-    console.log(`[Pod2PostAsync Background] Task failed, status cleared for user: ${username}`)
+    // 错误时清理用户任务状态（从Set中删除taskId）
+    if (userTaskStatus.has(username)) {
+      const userTasks = userTaskStatus.get(username)
+      if (userTasks) {
+        userTasks.delete(taskId)
+        if (userTasks.size === 0) {
+          userTaskStatus.delete(username)
+        }
+        console.log(`[Pod2PostAsync Background] Task ${taskId} failed, user ${username} has ${userTasks.size} remaining task(s)`)
+      }
+    }
     
     // 错误时也要清理共享session
     if (apiId) {
@@ -571,11 +622,32 @@ async function generateWithAI(prompt, userCardPath, username, folderName, option
  * 清理用户模板资源
  * Base64生成完成后清理上传的资源文件，确保下次生成不受影响
  * @param {string} username - 用户名
+ * @param {string} taskId - 任务ID（可选）
  */
-async function cleanUserTemplateResources(username) {
+async function cleanUserTemplateResources(username, taskId = null) {
   const userService = await import('../../services/userService.js')
   const templatePath = userService.default.getUserTemplatePath(username, 'pod2post')
   
+  // 如果有taskId，清理任务特定目录
+  if (taskId && taskId.startsWith('pod2post_')) {
+    const taskPath = path.join(templatePath, 'tasks', taskId)
+    
+    try {
+      // 检查任务目录是否存在
+      const taskDirExists = await fs.access(taskPath).then(() => true).catch(() => false)
+      if (taskDirExists) {
+        // 删除整个任务目录及其内容
+        await fs.rm(taskPath, { recursive: true, force: true })
+        console.log(`[Pod2PostAsync] Cleaned task directory: ${taskPath}`)
+      }
+    } catch (error) {
+      console.warn(`[Pod2PostAsync] Failed to clean task directory ${taskPath}:`, error.message)
+    }
+    
+    return // 任务特定清理完成，直接返回
+  }
+  
+  // 默认清理逻辑（无taskId时）
   const dirsToClean = ['CDN', 'photos', 'resources']
   
   for (const dir of dirsToClean) {

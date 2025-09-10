@@ -14,13 +14,15 @@ class PromptProcessor {
    * @param {string} prompt - 原始prompt
    * @param {string} userTemplateDir - 用户模板目录
    * @param {string} cardPath - 用户card路径
+   * @param {string} taskId - 任务ID（可选）
    * @returns {Promise<string>} 处理后的prompt
    */
-  async processPrompt(prompt, userTemplateDir, cardPath) {
+  async processPrompt(prompt, userTemplateDir, cardPath, taskId = null) {
     console.log('[PromptProcessor] ==========================================')
     console.log('[PromptProcessor] Processing prompt paths')
     console.log('[PromptProcessor] User template dir:', userTemplateDir)
     console.log('[PromptProcessor] Card path:', cardPath)
+    console.log('[PromptProcessor] Task ID:', taskId || 'none')
     console.log('[PromptProcessor] Original prompt:')
     console.log('[PromptProcessor]  ', prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''))
     
@@ -37,6 +39,18 @@ class PromptProcessor {
       const fileName = match.slice(1, -1) // 去除方括号
       
       try {
+        // 如果有taskId且是资源目录，优先使用任务特定路径
+        if (taskId && ['CDN', 'photos', 'resources'].includes(fileName)) {
+          const taskPath = path.join(userTemplateDir, 'tasks', taskId, fileName)
+          const taskDirExists = await fs.access(taskPath).then(() => true).catch(() => false)
+          
+          if (taskDirExists) {
+            processed = processed.replace(match, taskPath)
+            console.log(`[PromptProcessor] Replaced [${fileName}] -> ${taskPath} (task-specific)`)
+            continue
+          }
+        }
+        
         // 递归查找文件或目录
         const fullPath = await this.findPath(userTemplateDir, fileName)
         

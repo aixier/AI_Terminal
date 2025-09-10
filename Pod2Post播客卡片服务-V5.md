@@ -11,7 +11,8 @@ Pod2Post播客卡片服务是一个专门用于将播客内容转化为社媒平
 - ✅ **Base64嵌入**: 自动将图片转换为Base64嵌入HTML
 - ✅ **OSS大文件支持**: 超过5MB的文件自动上传到阿里云OSS，提供签名URL下载
 - ✅ **自动清理**: 生成完成后自动清理临时资源
-- ✅ **并发控制**: 防止同用户多任务冲突
+- 🆕 **多任务并发**: 支持同用户多任务并发处理（最多5个）
+- 🆕 **任务级资源隔离**: 每个任务拥有独立的资源目录，避免冲突
 
 ## 🔗 API端点列表
 
@@ -53,14 +54,16 @@ GET /api/generate/pod2post/content/pod2post_xxx?token=lijing-token-2025-pod2post
 ### 2. 基础工作流程
 
 ```javascript
-// 完整的Pod2Post生成流程
+// 完整的Pod2Post生成流程（支持并发）
 const workflow = {
-  "1": "上传照片资源 → /api/generate/pod2post/pic",
-  "2": "上传CDN素材 → /api/generate/pod2post/cdn", 
-  "3": "提交生成任务 → /api/generate/pod2post/async",
-  "4": "轮询任务状态 → /api/generate/pod2post/status/:taskId",
-  "5": "获取生成结果 → /api/generate/pod2post/content/:folderName",
-  "6": "下载内容 → Base64嵌入HTML + JSON文案 (大文件通过OSS URL下载)"
+  "1": "生成taskId → 客户端生成 pod2post_{timestamp}_{random}",
+  "2": "上传照片资源 → /api/generate/pod2post/pic?taskId={taskId}",
+  "3": "上传CDN素材 → /api/generate/pod2post/cdn?taskId={taskId}", 
+  "4": "上传参考文档 → /api/generate/pod2post/resources?taskId={taskId}",
+  "5": "提交生成任务 → /api/generate/pod2post/async (包含taskId)",
+  "6": "轮询任务状态 → /api/generate/pod2post/status/:taskId",
+  "7": "获取生成结果 → /api/generate/pod2post/content/:folderName",
+  "8": "下载内容 → Base64嵌入HTML + JSON文案 (大文件通过OSS URL下载)"
 }
 ```
 
@@ -702,7 +705,7 @@ formData.append('clearBase64', 'true')
 2. **资源清理**: 建议定期使用 `clearBase64=true` 清理历史文件
 3. **文件命名**: 支持中文文件名，系统会自动处理编码问题
 4. **任务状态**: 请妥善保存taskId，用于查询任务状态和结果
-5. **并发限制**: 同一用户同时只能执行一个Pod2Post任务
+5. **并发支持**: 同一用户支持最多5个Pod2Post任务并发执行
 6. **OSS URL**: 大文件的OSS URL有效期为1年，请及时下载
 7. **网络优化**: 建议使用流式下载处理大文件
 

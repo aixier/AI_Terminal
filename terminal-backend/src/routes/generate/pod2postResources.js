@@ -6,19 +6,32 @@ import { authenticateUserOrDefault } from '../../middleware/userAuth.js'
 
 const router = express.Router()
 
-// 获取资源目录路径
-function getResourcesPath() {
-  const isDocker = process.env.NODE_ENV === 'production' || process.env.DATA_PATH
-  return isDocker 
-    ? '/app/data/public_template/pod2post/resources'
-    : path.join(process.cwd(), 'data', 'public_template', 'pod2post', 'resources')
+// 获取用户资源目录路径
+async function getUserResourcesPath(username, taskId = null) {
+  const userService = await import('../../services/userService.js')
+  const basePath = userService.default.getUserTemplatePath(username, 'pod2post')
+  
+  // 如果有taskId，使用任务特定目录
+  if (taskId && taskId.startsWith('pod2post_')) {
+    return path.join(basePath, 'tasks', taskId, 'resources')
+  }
+  
+  // 默认路径
+  return path.join(basePath, 'resources')
 }
 
 // 配置multer存储
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const resourcesPath = getResourcesPath()
     try {
+      // 从req对象获取用户信息
+      if (!req.user) {
+        return cb(new Error('用户未认证'))
+      }
+      
+      // 从query参数获取taskId
+      const taskId = req.query.taskId
+      const resourcesPath = await getUserResourcesPath(req.user.username, taskId)
       await fs.mkdir(resourcesPath, { recursive: true })
       cb(null, resourcesPath)
     } catch (error) {
@@ -26,11 +39,9 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    // 保持原始文件名，如果重复则添加时间戳
-    const ext = path.extname(file.originalname)
-    const name = path.basename(file.originalname, ext)
-    const timestamp = Date.now()
-    cb(null, `${name}_${timestamp}${ext}`)
+    // 保持原始文件名，确保中文文件名正确解码
+    const filename = Buffer.from(file.originalname, 'latin1').toString('utf8')
+    cb(null, filename)
   }
 })
 
@@ -80,7 +91,10 @@ const upload = multer({
  * 支持单个或多个文件上传
  * Content-Type: multipart/form-data
  * 
- * 可选参数:
+ * Query参数:
+ * - taskId: 任务ID（可选，格式: pod2post_{timestamp}_{random}）
+ * 
+ * Body参数:
  * - token: 用户token（用于权限验证）
  * - clearBase64: 是否清理Base64 HTML文件（默认false）
  */
@@ -91,6 +105,7 @@ router.post('/',
     
   console.log(`[Pod2PostResources] ==================== RESOURCES UPLOAD REQUEST ====================`)
   console.log(`[Pod2PostResources] User: ${req.user.username}`)
+  console.log(`[Pod2PostResources] TaskId: ${req.query.taskId || 'none (using default)'}`)
   console.log(`[Pod2PostResources] Files uploaded: ${req.files?.length || 0}`)
   console.log(`[Pod2PostResources] Clear Base64: ${req.body.clearBase64 === 'true'}`)
   

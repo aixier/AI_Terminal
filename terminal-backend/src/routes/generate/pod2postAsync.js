@@ -160,6 +160,10 @@ router.post('/',
     const userCardPath = userService.getUserCardPath(targetUser.username, folderName)
     const templatePath = getUserPod2PostTemplatePath(targetUser.username)
     
+    // 确保输出目录存在
+    await fs.mkdir(userCardPath, { recursive: true })
+    console.log('[Pod2PostAsync] Created output directory:', userCardPath)
+    
     // 任务已经在前面添加到Set中了，这里删除旧的Map设置逻辑
     
     console.log('[Pod2PostAsync] Task ID:', taskId)

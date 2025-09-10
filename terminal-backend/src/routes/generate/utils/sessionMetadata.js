@@ -389,6 +389,44 @@ export class SessionMetadata {
       warnings
     }
   }
+
+  /**
+   * 从文件加载元数据
+   * @param {string} outputDir - 输出目录路径
+   * @returns {Promise<SessionMetadata>} 加载的元数据实例
+   */
+  static async load(outputDir) {
+    const fs = await import('fs/promises')
+    const path = await import('path')
+    
+    // 查找元数据文件
+    const files = await fs.readdir(outputDir)
+    const metaFile = files.find(f => f.includes('_meta.json'))
+    
+    if (!metaFile) {
+      throw new Error('Metadata file not found')
+    }
+    
+    const metaPath = path.join(outputDir, metaFile)
+    const metaContent = await fs.readFile(metaPath, 'utf-8')
+    const metaData = JSON.parse(metaContent)
+    
+    // 创建新实例并填充数据
+    const metadata = new SessionMetadata(
+      metaData.sessionInfo?.userId || 'unknown',
+      metaData.sessionInfo?.topic || 'unknown',
+      metaData.sessionInfo?.templateName || 'unknown'
+    )
+    
+    // 恢复所有数据
+    metadata.data = metaData
+    metadata.sessionId = metaData.sessionInfo?.sessionId
+    metadata.startTime = metaData.sessionInfo?.startTime
+    metadata.endTime = metaData.sessionInfo?.endTime
+    metadata.status = metaData.sessionInfo?.status || 'unknown'
+    
+    return metadata
+  }
 }
 
 export default SessionMetadata

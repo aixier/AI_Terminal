@@ -37,7 +37,7 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
 
     // 获取用户信息
     const user = token ? await userService.findUserByToken(token) : null
-    const username = user?.username || 'public'
+    const username = user?.username || 'default'  // 无token时使用default用户
 
     console.log(`[Pod2PostContent] 用户: ${username}`)
 

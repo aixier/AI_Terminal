@@ -147,7 +147,7 @@ router.post('/',
       data: {
         uploadedFiles,
         total: uploadedFiles.length,
-        resourcesPath: getResourcesPath()
+        resourcesPath: await getUserResourcesPath(req.user.username, taskId)
       }
     })
     
@@ -170,7 +170,8 @@ router.get('/',
   async (req, res) => {
     
   try {
-    const resourcesPath = getResourcesPath()
+    const taskId = req.query.taskId
+    const resourcesPath = await getUserResourcesPath(req.user.username, taskId)
     
     // 确保目录存在
     try {
@@ -235,7 +236,8 @@ router.delete('/:filename',
   const { filename } = req.params
   
   try {
-    const resourcesPath = getResourcesPath()
+    const taskId = req.query.taskId
+    const resourcesPath = await getUserResourcesPath(req.user.username, taskId)
     const filePath = path.join(resourcesPath, filename)
     
     // 检查文件是否存在
@@ -282,7 +284,8 @@ router.get('/content/:filename',
   const { filename } = req.params
   
   try {
-    const resourcesPath = getResourcesPath()
+    const taskId = req.query.taskId
+    const resourcesPath = await getUserResourcesPath(req.user.username, taskId)
     const filePath = path.join(resourcesPath, filename)
     
     // 检查文件是否存在

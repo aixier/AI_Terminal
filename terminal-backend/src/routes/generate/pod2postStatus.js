@@ -93,18 +93,9 @@ router.get('/:taskId',
       }
     }
     
-    // 3. 从taskId提取时间戳来查找对应的文件夹
-    const timestampMatch = taskId.match(/pod2post_(\d+)_/)
-    if (!timestampMatch) {
-      return res.status(400).json({
-        code: 400,
-        success: false,
-        message: '无法从任务ID中提取时间戳'
-      })
-    }
-    
-    const timestamp = timestampMatch[1]
-    const expectedFolderName = `pod2post_${timestamp}`
+    // 3. 使用完整的taskId作为文件夹名
+    // 新的命名规则：文件夹名就是完整的taskId
+    const expectedFolderName = taskId
     
     console.log(`[Pod2PostStatus] Expected folder name: ${expectedFolderName}`)
     

@@ -387,14 +387,28 @@ async function processInBackground(
       // 智能检测关键文件是否生成完成
       console.log('[Pod2PostAsync Background] Detecting required files before OSS upload...')
       const requiredFilesReady = await waitForRequiredFiles(userCardPath, {
-        base64HtmlFile: secondResult.fileName,  // 等待base64版本的HTML
         checkInterval: 2000   // 每2秒检查一次
       })
       
       if (!requiredFilesReady.success) {
-        console.warn(`[Pod2PostAsync Background] Some files not ready: ${requiredFilesReady.message}`)
+        console.warn(`[Pod2PostAsync Background] ⚠️ Required files check failed: ${requiredFilesReady.message}`)
+        
+        // 记录缺失的文件到metadata
+        metadata.addLog('warn', 'Required files not fully ready', {
+          contentJsonDetected: requiredFilesReady.contentJsonDetected,
+          base64HtmlStable: requiredFilesReady.base64HtmlStable,
+          waitTime: requiredFilesReady.waitTime,
+          message: requiredFilesReady.message
+        })
+        
+        // 即使检测失败也继续上传，但记录警告
+        if (!requiredFilesReady.contentJsonDetected) {
+          console.error('[Pod2PostAsync Background] ❌ CRITICAL: Content JSON file not detected! This is a required file.')
+        }
       } else {
-        console.log(`[Pod2PostAsync Background] All required files ready in ${requiredFilesReady.waitTime}ms`)
+        console.log(`[Pod2PostAsync Background] ✅ All required files ready in ${requiredFilesReady.waitTime}ms`)
+        console.log(`[Pod2PostAsync Background] - Base64 HTML: ${requiredFilesReady.base64HtmlStable ? '✓' : '✗'}`)
+        console.log(`[Pod2PostAsync Background] - Content JSON: ${requiredFilesReady.contentJsonDetected ? '✓' : '✗'}`)
       }
       
       // 标记OSS上传开始
@@ -748,14 +762,13 @@ async function cleanUserTemplateResources(username, taskId = null) {
 
 /**
  * 智能等待必需文件生成完成
- * 检测content.json和base64版本的HTML文件
+ * 检测 *content.json 和 *base64.html 文件
  * @param {string} folderPath - 文件夹路径
  * @param {Object} options - 配置选项
  * @returns {Promise<Object>} 检测结果
  */
 async function waitForRequiredFiles(folderPath, options = {}) {
   const {
-    base64HtmlFile,  // base64版本的HTML文件名
     checkInterval = 2000,  // 检查间隔（毫秒）
     maxChecks = 30  // 最多检查30次（1分钟）
   } = options
@@ -768,8 +781,7 @@ async function waitForRequiredFiles(folderPath, options = {}) {
   let stableCount = 0
   
   console.log(`[WaitForFiles] Starting detection for required files`)
-  console.log(`[WaitForFiles] Base64 HTML: ${base64HtmlFile}`)
-  console.log(`[WaitForFiles] Looking for: content.json or similar`)
+  console.log(`[WaitForFiles] Looking for: *content.json and *base64.html`)
   
   while (checkCount < maxChecks) {
     checkCount++
@@ -777,12 +789,10 @@ async function waitForRequiredFiles(folderPath, options = {}) {
     try {
       const files = await fs.readdir(folderPath)
       
-      // 1. 检测content相关的JSON文件
+      // 1. 检测 *content.json 文件（简化匹配）
       if (!contentJsonDetected) {
         const contentFiles = files.filter(f => 
-          f.toLowerCase().includes('content') && 
-          f.endsWith('.json') && 
-          !f.includes('meta')
+          f.toLowerCase().endsWith('content.json')  // 任何以content.json结尾的文件
         )
         
         if (contentFiles.length > 0) {
@@ -791,47 +801,57 @@ async function waitForRequiredFiles(folderPath, options = {}) {
         }
       }
       
-      // 2. 检测base64 HTML文件是否稳定（大小不再变化）
-      if (base64HtmlFile && files.includes(base64HtmlFile)) {
-        const filePath = path.join(folderPath, base64HtmlFile)
-        try {
-          const stats = await fs.stat(filePath)
-          const currentSize = stats.size
+      // 2. 检测 *base64.html 文件是否稳定（简化匹配）
+      if (!base64HtmlStable) {
+        // 查找任何以base64.html结尾的文件
+        const base64Files = files.filter(f => 
+          f.toLowerCase().endsWith('base64.html')
+        )
+        
+        if (base64Files.length > 0) {
+          const detectedFile = base64Files[0]  // 使用第一个匹配的文件
+          const filePath = path.join(folderPath, detectedFile)
           
-          if (currentSize === lastBase64Size && currentSize > 0) {
-            stableCount++
-            if (stableCount >= 2) {  // 连续2次检查大小不变，认为文件稳定
-              base64HtmlStable = true
-              console.log(`[WaitForFiles] ✓ Base64 HTML stable: ${base64HtmlFile} (${currentSize} bytes)`)
+          try {
+            const stats = await fs.stat(filePath)
+            const currentSize = stats.size
+            
+            if (currentSize === lastBase64Size && currentSize > 0) {
+              stableCount++
+              if (stableCount >= 2) {  // 连续2次检查大小不变，认为文件稳定
+                base64HtmlStable = true
+                console.log(`[WaitForFiles] ✓ Base64 HTML stable: ${detectedFile} (${currentSize} bytes)`)
+              }
+            } else {
+              stableCount = 0  // 大小变化，重置计数
+              lastBase64Size = currentSize
             }
-          } else {
-            stableCount = 0  // 大小变化，重置计数
-            lastBase64Size = currentSize
+          } catch (error) {
+            console.log(`[WaitForFiles] Cannot read ${detectedFile}: ${error.message}`)
           }
-        } catch (error) {
-          console.log(`[WaitForFiles] Cannot read ${base64HtmlFile}: ${error.message}`)
         }
       }
       
-      // 3. 如果base64文件稳定且content.json已检测到（或已等待足够时间），返回成功
-      if (base64HtmlStable) {
+      // 3. 判断是否所有必须文件都准备好
+      // 必须条件：base64文件稳定 AND content JSON文件存在
+      if (base64HtmlStable && contentJsonDetected) {
         const waitTime = Date.now() - startTime
-        
-        // 如果content.json还未检测到，再额外等待5秒
-        if (!contentJsonDetected && checkCount < 5) {
-          console.log(`[WaitForFiles] Base64 ready, waiting for content.json (check ${checkCount}/5)...`)
-          await new Promise(resolve => setTimeout(resolve, checkInterval))
-          continue
-        }
+        console.log(`[WaitForFiles] ✅ All required files ready in ${waitTime}ms`)
         
         return {
           success: true,
           contentJsonDetected,
           base64HtmlStable,
           waitTime,
-          message: contentJsonDetected 
-            ? 'All files ready' 
-            : 'Base64 ready, content.json not detected'
+          message: 'All required files ready'
+        }
+      }
+      
+      // 4. 如果base64稳定但content.json未检测到，继续等待
+      if (base64HtmlStable && !contentJsonDetected) {
+        // 给content.json更多时间（最多额外等待10次检查）
+        if (checkCount < maxChecks) {
+          console.log(`[WaitForFiles] Base64 ready, still waiting for content JSON (check ${checkCount}/${maxChecks})...`)
         }
       }
       
@@ -847,12 +867,21 @@ async function waitForRequiredFiles(folderPath, options = {}) {
   
   // 超过最大检查次数
   const waitTime = Date.now() - startTime
+  
+  // 记录缺失的文件
+  const missingFiles = []
+  if (!base64HtmlStable) missingFiles.push('base64 HTML not stable')
+  if (!contentJsonDetected) missingFiles.push('content JSON not found')
+  
+  console.warn(`[WaitForFiles] ⚠️ Timeout after ${checkCount} checks (${waitTime}ms)`)
+  console.warn(`[WaitForFiles] Missing files: ${missingFiles.join(', ')}`)
+  
   return {
     success: false,
     contentJsonDetected,
     base64HtmlStable,
     waitTime,
-    message: `Timeout after ${checkCount} checks (${waitTime}ms)`
+    message: `Timeout - Missing: ${missingFiles.join(', ')}`
   }
 }
 

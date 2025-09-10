@@ -1,4 +1,4 @@
-# Pod2Post 并发方案改造文档 V2
+# Pod2Post 并发方案改造文档 V3 - 含OSS优化
 
 ## 一、问题分析
 
@@ -31,7 +31,7 @@
         └── resources/             # 该任务上传的文档
 ```
 
-### 工作流程
+### 工作流程（含OSS优化）
 
 ```mermaid
 sequenceDiagram
@@ -39,6 +39,7 @@ sequenceDiagram
     participant API as 后端API
     participant FS as 文件系统
     participant AI as AI服务
+    participant OSS as 阿里云OSS
     
     Client->>Client: 1. 生成随机 taskId
     Note over Client: taskId = pod2post_{timestamp}_{random}
@@ -59,11 +60,41 @@ sequenceDiagram
     API->>API: 处理prompt路径替换
     API->>AI: 执行AI生成
     AI-->>API: 生成完成
-    API->>FS: 清理 /tasks/{taskId}/ 
+    Note over API: 状态: generated
+    
+    API->>API: 6. Base64图片嵌入
+    Note over API: 状态: uploading_oss
+    
+    API->>OSS: 7. 自动上传所有文件到OSS
+    OSS-->>API: 返回签名URL
+    API->>FS: 8. 保存OSS链接到meta文件
+    Note over API: 状态: completed
+    
+    API->>FS: 9. 清理 /tasks/{taskId}/ 
     API-->>Client: 任务完成
 ```
 
-## 三、API 接口变更
+## 三、OSS自动上传优化 🆕
+
+### 新增状态流程
+```
+submitted → processing → generated → uploading_oss → completed
+```
+
+### OSS上传机制
+1. **Base64转换完成后**：自动触发OSS上传
+2. **上传所有文件**：HTML、JSON、meta文件统一上传
+3. **生成签名URL**：1年有效期，支持大文件
+4. **保存到meta**：OSS链接存储在SessionMetadata中
+5. **状态管理**：只有OSS上传成功才标记为`completed`
+
+### 新增阶段权重
+- Prompt处理：10%
+- AI生成：50% 
+- Base64嵌入：25%
+- **OSS上传：15%** 🆕
+
+## 四、API 接口变更
 
 ### 1. 修改：资源上传接口
 ```http

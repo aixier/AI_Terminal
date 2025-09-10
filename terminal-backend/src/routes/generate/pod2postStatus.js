@@ -15,7 +15,7 @@ const router = express.Router()
  */
 function calculateProgress(status, phases = {}) {
   // 如果任务已完成
-  if (status === 'completed') {
+  if (status === 'completed' || status === 'success') {
     return 100
   }
   
@@ -28,8 +28,9 @@ function calculateProgress(status, phases = {}) {
   let progress = 0
   const phaseWeights = {
     promptProcessing: 10,    // Prompt处理占10%
-    firstGeneration: 60,     // 第一次AI生成占60%
-    base64Embedding: 30      // Base64嵌入占30%
+    firstGeneration: 50,     // 第一次AI生成占50%
+    base64Embedding: 25,     // Base64嵌入占25%
+    ossUpload: 15           // OSS上传占15%
   }
   
   // 计算每个阶段的进度
@@ -114,13 +115,26 @@ router.get('/:taskId',
       })
     }
     
-    // 6. 读取元数据
+    // 6. 直接读取固定的meta文件
     let metadata
+    const metaFilePath = path.join(userCardPath, `${taskId}_meta.json`)
+    
     try {
-      metadata = await SessionMetadata.load(userCardPath)
-      console.log(`[Pod2PostStatus] Metadata loaded successfully`)
+      // 直接读取taskId对应的meta文件
+      const metaContent = await fs.readFile(metaFilePath, 'utf-8')
+      const metaData = JSON.parse(metaContent)
+      
+      // 构建兼容的metadata对象
+      metadata = {
+        status: metaData.execution?.finalStatus || 'unknown',
+        data: metaData
+      }
+      
+      console.log(`[Pod2PostStatus] Meta file loaded: ${taskId}_meta.json`)
+      console.log(`[Pod2PostStatus] Status from meta: ${metadata.status}`)
+      
     } catch (error) {
-      console.warn(`[Pod2PostStatus] Failed to load metadata:`, error.message)
+      console.warn(`[Pod2PostStatus] Failed to load meta file:`, error.message)
       // 如果元数据不存在，尝试从文件夹内容推断状态
       metadata = await inferStatusFromFiles(userCardPath, taskId)
     }
@@ -141,39 +155,39 @@ router.get('/:taskId',
     // 8. 计算进度
     const progress = calculateProgress(metadata.status, metadata.data.custom?.phases)
     
-    // 9. 构建响应数据
+    // 9. 构建响应数据（简化版，直接使用meta文件数据）
     const responseData = {
       taskId,
       folderName: expectedFolderName,
       folderPath: userCardPath,
       status: metadata.status || 'unknown',
       progress,  // 添加进度字段
-      topic: metadata.data.topic || `播客小红书图文卡片`,
-      templateName: metadata.data.templateName || 'pod2post-template',
+      
+      // 从meta文件获取所有信息
+      topic: metadata.data.request?.topic || '播客小红书图文卡片',
+      templateName: metadata.data.request?.templateName || 'pod2post-template',
       
       // 处理阶段信息
       phases: metadata.data.custom?.phases || {},
       
-      // 生成的文件
-      generatedFiles: {
-        html: htmlFiles,
-        json: jsonFiles,
-        total: files.length
-      },
+      // OSS上传信息
+      ossUpload: metadata.data.custom?.ossUpload || null,
+      
+      // 生成的文件（从meta获取）
+      generatedFiles: metadata.data.output?.generatedFiles || [],
       
       // 特定的Pod2Post文件信息
       pod2postFiles: metadata.data.custom?.generatedFiles || null,
       
       // 时间信息
-      createdAt: metadata.data.createdAt,
-      startedAt: metadata.data.startedAt,
-      completedAt: metadata.data.completedAt || metadata.data.custom?.endTime,
+      createdAt: metadata.data.sessionInfo?.createdAt,
+      duration: metadata.data.execution?.totalDuration,
       
       // 错误信息
-      error: metadata.error || null,
+      error: metadata.data.error || null,
       
-      // 日志信息（最近10条）
-      logs: metadata.logs ? metadata.logs.slice(-10) : []
+      // 最近的日志（最近10条）
+      logs: metadata.data.logs ? metadata.data.logs.slice(-10) : []
     }
     
     console.log(`[Pod2PostStatus] Task status: ${responseData.status}`)
@@ -215,16 +229,53 @@ async function inferStatusFromFiles(userCardPath, taskId) {
     let phases = {
       promptProcessing: 'unknown',
       firstGeneration: 'unknown',
-      base64Embedding: 'unknown'
+      base64Embedding: 'unknown',
+      ossUpload: 'unknown'
     }
     
     if (base64HtmlFiles.length > 0) {
-      // 有Base64版本的HTML文件，说明任务完成
-      status = 'completed'
+      // 有Base64版本的HTML文件，说明至少生成完成了
+      // 但还需要检查是否有OSS上传
+      status = 'processing'  // 默认为处理中，等OSS确认
       phases = {
         promptProcessing: 'completed',
         firstGeneration: 'completed',
-        base64Embedding: 'completed'
+        base64Embedding: 'completed',
+        ossUpload: 'pending'  // 假设OSS还未完成
+      }
+      
+      // 尝试检查是否有meta文件包含OSS信息
+      const metaFiles = files.filter(f => f.includes('_meta.json'))
+      if (metaFiles.length > 0) {
+        try {
+          const metaPath = path.join(userCardPath, metaFiles[0])
+          const metaContent = require('fs').readFileSync(metaPath, 'utf8')
+          const metaData = JSON.parse(metaContent)
+          
+          // 检查OSS上传状态
+          const ossUploadStatus = metaData.custom?.phases?.ossUpload
+          if (ossUploadStatus === 'completed') {
+            status = 'completed'
+            phases.ossUpload = 'completed'
+          } else if (ossUploadStatus === 'processing') {
+            phases.ossUpload = 'processing'
+          } else if (ossUploadStatus === 'failed') {
+            phases.ossUpload = 'failed'
+            status = 'partial_success'  // 生成完成但OSS失败
+          } else {
+            // 没有OSS信息，可能是老版本，直接标记完成
+            status = 'completed'
+            phases.ossUpload = 'completed'
+          }
+        } catch (error) {
+          // meta文件读取失败，按老逻辑处理
+          status = 'completed'
+          phases.ossUpload = 'completed'
+        }
+      } else {
+        // 没有meta文件，按老逻辑处理
+        status = 'completed'
+        phases.ossUpload = 'completed'
       }
     } else if (htmlFiles.length > 0) {
       // 有原始HTML文件，但没有Base64版本
@@ -232,7 +283,8 @@ async function inferStatusFromFiles(userCardPath, taskId) {
       phases = {
         promptProcessing: 'completed',
         firstGeneration: 'completed',
-        base64Embedding: 'processing'
+        base64Embedding: 'processing',
+        ossUpload: 'pending'
       }
     } else {
       // 没有HTML文件，可能还在生成中或失败了
@@ -240,7 +292,8 @@ async function inferStatusFromFiles(userCardPath, taskId) {
       phases = {
         promptProcessing: 'completed',
         firstGeneration: 'processing',
-        base64Embedding: 'pending'
+        base64Embedding: 'pending',
+        ossUpload: 'pending'
       }
     }
     

@@ -3,15 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import userService from '../../services/userService.js'
 import { verifyToken, optionalAuth } from '../../middleware/auth.js'
-import { createRequire } from 'module'
-
-const require = createRequire(import.meta.url)
-const { OSSService } = require('../../services/oss/index.cjs')
-
 const router = express.Router()
-
-// 初始化OSS服务
-const ossService = new OSSService('ai-terminal')
 
 /**
  * GET /api/generate/pod2post/content/:folderName
@@ -77,8 +69,7 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
       }
     }
 
-    // 处理每个文件并上传到OSS
-    const fileOssUrls = {} // 存储所有文件的OSS URL
+    // 不再实时上传OSS，只收集文件信息
     
     for (const fileName of files) {
       const filePath = path.join(folderPath, fileName)
@@ -89,33 +80,11 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
         continue
       }
 
-      // 上传到OSS
-      try {
-        const ossKey = `pod2post/${username}/${folderName}/${fileName}`
-        const mimeType = getMimeType(fileName)
-        
-        const uploadResult = await ossService.client.uploadFile(filePath, ossKey, {
-          headers: {
-            'Content-Type': mimeType,
-            'Cache-Control': 'public, max-age=31536000',
-            'Content-Disposition': `attachment; filename="${fileName}"`
-          }
-        })
-        
-        if (uploadResult.success) {
-          const signedUrlResult = await ossService.client.generateSignedUrl(ossKey, 3600 * 24 * 365)
-          fileOssUrls[fileName] = signedUrlResult.url
-          console.log(`[Pod2PostContent] 文件上传OSS成功: ${fileName}`)
-        }
-      } catch (error) {
-        console.warn(`[Pod2PostContent] 文件上传OSS失败: ${fileName}, ${error.message}`)
-      }
-
       const fileInfo = {
         fileName,
         size: stats.size,
         mtime: stats.mtime.toISOString(),
-        ossUrl: fileOssUrls[fileName] || null
+        ossUrl: null  // 将从meta中获取OSS链接
       }
 
       result.allFiles.push(fileInfo)
@@ -145,97 +114,52 @@ router.get('/:folderName', optionalAuth, async (req, res) => {
         result.otherFiles.push(fileInfo)
       }
     }
+
+    // 从固定的meta文件读取所有信息
+    const metaFilePath = path.join(folderPath, `${folderName}_meta.json`)
+    let contentData = {}
     
-    // 辅助函数：获取MIME类型
-    function getMimeType(fileName) {
-      const ext = path.extname(fileName).toLowerCase()
-      const mimeTypes = {
-        '.html': 'text/html; charset=utf-8',
-        '.json': 'application/json; charset=utf-8',
-        '.txt': 'text/plain; charset=utf-8',
-        '.md': 'text/markdown; charset=utf-8',
-        '.css': 'text/css; charset=utf-8',
-        '.js': 'application/javascript; charset=utf-8',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif',
-        '.svg': 'image/svg+xml'
-      }
-      return mimeTypes[ext] || 'application/octet-stream'
-    }
-
-    // 读取主要文件内容
-    const contentData = {}
-
-    // 设置原始HTML的OSS链接
-    if (result.pod2postFiles.original && fileOssUrls[result.pod2postFiles.original]) {
-      contentData.originalHtmlOssUrl = fileOssUrls[result.pod2postFiles.original]
-      const fileInfo = result.allFiles.find(f => f.fileName === result.pod2postFiles.original)
-      if (fileInfo) {
-        contentData.originalHtmlSize = fileInfo.size
-      }
-      console.log(`[Pod2PostContent] 原始HTML OSS链接: ${contentData.originalHtmlOssUrl}`)
-    }
-
-    // 设置Base64版本HTML的OSS链接
-    if (result.pod2postFiles.withBase64) {
-      if (fileOssUrls[result.pod2postFiles.withBase64]) {
-        contentData.base64HtmlOssUrl = fileOssUrls[result.pod2postFiles.withBase64]
-        const fileInfo = result.allFiles.find(f => f.fileName === result.pod2postFiles.withBase64)
-        if (fileInfo) {
-          contentData.base64HtmlSize = fileInfo.size
-        }
-        console.log(`[Pod2PostContent] Base64 HTML OSS链接: ${contentData.base64HtmlOssUrl}`)
-        
-        // 提供预览（前50KB）
-        try {
-          const base64Path = path.join(folderPath, result.pod2postFiles.withBase64)
-          const buffer = Buffer.alloc(50000)
-          const fd = await fs.open(base64Path, 'r')
-          const { bytesRead } = await fd.read(buffer, 0, 50000, 0)
-          await fd.close()
-          contentData.base64HtmlPreview = buffer.slice(0, bytesRead).toString('utf8')
-        } catch (error) {
-          console.warn(`[Pod2PostContent] 读取预览失败: ${error.message}`)
-        }
-      }
-    }
-
-    // 设置元数据的OSS链接
-    if (result.pod2postFiles.metadata) {
-      if (fileOssUrls[result.pod2postFiles.metadata]) {
-        contentData.metadataOssUrl = fileOssUrls[result.pod2postFiles.metadata]
-        const fileInfo = result.allFiles.find(f => f.fileName === result.pod2postFiles.metadata)
-        if (fileInfo) {
-          contentData.metadataSize = fileInfo.size
-        }
-        console.log(`[Pod2PostContent] 元数据OSS链接: ${contentData.metadataOssUrl}`)
-        
-        // 仍然读取内容供直接使用
-        try {
-          const metaPath = path.join(folderPath, result.pod2postFiles.metadata)
-          const metaContent = await fs.readFile(metaPath, 'utf8')
-          contentData.metadata = JSON.parse(metaContent)
-        } catch (error) {
-          console.warn(`[Pod2PostContent] 读取元数据失败: ${error.message}`)
-        }
-      }
-    }
-
-    // 分析Base64嵌入情况
-    if (contentData.base64Html || contentData.base64HtmlPreview) {
-      const htmlContent = contentData.base64Html || contentData.base64HtmlPreview || ''
+    try {
+      // 读取meta文件
+      const metaFileContent = await fs.readFile(metaFilePath, 'utf8')
+      const metadataContent = JSON.parse(metaFileContent)
+      console.log(`[Pod2PostContent] Meta文件加载成功: ${folderName}_meta.json`)
       
-      const base64Images = htmlContent.match(/data:image[^"']+/g) || []
-      const unconvertedPaths = htmlContent.match(/src="\/app\/data\/users[^"]+"/g) || []
-      
-      contentData.base64Analysis = {
-        base64ImageCount: base64Images.length,
-        unconvertedPathCount: unconvertedPaths.length,
-        conversionSuccess: unconvertedPaths.length === 0,
-        sampleUnconvertedPaths: unconvertedPaths.slice(0, 3)
+      // 构建内容数据
+      contentData = {
+        // 完整的元数据
+        metadata: metadataContent,
+        
+        // OSS链接和文件信息
+        ...(metadataContent.custom?.ossUpload ? {
+          originalHtmlOssUrl: metadataContent.custom.ossUpload.urls?.originalHtml,
+          base64HtmlOssUrl: metadataContent.custom.ossUpload.urls?.withBase64,
+          metadataOssUrl: metadataContent.custom.ossUpload.urls?.metadata,
+          originalHtmlSize: metadataContent.custom.ossUpload.fileSizes?.originalHtml,
+          base64HtmlSize: metadataContent.custom.ossUpload.fileSizes?.withBase64,
+          metadataSize: metadataContent.custom.ossUpload.fileSizes?.metadata,
+          ossUploadSuccess: metadataContent.custom.ossUpload.success,
+          ossUploadedAt: metadataContent.custom.ossUpload.uploadedAt
+        } : {}),
+        
+        // 任务状态和阶段
+        status: metadataContent.execution?.finalStatus,
+        phases: metadataContent.custom?.phases,
+        
+        // 生成的文件信息
+        generatedFiles: metadataContent.custom?.generatedFiles
       }
+      
+      if (contentData.originalHtmlOssUrl || contentData.base64HtmlOssUrl) {
+        console.log(`[Pod2PostContent] OSS链接已从meta获取`)
+        console.log(`[Pod2PostContent] - 原始HTML: ${contentData.originalHtmlOssUrl ? '✓' : '✗'}`)
+        console.log(`[Pod2PostContent] - Base64 HTML: ${contentData.base64HtmlOssUrl ? '✓' : '✗'}`)
+        console.log(`[Pod2PostContent] - 元数据: ${contentData.metadataOssUrl ? '✓' : '✗'}`)
+      }
+      
+    } catch (error) {
+      console.error(`[Pod2PostContent] 读取meta文件失败: ${error.message}`)
+      contentData.error = 'Meta文件不存在或损坏'
     }
 
     console.log(`[Pod2PostContent] 内容获取成功`)

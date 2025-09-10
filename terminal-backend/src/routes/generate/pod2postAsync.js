@@ -9,6 +9,7 @@ import { ensureCardFolder, updateFolderStatus } from './utils/folderManager.js'
 import { SessionMetadata } from './utils/sessionMetadata.js'
 import promptProcessor from '../../utils/promptProcessor.js'
 import htmlToBase64Converter from '../../utils/htmlToBase64Converter.js'
+import { OSSUploader } from './utils/ossUploader.js'
 
 const router = express.Router()
 
@@ -380,8 +381,50 @@ async function processInBackground(
     
     await metadata.save(userCardPath)
     
-    // =============== 阶段3：清理任务资源 ===============
-    console.log('[Pod2PostAsync Background] Phase 3: Cleaning task resources')
+    // =============== 阶段3：OSS自动上传 ===============
+    console.log('[Pod2PostAsync Background] Phase 3: Auto uploading to OSS')
+    try {
+      // 标记OSS上传开始
+      if (!metadata.data.custom.phases) {
+        metadata.data.custom.phases = {}
+      }
+      metadata.data.custom.phases.ossUpload = 'processing'
+      await metadata.save(userCardPath)
+      
+      // 创建OSS上传器并执行上传
+      const ossUploader = new OSSUploader()
+      const ossResults = await ossUploader.uploadPod2PostFiles(username, folderName, userCardPath)
+      
+      if (ossResults.success) {
+        console.log('[Pod2PostAsync Background] ✅ OSS upload successful!')
+        console.log(`[Pod2PostAsync Background] Uploaded ${ossResults.uploadedFiles.length} files to OSS`)
+        
+        // 保存OSS上传结果到元数据
+        metadata.setOSSResults(ossResults)
+        metadata.data.custom.phases.ossUpload = 'completed'
+        
+        // 记录特定文件的OSS链接
+        if (ossResults.withBase64?.ossUrl) {
+          console.log(`[Pod2PostAsync Background] Base64 HTML OSS URL: ${ossResults.withBase64.ossUrl.substring(0, 80)}...`)
+        }
+        if (ossResults.originalHtml?.ossUrl) {
+          console.log(`[Pod2PostAsync Background] Original HTML OSS URL: ${ossResults.originalHtml.ossUrl.substring(0, 80)}...`)
+        }
+        
+      } else {
+        console.warn('[Pod2PostAsync Background] ⚠️ OSS upload failed:', ossResults.error)
+        metadata.data.custom.phases.ossUpload = 'failed'
+        metadata.addLog('warn', 'OSS上传失败', { error: ossResults.error })
+      }
+      
+    } catch (error) {
+      console.error('[Pod2PostAsync Background] OSS upload error:', error)
+      metadata.data.custom.phases.ossUpload = 'failed'
+      metadata.addLog('error', 'OSS上传异常: ' + error.message)
+    }
+    
+    // =============== 阶段4：清理任务资源 ===============
+    console.log('[Pod2PostAsync Background] Phase 4: Cleaning task resources')
     try {
       await cleanUserTemplateResources(username, taskId)
       console.log('[Pod2PostAsync Background] Task resources cleaned successfully')
@@ -389,8 +432,13 @@ async function processInBackground(
       console.warn('[Pod2PostAsync Background] Failed to clean task resources:', error.message)
     }
     
-    // =============== 阶段4：任务完成 ===============
-    metadata.complete('success')
+    // =============== 阶段5：任务完成 ===============
+    // 只有当OSS上传成功时才标记为完全成功
+    const ossSuccess = metadata.data.custom?.phases?.ossUpload === 'completed'
+    const finalStatus = ossSuccess ? 'success' : 'partial_success'
+    
+    console.log(`[Pod2PostAsync Background] Completing task with status: ${finalStatus}`)
+    metadata.complete(finalStatus)
     metadata.addLog('info', '任务处理完成')
     metadata.data.custom.endTime = new Date().toISOString()
     

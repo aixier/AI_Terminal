@@ -274,6 +274,57 @@ export class SessionMetadata {
   }
 
   /**
+   * 设置OSS上传结果
+   * @param {Object} ossResults - OSS上传结果
+   */
+  setOSSResults(ossResults) {
+    if (!this.data.custom) {
+      this.data.custom = {}
+    }
+    
+    this.data.custom.ossUpload = {
+      success: ossResults.success,
+      uploadedAt: new Date().toISOString(),
+      uploadedFiles: ossResults.uploadedFiles || [],
+      error: ossResults.error || null,
+      urls: {
+        originalHtml: ossResults.originalHtml?.ossUrl || null,
+        withBase64: ossResults.withBase64?.ossUrl || null,
+        metadata: ossResults.metadata?.ossUrl || null
+      },
+      fileSizes: {
+        originalHtml: ossResults.originalHtml?.fileSize || null,
+        withBase64: ossResults.withBase64?.fileSize || null,
+        metadata: ossResults.metadata?.fileSize || null
+      }
+    }
+    
+    this.addLog('info', 'OSS upload results set', {
+      success: ossResults.success,
+      filesCount: ossResults.uploadedFiles?.length || 0,
+      hasBase64Url: !!ossResults.withBase64?.ossUrl,
+      hasOriginalUrl: !!ossResults.originalHtml?.ossUrl
+    })
+  }
+
+  /**
+   * 获取OSS链接
+   * @returns {Object} OSS链接对象
+   */
+  getOSSUrls() {
+    return this.data.custom?.ossUpload?.urls || {}
+  }
+
+  /**
+   * 检查是否有有效的OSS链接
+   * @returns {boolean} 是否有OSS链接
+   */
+  hasOSSUrls() {
+    const urls = this.getOSSUrls()
+    return !!(urls.originalHtml || urls.withBase64)
+  }
+
+  /**
    * 添加日志记录
    * @param {string} level - 日志级别 (debug|info|warn|error)
    * @param {string} message - 日志消息
@@ -320,8 +371,9 @@ export class SessionMetadata {
    * @returns {string} 元数据文件名
    */
   generateMetaFileName() {
-    const timestamp = formatTimestamp(this.createdAt)
-    return `${timestamp}_${this.userId}_meta.json`
+    // 使用requestId（即taskId）作为文件名，确保与文件夹名一致
+    const requestId = this.data.sessionInfo.requestId || this.sessionId
+    return `${requestId}_meta.json`
   }
 
   /**
@@ -337,13 +389,17 @@ export class SessionMetadata {
       // 确保输出目录存在
       await fs.mkdir(outputDir, { recursive: true })
       
-      // 保存JSON文件
+      // 保存JSON文件（覆盖已存在的文件）
       await fs.writeFile(filePath, JSON.stringify(this.data, null, 2), 'utf-8')
       
-      // 记录元数据文件本身
-      await this.addFile(fileName, filePath, 'meta')
+      // 不再每次都记录文件到generatedFiles中，避免重复
+      // 只在第一次保存时记录
+      const alreadyRecorded = this.data.output.generatedFiles.some(f => f.fileName === fileName)
+      if (!alreadyRecorded) {
+        await this.addFile(fileName, filePath, 'meta')
+      }
       
-      this.addLog('info', `Metadata saved to: ${filePath}`)
+      this.addLog('info', `Metadata saved/updated: ${filePath}`)
       return filePath
     } catch (error) {
       this.addLog('error', `Failed to save metadata: ${error.message}`, { error: error.message })

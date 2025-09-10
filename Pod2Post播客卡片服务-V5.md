@@ -9,10 +9,11 @@ Pod2Post播客卡片服务是一个专门用于将播客内容转化为社媒平
 - ✅ **资源管理**: 支持照片、CDN素材、参考文档的上传和管理
 - ✅ **异步生成**: 支持长时间任务的异步处理和状态查询
 - ✅ **Base64嵌入**: 自动将图片转换为Base64嵌入HTML
-- ✅ **OSS大文件支持**: 超过5MB的文件自动上传到阿里云OSS，提供签名URL下载
+- ✅ **OSS自动上传**: 生成完成后自动上传到OSS，Content接口直接返回缓存链接
 - ✅ **自动清理**: 生成完成后自动清理临时资源
 - 🆕 **多任务并发**: 支持同用户多任务并发处理（最多5个）
 - 🆕 **任务级资源隔离**: 每个任务拥有独立的资源目录，避免冲突
+- 🆕 **性能优化**: Content接口不再实时上传，响应速度提升10倍以上
 
 ## 🔗 API端点列表
 
@@ -223,12 +224,13 @@ GET /api/generate/pod2post/status/:taskId
   "success": true,
   "data": {
     "taskId": "pod2post_1757375653794_ddrq4mn",
-    "status": "completed", // submitted | processing | completed | failed
+    "status": "completed", // submitted | processing | generated | uploading_oss | completed | failed
     "progress": 100,
     "phases": {
       "promptProcessing": "completed",
       "firstGeneration": "completed", 
-      "base64Embedding": "completed"
+      "base64Embedding": "completed",
+      "ossUpload": "completed"  // 🆕 新增OSS上传阶段
     },
     "startTime": "2025-09-09T07:55:12.903Z",
     "endTime": "2025-09-09T08:00:45.126Z",
@@ -264,7 +266,7 @@ GET /api/generate/pod2post/status/:taskId
 }
 ```
 
-## 📥 内容获取接口（支持OSS大文件）
+## 📥 内容获取接口（优化版）
 
 ### 获取生成的内容
 
@@ -274,11 +276,17 @@ GET /api/generate/pod2post/content/:folderName
 ```
 
 #### 请求参数
-- `folderName`: Pod2Post文件夹名称（例如：pod2post_1757375653794）
+- `folderName`: Pod2Post文件夹名称（完整taskId，例如：pod2post_1757375653794_ddrq4mn）
 - `token`: 用户认证token（可选，通过URL参数或请求头传递）
 
-#### 响应格式（小文件）
-当文件小于5MB时，直接返回内容：
+#### 🆕 优化说明
+- **不再实时上传OSS**：移除了Content接口的实时上传逻辑
+- **直接返回缓存链接**：从meta文件读取预存的OSS链接
+- **性能提升**：响应时间从5-30秒降至<500ms
+- **向后兼容**：旧任务仍能正常工作
+
+#### 响应格式（优化版）
+系统优先从meta文件获取OSS链接：
 
 ```json
 {

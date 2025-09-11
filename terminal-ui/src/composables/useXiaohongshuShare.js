@@ -22,7 +22,7 @@ export function useXiaohongshuShare() {
   }
 
   /**
-   * 获取文件内容
+   * 获取文件内容（保留用于兼容性，新版本不再使用）
    */
   const getFileContent = async (file) => {
     try {
@@ -92,86 +92,37 @@ export function useXiaohongshuShare() {
 
     try {
       // 添加调试信息
-      console.log('[XHS Share Debug] 开始分享流程')
+      console.log('[XHS Share Debug] 开始分享流程（优化版）')
       console.log('[XHS Share Debug] 用户代理:', navigator.userAgent)
       console.log('[XHS Share Debug] 是否移动端:', /Mobile|Android|iPhone/i.test(navigator.userAgent))
-      // 获取文件内容
-      loadingProgress.value = '正在读取文件内容...'
-      const content = await getFileContent(file)
-      if (!content) {
-        throw new Error('无法获取文件内容')
-      }
-
-      // 准备请求体
+      
+      // 准备请求数据 - 简化为只传路径
       loadingProgress.value = '正在准备分享数据...'
-      let requestBody = { 
-        html: content,
-        name: file.name  // 添加文件名参数
+      
+      // 处理文件夹信息
+      const folderName = folder?.name || folder?.id || 'root-files'
+      console.log('[XHS Share] 文件夹名称:', folderName)
+      
+      // 获取当前用户名
+      const username = localStorage.getItem('username') || 'default'
+      console.log('[XHS Share] 当前用户名:', username)
+      
+      // 新版本：只传递文件路径信息
+      const requestBody = {
+        // 文件位置信息
+        folderName: folderName,
+        fileName: file.name,
+        
+        // 用户信息
+        username: username
       }
       
-      // 处理文件夹信息（如果存在）
-      const folderName = folder?.name || folder?.id || null
-      console.log('[XHS Share] 文件夹名称:', folderName)
-
-      if (folderName && folderName !== 'root-files') {
-        try {
-          // 尝试获取页面信息（可选）
-          loadingProgress.value = '正在获取模板信息...'
-          // 对topic进行sanitize处理（与后端保持一致）
-          const sanitizedFolderName = folderName.trim().replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
-          console.log('[XHS Share] Sanitized文件夹名称:', sanitizedFolderName)
-          
-          // 获取当前用户名
-          const username = localStorage.getItem('username') || 'default'
-          console.log('[XHS Share] 当前用户名:', username)
-          
-          const queryUrl = `/api/generate/card/query/${encodeURIComponent(sanitizedFolderName)}?username=${username}`
-          const queryResponse = await fetch(queryUrl)
-          
-          if (queryResponse.ok) {
-            const queryData = await queryResponse.json()
-            
-            if (queryData.success && queryData.data) {
-              const templateName = queryData.data.templateName || ''
-              
-              // 排除特定模板
-              if (templateName !== 'daily-knowledge-card-template.md') {
-                if (queryData.data.pageinfo) {
-                  requestBody.pageinfo = JSON.stringify(queryData.data.pageinfo)
-                } else {
-                  // 查找JSON文件
-                  const files = queryData.data.files || queryData.data.allFiles || []
-                  const jsonFile = files.find(f => {
-                    const fileName = f.fileName || f.name
-                    return fileName && fileName.endsWith('.json') && 
-                           !fileName.includes('meta') && 
-                           !fileName.includes('-response')
-                  })
-                  
-                  if (jsonFile && jsonFile.content) {
-                    requestBody.pageinfo = JSON.stringify(jsonFile.content)
-                  }
-                }
-              }
-            }
-          } else if (queryResponse.status === 404) {
-            // 404是正常的，说明没有对应的文件夹信息
-            console.log('[XHS Share] 文件夹信息不存在，继续处理')
-          } else {
-            console.warn('[XHS Share] 查询文件夹信息失败:', queryResponse.status)
-          }
-        } catch (error) {
-          // 静默处理错误，pageinfo是可选的
-          console.log('[XHS Share] 获取pageinfo时出错（可忽略）:', error.message)
-        }
-      }
-
-      console.log('[XHS Share] 发送请求体:', requestBody)
+      console.log('[XHS Share] 发送请求（路径模式）:', requestBody)
 
       // 发送分享请求
       loadingProgress.value = '正在生成分享内容，请稍候...'
       
-      console.log('[XHS Share Debug] 请求体大小:', JSON.stringify(requestBody).length, '字符')
+      console.log('[XHS Share Debug] 请求体大小（优化后）:', JSON.stringify(requestBody).length, '字符')
       console.log('[XHS Share Debug] 请求URL:', '/api/generate/share/xiaohongshu')
       
       const response = await fetch('/api/generate/share/xiaohongshu', {

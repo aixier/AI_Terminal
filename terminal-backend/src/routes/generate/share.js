@@ -1,52 +1,173 @@
 /**
  * 分享相关路由
- * 代理小红书分享API调用以解决CORS问题
+ * 优化版：后端直接读取文件，减少网络传输
  */
 
 import express from 'express'
 import fetch from 'node-fetch'
+import fs from 'fs/promises'
+import path from 'path'
 import logger from '../../utils/logger.js'
+import userService from '../../services/userService.js'
 
 const router = express.Router()
 
 /**
  * POST /api/generate/share/xiaohongshu
- * 代理调用Engagia小红书分享API
+ * 优化版：后端直接读取文件，减少网络传输
  */
 router.post('/xiaohongshu', async (req, res) => {
   try {
-    const { html, pageinfo, name } = req.body
+    // 支持两种模式：新模式（文件路径）和旧模式（HTML内容）
+    const { folderName, fileName, username = 'default', html, pageinfo, name } = req.body
     
-    if (!html) {
-      return res.status(400).json({
-        success: false,
-        message: 'HTML内容是必需的'
+    let htmlContent = null
+    let pageinfoContent = null
+    let finalFileName = null
+    
+    // 新模式：通过文件路径读取
+    if (folderName && fileName) {
+      // 参数验证
+      if (!fileName.toLowerCase().endsWith('.html') && !fileName.toLowerCase().endsWith('.htm')) {
+        return res.status(400).json({
+          success: false,
+          message: '只能分享HTML文件'
+        })
+      }
+      
+      // 安全验证：防止路径穿越
+      if (fileName.includes('..') || folderName.includes('..') || 
+          fileName.includes('/') || fileName.includes('\\')) {
+        return res.status(403).json({
+          success: false,
+          message: '非法文件路径'
+        })
+      }
+      
+      logger.info('[ShareXHS] 开始处理分享请求（文件模式）', {
+        username,
+        folderName,
+        fileName
       })
-    }
-    
-    if (!name) {
+      
+      // 构建文件路径
+      let userCardPath
+      if (folderName === 'root-files' || folderName === 'root') {
+        // root-files 表示文件在 card 根目录下或其子文件夹
+        // 需要先查找文件所在的实际位置
+        const { cardPath } = userService.getUserWorkspacePath(username)
+        userCardPath = cardPath
+        
+        // 尝试在子文件夹中查找文件
+        try {
+          const dirs = await fs.readdir(cardPath)
+          for (const dir of dirs) {
+            const dirPath = path.join(cardPath, dir)
+            const stat = await fs.stat(dirPath)
+            if (stat.isDirectory()) {
+              const filePath = path.join(dirPath, fileName)
+              try {
+                await fs.access(filePath)
+                userCardPath = dirPath
+                logger.info('[ShareXHS] 文件在子文件夹中找到', { folder: dir })
+                break
+              } catch {
+                // 文件不在此文件夹，继续查找
+              }
+            }
+          }
+        } catch (error) {
+          logger.warn('[ShareXHS] 扫描子文件夹失败', error)
+        }
+      } else {
+        // 正常的文件夹名称
+        userCardPath = userService.getUserCardPath(username, folderName)
+      }
+      
+      const htmlFilePath = path.join(userCardPath, fileName)
+      
+      // 读取HTML文件
+      try {
+        htmlContent = await fs.readFile(htmlFilePath, 'utf8')
+        finalFileName = fileName
+        logger.info('[ShareXHS] HTML文件读取成功', {
+          path: htmlFilePath,
+          size: htmlContent.length
+        })
+      } catch (error) {
+        logger.error('[ShareXHS] 文件读取失败:', error)
+        return res.status(404).json({
+          success: false,
+          message: '文件不存在或无法读取'
+        })
+      }
+      
+      // 自动查找并读取pageinfo（如果存在content.json或社媒文案.json）
+      try {
+        const files = await fs.readdir(userCardPath)
+        
+        // 查找JSON文件（优先级：content.json > 社媒文案.json > 其他.json）
+        const jsonFile = files.find(f => f === 'content.json') ||
+                        files.find(f => f.includes('社媒') && f.endsWith('.json')) ||
+                        files.find(f => f.endsWith('.json') && 
+                                      !f.includes('meta') && 
+                                      !f.includes('response'))
+        
+        if (jsonFile) {
+          const jsonPath = path.join(userCardPath, jsonFile)
+          const jsonContent = await fs.readFile(jsonPath, 'utf8')
+          pageinfoContent = jsonContent
+          logger.info('[ShareXHS] 找到pageinfo文件', { file: jsonFile })
+        }
+      } catch (error) {
+        // pageinfo是可选的，忽略错误
+        logger.debug('[ShareXHS] 未找到pageinfo文件')
+      }
+      
+    } 
+    // 旧模式：直接使用传入的HTML内容（向后兼容）
+    else if (html) {
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: '文件名(name)是必需的'
+        })
+      }
+      
+      logger.info('[ShareXHS] 处理分享请求（传统模式）', {
+        hasHtml: true,
+        hasPageinfo: !!pageinfo,
+        fileName: name
+      })
+      
+      htmlContent = html
+      pageinfoContent = pageinfo
+      finalFileName = name
+      
+    } else {
       return res.status(400).json({
         success: false,
-        message: '文件名(name)是必需的'
+        message: '请提供文件路径或HTML内容'
       })
     }
     
     // 准备请求体
-    const requestBody = { 
-      html,
-      name  // 添加name参数
+    const requestBody = {
+      html: htmlContent,
+      name: finalFileName  // Engagia需要文件名
     }
-    if (pageinfo) {
-      requestBody.pageinfo = pageinfo
+    if (pageinfoContent) {
+      requestBody.pageinfo = pageinfoContent
     }
     
-    logger.info('[ShareXHS] 代理请求到Engagia API', {
-      hasHtml: !!requestBody.html,
-      hasPageinfo: !!requestBody.pageinfo,
-      fileName: requestBody.name
+    logger.info('[ShareXHS] 准备转发到Engagia', {
+      hasHtml: true,
+      hasPageinfo: !!pageinfoContent,
+      htmlSize: htmlContent.length,
+      fileName: finalFileName
     })
     
-    // 调用外部API
+    // 调用Engagia API
     const response = await fetch('http://engagia-s3.paitongai.net/api/process', {
       method: 'POST',
       headers: {
@@ -58,11 +179,11 @@ router.post('/xiaohongshu', async (req, res) => {
     })
     
     if (!response.ok) {
-      let errorMsg = `Engagia API错误: ${response.status} ${response.statusText}`
+      let errorMsg = `Engagia API错误: ${response.status}`
       try {
         const errorData = await response.json()
         if (errorData.message) {
-          errorMsg = `Engagia API: ${errorData.message}`
+          errorMsg = errorData.message
         }
       } catch (e) {
         // 无法解析错误响应
@@ -72,45 +193,31 @@ router.post('/xiaohongshu', async (req, res) => {
     
     const result = await response.json()
     
-    logger.info('[ShareXHS] Engagia API响应成功', {
+    logger.info('[ShareXHS] Engagia响应成功', {
       success: result.success,
-      hasData: !!result.data,
-      shareLink: result.shareLink
+      hasShareLink: !!result.shareLink
     })
     
-    // 标准化响应格式，确保前端能正确处理
-    const standardizedResponse = {
-      success: result.success,
-      message: result.message || '处理完成',
+    // 返回标准化响应
+    res.json({
+      success: true,
+      message: '分享链接生成成功',
       data: {
-        // 核心分享数据
-        title: result.extractedData?.title || result.data?.title || '',
-        content: result.extractedData?.content || result.data?.content || '',
-        hashtags: result.extractedData?.hashtags || result.data?.hashtags || [],
-        
-        // 图片资源
-        images: result.extractedData?.images?.map(img => img.src) || [],
-        cardCount: result.data?.cardCount || 0,
-        
-        // 分享链接 - 使用短链接
         shareLink: result.shareLink || result.data?.shortUrl || '',
-        shortLink: result.data?.shortUrl || result.shareLink || '',
-        
-        // 其他信息
-        fileId: result.fileId,
-        qrCodeUrl: result.data?.qrCodeUrl || ''
+        // 以下字段前端当前未使用，但保留以备扩展
+        title: result.extractedData?.title || '',
+        content: result.extractedData?.content || '',
+        hashtags: result.extractedData?.hashtags || [],
+        images: result.extractedData?.images?.map(img => img.src) || []
       }
-    }
-    
-    // 返回标准化结果
-    res.json(standardizedResponse)
+    })
     
   } catch (error) {
-    logger.error('[ShareXHS] 分享失败:', error)
+    logger.error('[ShareXHS] 分享处理失败:', error)
     
     res.status(500).json({
       success: false,
-      message: '分享失败: ' + error.message,
+      message: error.message || '分享失败',
       error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     })
   }

@@ -124,21 +124,27 @@ router.post('/xiaohongshu', async (req, res) => {
                                     parsedJson.content.summary
             
             if (isPod2PostFormat) {
-              // Pod2Post格式：Engagia暂时无法正确处理，跳过pageinfo
-              logger.info('[ShareXHS] 检测到Pod2Post格式content.json，跳过pageinfo以避免Engagia错误', { 
+              // Pod2Post格式：由于Engagia API存在bug，暂时跳过pageinfo
+              // 即使我们正确映射了字段，Engagia内部还是会报错
+              logger.info('[ShareXHS] 检测到Pod2Post格式，暂时跳过pageinfo（Engagia bug）', { 
                 file: contentJsonFile 
               })
               pageinfoContent = null
             } else {
-              // 其他格式：进行字段映射
+              // 其他格式的content.json：进行字段映射
+              // 注意：目前实际上没有其他格式会生成content.json文件
+              
+              // 处理title字段
               if (parsedJson.title && !parsedJson.post_title) {
                 parsedJson.post_title = parsedJson.title
               }
               
+              // 处理content字段
               if (parsedJson.content && !parsedJson.post_content) {
                 parsedJson.post_content = parsedJson.content
               }
               
+              // 处理hashtag/hashtags字段
               if ((parsedJson.hashtag || parsedJson.hashtags) && !parsedJson.post_hashtags) {
                 parsedJson.post_hashtags = parsedJson.hashtag || parsedJson.hashtags || []
               }

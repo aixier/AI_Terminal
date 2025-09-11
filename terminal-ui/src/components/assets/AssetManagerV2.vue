@@ -564,11 +564,13 @@ const confirmCreateFolder = async () => {
   }
   
   try {
-    const folderPath = currentPath.value === '/' 
-      ? `/${newFolderName.value}`
-      : `${currentPath.value}/${newFolderName.value}`
+    // 新的API需要分离path和name
+    const parentPath = currentPath.value === '/' ? '' : currentPath.value
     
-    await assetsApiV2.createFolder({ path: folderPath })
+    await assetsApiV2.createFolder({ 
+      path: parentPath,
+      name: newFolderName.value 
+    })
     ElMessage.success('文件夹创建成功')
     showNewFolderDialog.value = false
     loadFiles()

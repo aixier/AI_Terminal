@@ -200,7 +200,8 @@ const filteredCategories = computed(() => {
   const query = searchQuery.value.toLowerCase()
   return categories.filter(cat => 
     cat.label.toLowerCase().includes(query) ||
-    cat.key.toLowerCase().includes(query)
+    cat.key.toLowerCase().includes(query) ||
+    (cat.path && cat.path.toLowerCase().includes(query))
   )
 })
 
@@ -217,7 +218,8 @@ const filteredFiles = computed(() => {
   const query = searchQuery.value.toLowerCase()
   return files.filter(file => 
     file.name.toLowerCase().includes(query) ||
-    file.categoryLabel.toLowerCase().includes(query)
+    file.categoryLabel.toLowerCase().includes(query) ||
+    (file.path && file.path.toLowerCase().includes(query))
   ).slice(0, 50)
 })
 
@@ -273,6 +275,7 @@ const selectCategory = (category) => {
     type: 'category',
     key: category.key,
     label: category.label,
+    path: category.path || category.key,  // 优先使用path
     ...category
   })
   handleClose()
@@ -283,6 +286,7 @@ const selectFile = (file) => {
     type: 'file',
     name: file.name,
     fileName: file.name,
+    path: file.path || file.name,  // 优先使用path
     category: file.category,
     categoryLabel: file.categoryLabel,
     ...file
@@ -333,17 +337,92 @@ const buildAssetIndex = () => {
     files: []
   }
   
-  // 新格式：使用 assets 和 labels
-  if (assetMetadata.value.assets) {
-    // 处理所有分类和文件
+  // 新的树形结构格式
+  if (assetMetadata.value.tree) {
+    console.log('[AssetReferencePicker] Processing tree structure:', assetMetadata.value.tree)
+    
+    // 递归处理树形结构
+    const processTreeNode = (node, parentPath = '') => {
+      if (node.isDirectory) {
+        // 处理文件夹
+        const folderPath = node.path
+        // 修复：从路径中提取实际的文件夹名称
+        const folderName = node.name.includes('/') 
+          ? node.name.split('/').pop() 
+          : node.name
+        
+        // 计算该文件夹下的文件数量
+        let fileCount = 0
+        if (node.children) {
+          node.children.forEach(child => {
+            if (!child.isDirectory) {
+              fileCount++
+            } else if (child.children) {
+              // 递归计算子文件夹的文件数
+              const countFiles = (n) => {
+                let count = 0
+                if (n.children) {
+                  n.children.forEach(c => {
+                    if (!c.isDirectory) count++
+                    else count += countFiles(c)
+                  })
+                }
+                return count
+              }
+              fileCount += countFiles(child)
+            }
+          })
+        }
+        
+        // 添加文件夹到分类索引
+        assetIndex.value.categories[folderPath] = {
+          key: folderPath,
+          label: folderName,
+          fullLabel: folderPath,
+          path: folderPath,
+          fileCount: fileCount
+        }
+        
+        console.log(`[AssetReferencePicker] Added folder: path="${folderPath}", name="${folderName}", fileCount=${fileCount}`)
+        
+        // 递归处理子节点
+        if (node.children) {
+          node.children.forEach(child => {
+            processTreeNode(child, folderPath)
+          })
+        }
+      } else {
+        // 处理文件
+        const fileName = node.name
+        const filePath = node.path
+        const parentFolder = parentPath || '根目录'
+        
+        assetIndex.value.files.push({
+          name: fileName,
+          fileName: fileName,
+          path: filePath,
+          category: parentPath,
+          categoryLabel: parentFolder.split('/').pop() || parentFolder
+        })
+        
+        console.log(`[AssetReferencePicker] Added file: name="${fileName}", path="${filePath}", parent="${parentFolder}"`)
+      }
+    }
+    
+    // 处理所有根节点
+    assetMetadata.value.tree.forEach(node => {
+      processTreeNode(node)
+    })
+  }
+  
+  // 兼容旧格式：使用 assets 和 labels
+  else if (assetMetadata.value.assets) {
     Object.entries(assetMetadata.value.assets).forEach(([categoryKey, files]) => {
       const categoryLabel = categoryKey === '' 
         ? '根目录' 
         : (assetMetadata.value.labels?.[categoryKey] || categoryKey)
       
-      // 添加分类（不包括根目录）
       if (categoryKey !== '') {
-        // 计算文件数量
         const fileCount = files ? files.length : 0
         
         assetIndex.value.categories[categoryKey] = {
@@ -353,11 +432,8 @@ const buildAssetIndex = () => {
           files: files,
           fileCount: fileCount
         }
-        
-        console.log(`[AssetReferencePicker] Added category: key="${categoryKey}", label="${categoryLabel}"`)
       }
       
-      // 添加文件
       if (files && files.length > 0) {
         files.forEach(file => {
           assetIndex.value.files.push({
@@ -370,71 +446,6 @@ const buildAssetIndex = () => {
       }
     })
   }
-  
-  // 如果有树形结构，也处理它（用于分层显示）
-  // 但不要覆盖已经从 labels 设置的正确标签
-  if (assetMetadata.value.tree) {
-    assetMetadata.value.tree.forEach(cat => {
-      // 只处理尚未添加的分类
-      if (!assetIndex.value.categories[cat.key]) {
-        processCategory(cat)
-      }
-    })
-  }
-}
-
-// 递归处理分类
-const processCategory = (category, parentLabel = '') => {
-  const fullLabel = parentLabel 
-    ? `${parentLabel}/${category.label}` 
-    : category.label
-  
-  // 计算文件数量
-  let fileCount = category.files ? category.files.length : 0
-  if (category.children) {
-    category.children.forEach(child => {
-      const childCount = countCategoryFiles(child)
-      fileCount += childCount
-    })
-  }
-  
-  assetIndex.value.categories[category.key] = {
-    ...category,
-    fullLabel,
-    fileCount
-  }
-  
-  // 索引文件
-  if (category.files) {
-    category.files.forEach(file => {
-      assetIndex.value.files.push({
-        name: file,
-        fileName: file,
-        category: category.key,
-        categoryLabel: category.label
-      })
-    })
-  }
-  
-  // 递归处理子分类
-  if (category.children) {
-    category.children.forEach(child => 
-      processCategory(child, fullLabel)
-    )
-  }
-}
-
-// 统计分类文件数
-const countCategoryFiles = (category) => {
-  let count = category.files ? category.files.length : 0
-  
-  if (category.children) {
-    category.children.forEach(child => {
-      count += countCategoryFiles(child)
-    })
-  }
-  
-  return count
 }
 
 // 键盘事件处理

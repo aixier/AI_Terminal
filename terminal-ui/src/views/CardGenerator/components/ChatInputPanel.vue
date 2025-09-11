@@ -629,14 +629,14 @@ const insertAssetReference = (asset) => {
   const textarea = textareaRef.value
   const value = inputText.value  // 使用本地状态而不是 props
   
-  // 使用简化的引用格式：直接使用文件名或分类名
+  // 使用路径作为引用格式
   let reference
   if (asset.type === 'category') {
-    // 分类引用：直接使用分类名
-    reference = asset.label || asset.key
+    // 文件夹引用：使用路径
+    reference = asset.path || asset.key || asset.label
   } else {
-    // 文件引用：直接使用文件名
-    reference = asset.name || asset.fileName
+    // 文件引用：使用路径
+    reference = asset.path || asset.name || asset.fileName
   }
   
   console.log('[ChatInputPanel] Reference to insert:', reference)

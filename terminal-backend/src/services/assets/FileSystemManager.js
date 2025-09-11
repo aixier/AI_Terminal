@@ -42,6 +42,10 @@ class FileSystemManager {
    */
   async initializeUserDirectories(userId) {
     try {
+      // 首先确保基础assets目录存在
+      const baseAssetsPath = this.getUserPath(userId)
+      await fs.mkdir(baseAssetsPath, { recursive: true })
+      
       const directories = [
         this.getUserPath(userId, 'images/photos'),
         this.getUserPath(userId, 'images/designs'),
@@ -249,6 +253,18 @@ class FileSystemManager {
   async getDirectoryContents(userId, dirPath = '') {
     try {
       const fullPath = this.getUserPath(userId, dirPath)
+      
+      // 确保目录存在
+      try {
+        await fs.access(fullPath)
+      } catch (error) {
+        // 如果目录不存在，创建它
+        await fs.mkdir(fullPath, { recursive: true })
+        logger.info(`[FileSystemManager] Created missing directory: ${fullPath}`)
+        // 返回空数组，因为新创建的目录是空的
+        return []
+      }
+      
       const items = await fs.readdir(fullPath, { withFileTypes: true })
       
       const contents = await Promise.all(
@@ -292,6 +308,16 @@ class FileSystemManager {
 
     try {
       const fullPath = this.getUserPath(userId, dirPath)
+      
+      // 确保目录存在
+      try {
+        await fs.access(fullPath)
+      } catch (error) {
+        // 如果目录不存在，创建它
+        await fs.mkdir(fullPath, { recursive: true })
+        logger.info(`[FileSystemManager] Created missing directory: ${fullPath}`)
+      }
+      
       const items = await fs.readdir(fullPath, { withFileTypes: true })
       
       const tree = {

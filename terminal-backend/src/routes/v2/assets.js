@@ -6,6 +6,7 @@
 import express from 'express'
 import multer from 'multer'
 import path from 'path'
+import fs from 'fs/promises'
 import AssetManager from '../../services/assets/AssetManager.js'
 import EventProcessor from '../../services/assets/EventProcessor.js'
 import logger from '../../utils/logger.js'
@@ -17,6 +18,12 @@ const router = express.Router()
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     const tempDir = path.join(process.cwd(), 'temp')
+    // 确保temp目录存在
+    try {
+      await fs.mkdir(tempDir, { recursive: true })
+    } catch (error) {
+      logger.error('[Assets V2] Failed to create temp directory:', error)
+    }
     cb(null, tempDir)
   },
   filename: (req, file, cb) => {
@@ -221,7 +228,11 @@ router.post('/upload', upload.array('files', 10), async (req, res) => {
 
     // 清理临时文件
     for (const file of files) {
-      require('fs').unlinkSync(file.path)
+      try {
+        await fs.unlink(file.path)
+      } catch (err) {
+        logger.warn('[Assets V2] Failed to clean temp file:', err)
+      }
     }
 
     res.json({
@@ -235,8 +246,10 @@ router.post('/upload', upload.array('files', 10), async (req, res) => {
     if (req.files) {
       for (const file of req.files) {
         try {
-          require('fs').unlinkSync(file.path)
-        } catch (e) {}
+          await fs.unlink(file.path)
+        } catch (e) {
+          // 忽略错误
+        }
       }
     }
 

@@ -14,9 +14,9 @@ const getUserStoragePath = (username = 'default') => {
   const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
   
   if (isDocker) {
-    return `/app/data/users/${username}/storage`
+    return `/app/data/users/${username}/assets`
   } else {
-    return path.join(dataPath, 'users', username, 'storage')
+    return path.join(dataPath, 'users', username, 'assets')
   }
 }
 

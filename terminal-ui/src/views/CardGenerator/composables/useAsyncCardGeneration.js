@@ -320,8 +320,16 @@ export function useAsyncCardGeneration(updateMessageCallback = null) {
     if (!isGenerating.value) return null
     
     try {
-      const statusResponse = await fetch(`/api/generate/status/${encodeURIComponent(topic)}`)
-      const statusResult = await statusResponse.json()
+      // 如果有taskId，优先使用taskId查询
+      let statusResult
+      if (currentTaskId.value) {
+        console.log('[AsyncCardGeneration] 使用taskId刷新状态:', currentTaskId.value)
+        statusResult = await checkAsyncTaskStatus(currentTaskId.value)
+      } else {
+        console.log('[AsyncCardGeneration] 使用topic刷新状态:', topic)
+        const statusResponse = await fetch(`/api/generate/status/${encodeURIComponent(topic)}`)
+        statusResult = await statusResponse.json()
+      }
       
       console.log('[AsyncCardGeneration] 手动刷新状态:', statusResult)
       

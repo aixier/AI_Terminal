@@ -18,7 +18,7 @@ export const assetsApi = {
    * @param {string} params.search - 搜索关键词
    */
   getAssets(params = {}) {
-    return request.get('/assets/list', { 
+    return request.get('/assets', { 
       params: {
         ...params,
         userId: getUserId()
@@ -75,26 +75,15 @@ export const assetsApi = {
   /**
    * 创建文件夹
    * @param {Object} data - 文件夹信息
-   * @param {string} data.path - 文件夹路径
-   * @param {string} data.label - 显示名称（兼容旧代码）
+   * @param {string} data.path - 父文件夹路径
+   * @param {string} data.name - 文件夹名称
    */
   createFolder(data) {
     return request.post('/assets/folder', {
-      path: data.path || data.label,
+      path: data.path || '',
+      name: data.name,
       userId: getUserId()
     })
-  },
-
-  /**
-   * 创建分类（兼容旧代码）
-   */
-  createCategory(data) {
-    // 转换为新的文件夹创建
-    const path = data.parent 
-      ? `${data.parent}/${data.label}`
-      : data.label
-    
-    return this.createFolder({ path })
   },
 
   /**

@@ -54,6 +54,20 @@ export const checkGenerationStatus = async (topic) => {
 }
 
 /**
+ * 2.1 根据任务ID检查生成状态
+ * @param {string} taskId - 任务ID
+ * @returns {Promise<Object>} 状态信息
+ */
+export const checkTaskStatus = async (taskId) => {
+  console.log('[AsyncCardAPI] 根据任务ID检查状态:', taskId)
+  
+  const result = await service.get(`/generate/status/task/${taskId}`)
+  
+  console.log('[AsyncCardAPI] 任务状态结果:', result)
+  return result
+}
+
+/**
  * 3. 获取生成的文件内容
  * @param {string} folderName - 文件夹名称（URL编码）
  * @returns {Promise<Object>} 文件内容
@@ -70,21 +84,23 @@ export const getGeneratedFiles = async (folderName) => {
 
 /**
  * 轮询生成状态直到完成
- * @param {string} topic - 主题
+ * @param {string} identifier - 主题或任务ID
  * @param {Object} options - 轮询配置
  * @param {number} [options.maxAttempts=150] - 最大轮询次数
  * @param {number} [options.interval=2000] - 轮询间隔(ms)
  * @param {Function} [options.onProgress] - 进度回调
+ * @param {boolean} [options.useTaskId=false] - 是否使用任务ID查询
  * @returns {Promise<Object>} 最终状态
  */
-export const pollGenerationStatus = async (topic, options = {}) => {
+export const pollGenerationStatus = async (identifier, options = {}) => {
   const {
     maxAttempts = 100,  // 最多100次
     interval = 6000,    // 6秒间隔
-    onProgress
+    onProgress,
+    useTaskId = false   // 默认使用topic查询
   } = options
   
-  console.log('[AsyncCardAPI] 开始轮询生成状态:', { topic, maxAttempts, interval })
+  console.log('[AsyncCardAPI] 开始轮询生成状态:', { identifier, useTaskId, maxAttempts, interval })
   
   let attempts = 0
   
@@ -101,7 +117,10 @@ export const pollGenerationStatus = async (topic, options = {}) => {
           })
         }
         
-        const statusResult = await checkGenerationStatus(topic)
+        // 根据配置选择查询方式
+        const statusResult = useTaskId 
+          ? await checkTaskStatus(identifier)
+          : await checkGenerationStatus(identifier)
         
         // 传递详细的进度信息
         if (statusResult.progress && onProgress) {
@@ -249,7 +268,12 @@ export const generateCardAsync = async (params, options = {}) => {
     // 步骤2: 轮询检查状态
     if (onStatusChange) onStatusChange({ step: 'polling', message: '检查生成状态...' })
     
-    await pollGenerationStatus(topic, {
+    // 优先使用taskId查询，特别是在自定义模式下
+    const useTaskId = !!taskId && (params.mode === 'custom' || params.mode === 'custom-template')
+    const pollIdentifier = useTaskId ? taskId : topic
+    
+    await pollGenerationStatus(pollIdentifier, {
+      useTaskId,
       onProgress: (progressInfo) => {
         if (onProgress) onProgress(progressInfo)
         if (onStatusChange) {
@@ -425,6 +449,7 @@ export default {
   // 基础API
   submitAsyncGeneration,
   checkGenerationStatus,
+  checkTaskStatus,  // 新增：根据任务ID检查状态
   getGeneratedFiles,
   refreshGeneratedFiles,  // 新增：刷新检测文件
   

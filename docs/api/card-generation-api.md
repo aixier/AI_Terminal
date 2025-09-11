@@ -1009,8 +1009,325 @@ sequenceDiagram
 - **v3.33.0** (2025-01-19): 简化 Claude 执行流程
 - **v3.10.27** (2025-01-11): 添加自动参数生成功能
 
+## 10. 资产管理系统 (Chokidar-based File Management) v5.0.0
+
+### 概述
+基于Chokidar实时文件监控的完整Web文件管理系统，提供文件上传、下载、管理、搜索、实时通知等全套功能。
+
+### 核心特性
+- **实时文件监控**: 基于Chokidar的文件系统监控，自动检测文件变化
+- **用户隔离**: 每个用户独立的文件存储空间
+- **智能索引**: 自动文件索引和快速搜索
+- **图片处理**: 自动缩略图生成、图片优化、格式转换
+- **批量操作**: 支持批量删除、移动等操作
+- **实时通知**: Server-Sent Events (SSE) 实时推送文件变化
+
+### 系统架构
+```
+┌─────────────────────────────────────────────────┐
+│                   前端界面                        │
+│  (AssetManagerV2.vue / AssetManagerSimple.vue)   │
+└──────────────────┬──────────────────────────────┘
+                   │ HTTP/SSE
+┌──────────────────▼──────────────────────────────┐
+│             API路由层 (v2/assets.js)             │
+└──────────────────┬──────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────┐
+│           AssetManager (主协调器)                 │
+├──────────────────┬──────────────────────────────┤
+│  ChokidarWatcher │ FileSystemManager            │
+│  EventProcessor  │ IndexService                 │
+│  MediaProcessor  │ CacheManager                 │
+└──────────────────────────────────────────────────┘
+```
+
+### API端点列表
+
+#### 文件操作
+| 端点 | 方法 | 描述 |
+|-----|------|------|
+| `/api/assets` | GET | 获取文件/文件夹列表 |
+| `/api/assets/upload` | POST | 上传文件（支持批量） |
+| `/api/assets/folder` | POST | 创建文件夹 |
+| `/api/assets/rename` | PUT | 重命名文件/文件夹 |
+| `/api/assets/move` | PUT | 移动文件/文件夹 |
+| `/api/assets` | DELETE | 删除文件/文件夹 |
+| `/api/assets/batch` | POST | 批量操作 |
+
+#### 查询与搜索
+| 端点 | 方法 | 描述 |
+|-----|------|------|
+| `/api/assets/tree` | GET | 获取目录树结构 |
+| `/api/assets/search` | GET | 搜索文件 |
+| `/api/assets/file` | GET | 获取文件详情 |
+| `/api/assets/stats` | GET | 获取存储统计信息 |
+
+#### 图片处理
+| 端点 | 方法 | 描述 |
+|-----|------|------|
+| `/api/assets/optimize` | POST | 优化图片 |
+| `/api/assets/thumbnail` | GET | 获取缩略图 |
+
+#### 系统管理
+| 端点 | 方法 | 描述 |
+|-----|------|------|
+| `/api/assets/rebuild-index` | POST | 重建文件索引 |
+| `/api/assets/clear-cache` | POST | 清理缓存 |
+| `/api/assets/status` | GET | 获取系统状态 |
+
+#### 实时通知
+| 端点 | 方法 | 描述 |
+|-----|------|------|
+| `/api/assets/events` | GET | SSE实时事件流 |
+
+### 详细API文档
+
+#### 1. 获取文件列表
+```http
+GET /api/assets?path=&type=&search=&limit=100
+```
+
+**查询参数**:
+- `path` (string): 目录路径，默认为根目录
+- `type` (string): 文件类型过滤 (image/video/audio/document)
+- `search` (string): 搜索关键词
+- `limit` (number): 返回数量限制，默认100
+
+**响应**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "name": "example.jpg",
+      "path": "images/example.jpg",
+      "isDirectory": false,
+      "size": 1024000,
+      "type": "image",
+      "mimeType": "image/jpeg",
+      "createdAt": "2025-01-01T10:00:00Z",
+      "modifiedAt": "2025-01-01T10:00:00Z",
+      "thumbnail": "/api/assets/thumbnail?path=images/example.jpg"
+    }
+  ]
+}
+```
+
+#### 2. 上传文件
+```http
+POST /api/assets/upload
+Content-Type: multipart/form-data
+
+参数:
+- files: 文件数组（最多10个，每个最大100MB）
+- path: 目标目录路径
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "name": "uploaded.jpg",
+      "path": "images/uploaded.jpg",
+      "size": 512000,
+      "type": "image"
+    }
+  ]
+}
+```
+
+#### 3. 创建文件夹
+```http
+POST /api/assets/folder
+{
+  "path": "parent/path",
+  "name": "新文件夹"
+}
+```
+
+#### 4. 搜索文件
+```http
+GET /api/assets/search?q=keyword&type=image&folder=&sortBy=relevance&limit=50
+```
+
+**查询参数**:
+- `q` (string, 必需): 搜索关键词
+- `type` (string): 文件类型过滤
+- `folder` (string): 限定搜索范围
+- `sortBy` (string): 排序方式 (relevance/name/date/size/type)
+- `limit` (number): 结果数量限制
+
+#### 5. 批量操作
+```http
+POST /api/assets/batch
+{
+  "operation": "delete",  // delete, move
+  "items": [
+    { "path": "file1.jpg" },
+    { "path": "folder/file2.pdf" }
+  ]
+}
+```
+
+#### 6. 图片优化
+```http
+POST /api/assets/optimize
+{
+  "path": "images/large.jpg",
+  "width": 800,
+  "height": 600,
+  "quality": 85,
+  "format": "webp"
+}
+```
+
+#### 7. SSE实时事件
+```javascript
+const eventSource = new EventSource('/api/assets/events');
+
+eventSource.addEventListener('file:added', (e) => {
+  const data = JSON.parse(e.data);
+  console.log('文件添加:', data);
+});
+
+eventSource.addEventListener('file:modified', (e) => {
+  const data = JSON.parse(e.data);
+  console.log('文件修改:', data);
+});
+
+eventSource.addEventListener('file:deleted', (e) => {
+  const data = JSON.parse(e.data);
+  console.log('文件删除:', data);
+});
+```
+
+### 支持的文件类型
+
+#### 图片
+- JPEG, PNG, GIF, WebP, SVG, BMP, ICO
+- 自动生成缩略图（150x150, 300x300, 600x600）
+- 支持格式转换和优化
+
+#### 视频
+- MP4, AVI, MOV, MKV, WebM, FLV, WMV
+- 配置支持但未实现缩略图生成
+
+#### 音频
+- MP3, WAV, OGG, M4A, AAC, FLAC
+- 基础元数据提取
+
+#### 文档
+- PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX
+- TXT, MD, JSON, XML, YAML
+- 文本文件支持内容预览
+
+#### 归档
+- ZIP, RAR, 7Z, TAR, GZ
+
+### 存储结构
+```
+/app/data/users/
+├── {userId}/
+│   ├── assets/              # 用户文件存储
+│   │   ├── images/          # 图片文件
+│   │   ├── videos/          # 视频文件
+│   │   ├── documents/       # 文档文件
+│   │   └── ...
+│   ├── .cache/              # 缓存目录
+│   │   ├── thumbnails/      # 缩略图缓存
+│   │   ├── previews/        # 预览缓存
+│   │   └── metadata/        # 元数据缓存
+│   └── .system/             # 系统文件
+│       └── index.json       # 文件索引
+```
+
+### 安全特性
+- **路径遍历防护**: 自动检测和阻止路径遍历攻击
+- **文件类型验证**: 严格的文件类型和MIME类型验证
+- **文件名清理**: 自动清理危险字符和特殊字符
+- **用户隔离**: 每个用户只能访问自己的文件
+- **大小限制**: 单文件最大100MB，可配置
+- **并发控制**: 队列机制防止并发冲突
+
+### 性能优化
+- **多级缓存**: 缩略图、预览、搜索结果缓存
+- **索引优化**: 快速文件索引和搜索
+- **批量处理**: 事件批量处理减少I/O操作
+- **延迟加载**: 大目录分页加载
+- **队列机制**: 异步任务队列处理
+
+### 配置选项
+```javascript
+// src/config/assetConfig.js
+{
+  uploadLimits: {
+    maxFileSize: 100 * 1024 * 1024,  // 100MB
+    maxFiles: 10,                     // 批量上传最大文件数
+    allowedTypes: [...]                // 允许的文件类型
+  },
+  storage: {
+    userQuota: 10 * 1024 * 1024 * 1024,  // 10GB用户配额
+    tempDir: './temp',                    // 临时文件目录
+    cacheDir: '.cache'                    // 缓存目录
+  },
+  thumbnail: {
+    sizes: {
+      small: { width: 150, height: 150 },
+      medium: { width: 300, height: 300 },
+      large: { width: 600, height: 600 }
+    }
+  }
+}
+```
+
+### 使用示例
+
+#### JavaScript客户端
+```javascript
+// 文件上传
+const formData = new FormData();
+formData.append('files', file1);
+formData.append('files', file2);
+formData.append('path', 'documents');
+
+const response = await fetch('/api/assets/upload', {
+  method: 'POST',
+  body: formData
+});
+
+// 搜索文件
+const searchResults = await fetch('/api/assets/search?q=report&type=document')
+  .then(res => res.json());
+
+// 监听实时变化
+const eventSource = new EventSource('/api/assets/events');
+eventSource.addEventListener('file:added', (e) => {
+  updateFileList(JSON.parse(e.data));
+});
+```
+
+### 已知限制
+- 不支持文件复制操作（仅支持移动）
+- 无文件版本控制
+- 视频缩略图生成未实现
+- 无文件分享和权限管理
+- 不支持文件内容搜索（仅文件名）
+- 无云存储集成
+
+### 版本历史
+- **v5.0.0** (2025-09-11): 
+  - 完整的Chokidar文件系统实现
+  - 实时SSE事件通知
+  - 智能文件索引和搜索
+  - 图片处理和优化
+  - 批量操作支持
+
 ## 相关文档
 
 - [API 总览](/docs/API_DOCUMENTATION.md)
 - [开发者指南](/DEVELOPER.md)
 - [模板开发指南](/docs/template-development.md)
+- [素材管理系统Chokidar改造方案](/docs/素材管理系统Chokidar改造方案文档.md)

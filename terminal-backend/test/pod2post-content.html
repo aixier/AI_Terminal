@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pod2Post 并发测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .main-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .config-section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .config-section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .form-group input, .form-group textarea {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        
+        .upload-section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        
+        .upload-zone {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: #fafafa;
+        }
+        
+        .upload-zone:hover {
+            border-color: #667eea;
+            background: #f5f5ff;
+        }
+        
+        .upload-zone.dragover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        
+        .upload-zone h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .upload-zone p {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .upload-btn {
+            display: inline-block;
+            padding: 10px 24px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .upload-btn:hover {
+            background: #5567d8;
+            transform: translateY(-2px);
+        }
+        
+        .file-list {
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .file-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .file-size {
+            color: #999;
+            margin-left: 10px;
+        }
+        
+        .file-remove {
+            color: #ff4444;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        
+        .file-remove:hover {
+            background: #ffe0e0;
+        }
+        
+        .action-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 12px 36px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            display: none;
+        }
+        
+        .result-section.active {
+            display: block;
+        }
+        
+        .result-section h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .status-info {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .status-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .status-value {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+        }
+        
+        .logs-container {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+        
+        .log-entry {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .log-time {
+            color: #999;
+            margin-right: 10px;
+        }
+        
+        .log-success {
+            color: #28a745;
+        }
+        
+        .log-error {
+            color: #dc3545;
+        }
+        
+        .log-info {
+            color: #007bff;
+        }
+        
+        .download-links {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .download-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .download-item:last-child {
+            border-bottom: none;
+        }
+        
+        .download-btn {
+            padding: 6px 16px;
+            background: #667eea;
+            color: white;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .download-btn:hover {
+            background: #5567d8;
+        }
+
+        .taskid-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .taskid-display {
+            flex: 1;
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-small:hover {
+            background: #5567d8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Pod2Post 并发测试</h1>
+            <p>支持多任务并发，任务级资源隔离</p>
+        </div>
+        
+        <div class="main-panel">
+            <!-- 配置区域 -->
+            <div class="config-section">
+                <h2>⚙️ 配置信息</h2>
+                <div class="config-grid">
+                    <div class="form-group">
+                        <label>服务器地址</label>
+                        <input type="text" id="serverUrl" value="http://localhost:8098" />
+                    </div>
+                    <div class="form-group">
+                        <label>用户Token（可选）</label>
+                        <input type="text" id="userToken" placeholder="留空使用默认用户" />
+                    </div>
+                    <div class="form-group">
+                        <label>任务ID（留空自动生成）</label>
+                        <input type="text" id="taskIdInput" placeholder="格式: pod2post_timestamp_random" />
+                        <div class="taskid-info">
+                            <div class="taskid-display" id="currentTaskId">点击生成按钮创建任务ID</div>
+                            <button class="btn-small" onclick="generateNewTaskId()">生成新ID</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 资源上传区域 -->
+            <div class="upload-section">
+                <h2>📁 资源上传</h2>
+                <div class="upload-grid">
+                    <!-- CDN资源上传 -->
+                    <div class="upload-zone" id="cdnZone">
+                        <h3>📦 CDN资源</h3>
+                        <p>拖拽文件到此处或点击选择</p>
+                        <span class="upload-btn">选择文件</span>
+                        <input type="file" id="cdnFiles" multiple accept="image/*" style="display:none" />
+                        <div class="file-list" id="cdnFileList"></div>
+                    </div>
+
+                    <!-- 照片上传 -->
+                    <div class="upload-zone" id="photoZone">
+                        <h3>🖼️ 照片</h3>
+                        <p>拖拽文件到此处或点击选择</p>
+                        <span class="upload-btn">选择文件</span>
+                        <input type="file" id="photoFiles" multiple accept="image/*" style="display:none" />
+                        <div class="file-list" id="photoFileList"></div>
+                    </div>
+
+                    <!-- Resources文档上传 -->
+                    <div class="upload-zone" id="resourceZone">
+                        <h3>📄 Resources文档</h3>
+                        <p>支持 .md, .txt, .pdf, .doc 等格式</p>
+                        <span class="upload-btn">选择文件</span>
+                        <input type="file" id="resourceFiles" multiple accept=".md,.txt,.pdf,.doc,.docx" style="display:none" />
+                        <div class="file-list" id="resourceFileList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 提示词输入 -->
+            <div class="config-section">
+                <h2>✍️ 提示词</h2>
+                <div class="form-group">
+                    <textarea id="promptText" placeholder="输入提示词，可使用 [CDN], [photos], [resources] 引用上传的资源...">阅读[播客小红书图文卡片需求文档.md]，按文档要求使用[新闻感封面.md]和[内容页模板规范.md]，在[用户card路径]文件夹下生成html和json文档。
+需要使用的照片请遍历[photos]文件夹下的所有子目录寻找照片资源（比如照片、图片等文件夹），html图片资源使用绝对路径。
+需要使用的其他素材在[CDN]文件夹中。对话录音文本在[resources]文件夹下
+本期主播：李静、养鸡。本期嘉宾：戴军、艳艳。</textarea>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="action-section">
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="submitBtn" onclick="submitTask()">
+                        开始生成
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearAll()">
+                        清空所有
+                    </button>
+                    <button class="btn btn-secondary" id="checkStatusBtn" onclick="checkStatus()" disabled>
+                        检查状态
+                    </button>
+                </div>
+            </div>
+
+            <!-- 结果展示 -->
+            <div class="result-section" id="resultSection">
+                <h3>📊 任务状态</h3>
+                <div class="status-info">
+                    <div class="status-row">
+                        <span class="status-label">任务ID：</span>
+                        <span class="status-value" id="resultTaskId">-</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">状态：</span>
+                        <span class="status-value">
+                            <span class="status-badge" id="statusBadge">等待</span>
+                        </span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">进度：</span>
+                        <span class="status-value" id="progressText">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 20px;">📝 日志</h3>
+                <div class="logs-container" id="logsContainer"></div>
+
+                <div class="download-links" id="downloadLinks" style="display: none;">
+                    <h3>📥 生成结果</h3>
+                    <div id="downloadItems"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let cdnFilesList = [];
+        let photoFilesList = [];
+        let resourceFilesList = [];
+        let currentTaskId = null;
+        let statusCheckInterval = null;
+
+        // 生成任务ID
+        function generateTaskId() {
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(2, 9);
+            return `pod2post_${timestamp}_${random}`;
+        }
+
+        // 生成新的任务ID
+        function generateNewTaskId() {
+            const taskId = generateTaskId();
+            document.getElementById('taskIdInput').value = taskId;
+            document.getElementById('currentTaskId').textContent = taskId;
+            currentTaskId = taskId;
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 绑定文件选择
+            setupFileUpload('cdn');
+            setupFileUpload('photo');
+            setupFileUpload('resource');
+        });
+
+        // 设置文件上传
+        function setupFileUpload(type) {
+            const zone = document.getElementById(`${type}Zone`);
+            const input = document.getElementById(`${type}Files`);
+            const fileList = document.getElementById(`${type}FileList`);
+
+            // 点击选择文件
+            zone.addEventListener('click', () => input.click());
+
+            // 文件选择变化
+            input.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                if (type === 'cdn') cdnFilesList = files;
+                else if (type === 'photo') photoFilesList = files;
+                else if (type === 'resource') resourceFilesList = files;
+                
+                displayFiles(files, fileList, type);
+            });
+
+            // 拖拽支持
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files);
+                
+                if (type === 'cdn') cdnFilesList = files;
+                else if (type === 'photo') photoFilesList = files;
+                else if (type === 'resource') resourceFilesList = files;
+                
+                displayFiles(files, fileList, type);
+            });
+        }
+
+        // 显示文件列表
+        function displayFiles(files, container, type) {
+            container.innerHTML = '';
+            files.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${formatFileSize(file.size)}</span>
+                    <span class="file-remove" onclick="removeFile('${type}', ${index})">✕</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // 移除文件
+        function removeFile(type, index) {
+            if (type === 'cdn') {
+                cdnFilesList.splice(index, 1);
+                displayFiles(cdnFilesList, document.getElementById('cdnFileList'), 'cdn');
+            } else if (type === 'photo') {
+                photoFilesList.splice(index, 1);
+                displayFiles(photoFilesList, document.getElementById('photoFileList'), 'photo');
+            } else if (type === 'resource') {
+                resourceFilesList.splice(index, 1);
+                displayFiles(resourceFilesList, document.getElementById('resourceFileList'), 'resource');
+            }
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // 添加日志
+        function addLog(message, type = 'info') {
+            const container = document.getElementById('logsContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // 提交任务
+        async function submitTask() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const userToken = document.getElementById('userToken').value;
+            const promptText = document.getElementById('promptText').value;
+            
+            // 获取或生成任务ID
+            let taskId = document.getElementById('taskIdInput').value.trim();
+            if (!taskId) {
+                taskId = generateTaskId();
+                document.getElementById('taskIdInput').value = taskId;
+                document.getElementById('currentTaskId').textContent = taskId;
+            }
+            currentTaskId = taskId;
+
+            if (!promptText) {
+                alert('请输入提示词');
+                return;
+            }
+
+            // 显示结果区域
+            document.getElementById('resultSection').classList.add('active');
+            document.getElementById('resultTaskId').textContent = taskId;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('checkStatusBtn').disabled = false;
+
+            try {
+                addLog('开始处理任务...', 'info');
+                updateStatus('processing', '上传中', 10);
+
+                // 上传CDN资源
+                if (cdnFilesList.length > 0) {
+                    addLog(`上传 ${cdnFilesList.length} 个CDN文件...`, 'info');
+                    const formData = new FormData();
+                    cdnFilesList.forEach(file => formData.append('files', file));
+                    
+                    const response = await fetch(`${serverUrl}/api/generate/pod2post/cdn?taskId=${taskId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        addLog('CDN文件上传成功', 'success');
+                    }
+                }
+                updateStatus('processing', '上传中', 30);
+
+                // 上传照片
+                if (photoFilesList.length > 0) {
+                    addLog(`上传 ${photoFilesList.length} 个照片文件...`, 'info');
+                    const formData = new FormData();
+                    photoFilesList.forEach(file => formData.append('images', file));
+                    
+                    const response = await fetch(`${serverUrl}/api/generate/pod2post/pic?taskId=${taskId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        addLog('照片文件上传成功', 'success');
+                    }
+                }
+                updateStatus('processing', '上传中', 50);
+
+                // 上传文档
+                if (resourceFilesList.length > 0) {
+                    addLog(`上传 ${resourceFilesList.length} 个文档文件...`, 'info');
+                    const formData = new FormData();
+                    resourceFilesList.forEach(file => formData.append('files', file));
+                    
+                    const response = await fetch(`${serverUrl}/api/generate/pod2post/resources?taskId=${taskId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        addLog('文档文件上传成功', 'success');
+                    }
+                }
+                updateStatus('processing', '处理中', 70);
+
+                // 提交生成任务
+                addLog('提交生成任务...', 'info');
+                const response = await fetch(`${serverUrl}/api/generate/pod2post/async`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: promptText,
+                        taskId: taskId,
+                        token: userToken || undefined
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('任务提交成功，后台处理中...', 'success');
+                    addLog(`任务ID: ${result.data.taskId}`, 'info');
+                    
+                    // 开始轮询状态
+                    startStatusPolling();
+                } else {
+                    throw new Error(result.message || '任务提交失败');
+                }
+
+            } catch (error) {
+                addLog(`错误: ${error.message}`, 'error');
+                updateStatus('failed', '失败', 0);
+                document.getElementById('submitBtn').disabled = false;
+            }
+        }
+
+        // 更新状态
+        function updateStatus(status, text, progress) {
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = text;
+            badge.className = `status-badge status-${status}`;
+            
+            document.getElementById('progressText').textContent = `${progress}%`;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        // 开始轮询状态
+        function startStatusPolling() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+
+            statusCheckInterval = setInterval(async () => {
+                await checkStatus();
+            }, 3000);
+        }
+
+        // 检查状态
+        async function checkStatus() {
+            if (!currentTaskId) return;
+
+            const serverUrl = document.getElementById('serverUrl').value;
+            const userToken = document.getElementById('userToken').value;
+
+            try {
+                const url = userToken 
+                    ? `${serverUrl}/api/generate/pod2post/status/${currentTaskId}?token=${userToken}`
+                    : `${serverUrl}/api/generate/pod2post/status/${currentTaskId}`;
+                    
+                const response = await fetch(url);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const data = result.data;
+                    const progress = data.progress || 0;
+                    
+                    updateStatus(data.status, 
+                        data.status === 'completed' ? '已完成' : 
+                        data.status === 'failed' ? '失败' : '处理中',
+                        progress
+                    );
+
+                    // 检查是否完成（状态为completed/success或所有phases都完成，包括OSS上传）
+                    const isCompleted = data.status === 'completed' || data.status === 'success' || 
+                        (data.phases && 
+                         data.phases.promptProcessing === 'completed' && 
+                         data.phases.firstGeneration === 'completed' && 
+                         data.phases.base64Embedding === 'completed' &&
+                         data.phases.ossUpload === 'completed');
+                    
+                    if (isCompleted) {
+                        addLog('任务完成！', 'success');
+                        clearInterval(statusCheckInterval);
+                        document.getElementById('submitBtn').disabled = false;
+                        
+                        // 获取生成内容（使用完整的taskId作为folderName）
+                        // 优先使用folderName，如果没有则使用taskId
+                        const folderName = data.folderName || data.taskId || currentTaskId;
+                        if (folderName) {
+                            await getDownloadLinks(folderName);
+                        }
+                    } else if (data.status === 'failed' || data.status === 'error') {
+                        addLog('任务失败', 'error');
+                        clearInterval(statusCheckInterval);
+                        document.getElementById('submitBtn').disabled = false;
+                    }
+                }
+            } catch (error) {
+                console.error('Status check error:', error);
+            }
+        }
+
+        // 获取下载链接
+        async function getDownloadLinks(folderName) {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const userToken = document.getElementById('userToken').value;
+
+            try {
+                const url = userToken 
+                    ? `${serverUrl}/api/generate/pod2post/content/${folderName}?token=${userToken}`
+                    : `${serverUrl}/api/generate/pod2post/content/${folderName}`;
+                    
+                const response = await fetch(url);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    showGeneratedContent(result.data);
+                }
+            } catch (error) {
+                addLog(`获取生成内容失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 显示生成的内容
+        function showGeneratedContent(data) {
+            const downloadItems = document.getElementById('downloadItems');
+            downloadItems.innerHTML = '';
+            
+            // 创建主要文件展示区域
+            const mainFilesDiv = document.createElement('div');
+            mainFilesDiv.style.marginBottom = '20px';
+            
+            // 检查OSS上传状态
+            const ossUploadError = data.content?.metadata?.custom?.ossUpload?.error;
+            if (ossUploadError) {
+                const errorDiv = document.createElement('div');
+                errorDiv.style.padding = '15px';
+                errorDiv.style.background = '#fff3cd';
+                errorDiv.style.borderRadius = '8px';
+                errorDiv.style.marginBottom = '15px';
+                errorDiv.style.color = '#856404';
+                errorDiv.innerHTML = `
+                    <div style="font-weight: 500; margin-bottom: 10px;">⚠️ OSS上传部分失败</div>
+                    <div style="font-size: 14px;">部分文件因文件名包含中文字符无法上传到OSS，但您仍可以查看生成的内容。</div>
+                `;
+                mainFilesDiv.appendChild(errorDiv);
+            }
+            
+            // 显示Base64版本HTML
+            if (data.content?.base64HtmlOssUrl) {
+                const fileDiv = createFileItem(
+                    '🎯 Base64版本 HTML (推荐下载)',
+                    `包含所有图片的完整版本 • ${data.content.base64HtmlSize ? formatFileSize(data.content.base64HtmlSize) : '大文件'}`,
+                    data.content.base64HtmlOssUrl,
+                    true
+                );
+                mainFilesDiv.appendChild(fileDiv);
+            } else if (data.content?.base64Html) {
+                // 小文件直接创建下载
+                const blob = new Blob([data.content.base64Html], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const fileDiv = createFileItem(
+                    '🎯 Base64版本 HTML',
+                    `包含所有图片的完整版本 • ${formatFileSize(data.content.base64Html.length)}`,
+                    downloadUrl,
+                    false
+                );
+                mainFilesDiv.appendChild(fileDiv);
+            } else if (data.content?.generatedFiles?.withBase64) {
+                // 如果有文件名但没有OSS URL，显示文件信息
+                const fileInfo = data.htmlFiles?.find(f => f.fileName === data.content.generatedFiles.withBase64);
+                const fileDiv = createFileItem(
+                    '🎯 Base64版本 HTML (本地生成)',
+                    `${data.content.generatedFiles.withBase64} • ${fileInfo ? formatFileSize(fileInfo.size) : '文件已生成'}`,
+                    null,
+                    false,
+                    '文件过大，请通过服务器下载'
+                );
+                mainFilesDiv.appendChild(fileDiv);
+            }
+            
+            // 显示原始HTML
+            if (data.content?.originalHtmlOssUrl) {
+                const fileDiv = createFileItem(
+                    '📄 原始版本 HTML',
+                    `不含Base64图片 • ${data.content.originalHtmlSize ? formatFileSize(data.content.originalHtmlSize) : '查看大小'}`,
+                    data.content.originalHtmlOssUrl,
+                    true
+                );
+                mainFilesDiv.appendChild(fileDiv);
+            } else if (data.content?.originalHtml) {
+                const blob = new Blob([data.content.originalHtml], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const fileDiv = createFileItem(
+                    '📄 原始版本 HTML',
+                    `不含Base64图片 • ${formatFileSize(data.content.originalHtml.length)}`,
+                    downloadUrl,
+                    false
+                );
+                mainFilesDiv.appendChild(fileDiv);
+            } else if (data.content?.generatedFiles?.original) {
+                // 如果有文件名但没有OSS URL，显示文件信息
+                const fileInfo = data.htmlFiles?.find(f => f.fileName === data.content.generatedFiles.original);
+                const fileDiv = createFileItem(
+                    '📄 原始版本 HTML (本地生成)',
+                    `${data.content.generatedFiles.original} • ${fileInfo ? formatFileSize(fileInfo.size) : '文件已生成'}`,
+                    null,
+                    false,
+                    '请通过服务器下载'
+                );
+                mainFilesDiv.appendChild(fileDiv);
+            }
+            
+            // 显示元数据JSON (有OSS URL时优先使用)
+            if (data.content?.metadataOssUrl) {
+                const fileDiv = createFileItem(
+                    '📊 元数据 JSON (OSS)',
+                    `任务信息和配置 • ${data.content.metadataSize ? formatFileSize(data.content.metadataSize) : '查看文件'}`,
+                    data.content.metadataOssUrl,
+                    true
+                );
+                mainFilesDiv.appendChild(fileDiv);
+            } else if (data.content?.metadata) {
+                const blob = new Blob([JSON.stringify(data.content.metadata, null, 2)], { type: 'application/json' });
+                const downloadUrl = URL.createObjectURL(blob);
+                const fileDiv = createFileItem(
+                    '📊 元数据 JSON',
+                    `任务信息和配置 • ${formatFileSize(JSON.stringify(data.content.metadata).length)}`,
+                    downloadUrl,
+                    false
+                );
+                mainFilesDiv.appendChild(fileDiv);
+            }
+            
+            downloadItems.appendChild(mainFilesDiv);
+            
+            // 显示Base64分析信息
+            if (data.content?.base64Analysis) {
+                const analysisDiv = document.createElement('div');
+                analysisDiv.style.padding = '15px';
+                analysisDiv.style.background = '#f8f9fa';
+                analysisDiv.style.borderRadius = '8px';
+                analysisDiv.style.marginTop = '15px';
+                analysisDiv.innerHTML = `
+                    <div style="font-weight: 500; margin-bottom: 10px;">📊 Base64嵌入分析</div>
+                    <div style="font-size: 14px; color: #666;">
+                        • Base64图片数量: ${data.content.base64Analysis.base64ImageCount || 0}<br>
+                        • 未转换路径数: ${data.content.base64Analysis.unconvertedPathCount || 0}<br>
+                        • 转换状态: ${data.content.base64Analysis.conversionSuccess ? '✅ 成功' : '❌ 失败'}
+                    </div>
+                `;
+                downloadItems.appendChild(analysisDiv);
+            }
+            
+            // 显示content.json下载链接
+            if (data.content?.contentJsonOssUrl) {
+                const contentDiv = document.createElement('div');
+                contentDiv.style.marginTop = '20px';
+                contentDiv.innerHTML = '<div style="font-weight: 500; margin-bottom: 10px;">📝 内容文件：</div>';
+                
+                const contentFileDiv = createFileItem(
+                    '📄 Content JSON',
+                    `社媒文案内容 • ${data.content.contentJsonSize ? formatFileSize(data.content.contentJsonSize) : '查看文件'}`,
+                    data.content.contentJsonOssUrl,
+                    true
+                );
+                contentDiv.appendChild(contentFileDiv);
+                downloadItems.appendChild(contentDiv);
+            }
+            
+            // 显示其他文件的OSS链接
+            if (data.content?.otherFilesOssUrls && data.content.otherFilesOssUrls.length > 0) {
+                const otherFilesDiv = document.createElement('div');
+                otherFilesDiv.style.marginTop = '20px';
+                otherFilesDiv.innerHTML = '<div style="font-weight: 500; margin-bottom: 10px;">📎 其他文件：</div>';
+                
+                data.content.otherFilesOssUrls.forEach((file, index) => {
+                    const fileSize = data.content.otherFilesSizes?.[index]?.fileSize;
+                    const fileDiv = createFileItem(
+                        `📄 ${file.fileName}`,
+                        fileSize ? formatFileSize(fileSize) : '查看文件',
+                        file.ossUrl,
+                        true
+                    );
+                    otherFilesDiv.appendChild(fileDiv);
+                });
+                
+                downloadItems.appendChild(otherFilesDiv);
+            }
+            
+            // 显示所有文件列表
+            if (data.allFiles && data.allFiles.length > 0) {
+                const allFilesDiv = document.createElement('div');
+                allFilesDiv.style.marginTop = '20px';
+                allFilesDiv.innerHTML = '<div style="font-weight: 500; margin-bottom: 10px;">📁 所有生成的文件：</div>';
+                
+                const fileListDiv = document.createElement('div');
+                fileListDiv.style.background = '#f8f9fa';
+                fileListDiv.style.borderRadius = '8px';
+                fileListDiv.style.padding = '10px';
+                
+                data.allFiles.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.style.display = 'flex';
+                    fileItem.style.justifyContent = 'space-between';
+                    fileItem.style.padding = '5px 10px';
+                    fileItem.style.marginBottom = '5px';
+                    fileItem.style.background = 'white';
+                    fileItem.style.borderRadius = '4px';
+                    fileItem.innerHTML = `
+                        <span>${file.fileName}</span>
+                        <span style="color: #666; font-size: 14px;">${formatFileSize(file.size)}</span>
+                    `;
+                    fileListDiv.appendChild(fileItem);
+                });
+                
+                allFilesDiv.appendChild(fileListDiv);
+                downloadItems.appendChild(allFilesDiv);
+            }
+            
+            document.getElementById('downloadLinks').style.display = 'block';
+            addLog('✅ 生成内容获取成功！', 'success');
+        }
+        
+        // 创建文件项
+        function createFileItem(name, description, url, isOssUrl, customMessage) {
+            const fileDiv = document.createElement('div');
+            fileDiv.style.display = 'flex';
+            fileDiv.style.justifyContent = 'space-between';
+            fileDiv.style.alignItems = 'center';
+            fileDiv.style.padding = '15px';
+            fileDiv.style.marginBottom = '10px';
+            fileDiv.style.background = 'white';
+            fileDiv.style.borderRadius = '8px';
+            fileDiv.style.border = '1px solid #e0e0e0';
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.innerHTML = `
+                <div style="font-weight: 500; margin-bottom: 5px;">${name}</div>
+                <div style="font-size: 14px; color: #666;">${description}</div>
+            `;
+            
+            const buttonDiv = document.createElement('div');
+            if (customMessage) {
+                // 显示自定义消息（文件无法下载时）
+                buttonDiv.innerHTML = `
+                    <span style="
+                        color: #999;
+                        font-size: 14px;
+                        font-style: italic;
+                    ">${customMessage}</span>
+                `;
+            } else if (url) {
+                if (isOssUrl) {
+                    buttonDiv.innerHTML = `
+                        <button class="download-btn" onclick="window.open('${url}', '_blank')" style="
+                            background: #4CAF50;
+                            color: white;
+                            border: none;
+                            padding: 8px 20px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 14px;
+                        ">📥 下载</button>
+                    `;
+                } else {
+                    buttonDiv.innerHTML = `
+                        <a href="${url}" download style="
+                            display: inline-block;
+                            background: #4CAF50;
+                            color: white;
+                            text-decoration: none;
+                            padding: 8px 20px;
+                            border-radius: 4px;
+                            font-size: 14px;
+                        ">📥 下载</a>
+                    `;
+                }
+            } else {
+                // 没有URL时显示不可用状态
+                buttonDiv.innerHTML = `
+                    <span style="
+                        color: #999;
+                        font-size: 14px;
+                    ">暂无下载</span>
+                `;
+            }
+            
+            fileDiv.appendChild(infoDiv);
+            fileDiv.appendChild(buttonDiv);
+            
+            return fileDiv;
+        }
+
+        // 清空所有
+        function clearAll() {
+            cdnFilesList = [];
+            photoFilesList = [];
+            resourceFilesList = [];
+            currentTaskId = null;
+            
+            document.getElementById('cdnFileList').innerHTML = '';
+            document.getElementById('photoFileList').innerHTML = '';
+            document.getElementById('resourceFileList').innerHTML = '';
+            document.getElementById('promptText').value = '阅读[播客小红书图文卡片需求文档.md]，按文档要求使用[新闻感封面.md]和[内容页模板规范.md]，在[用户card路径]文件夹下生成html和json文档。\n需要使用的照片请遍历[photos]文件夹下的所有子目录寻找照片资源（比如照片、图片等文件夹），html图片资源使用绝对路径。\n需要使用的其他素材在[CDN]文件夹中。对话录音文本在[resources]文件夹下\n本期主播：李静、养鸡。本期嘉宾：戴军、艳艳。';
+            document.getElementById('taskIdInput').value = '';
+            document.getElementById('currentTaskId').textContent = '点击生成按钮创建任务ID';
+            document.getElementById('resultSection').classList.remove('active');
+            document.getElementById('logsContainer').innerHTML = '';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('checkStatusBtn').disabled = true;
+            
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+        }
+    </script>
+</body>
+</html>

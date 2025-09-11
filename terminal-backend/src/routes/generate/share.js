@@ -102,26 +102,32 @@ router.post('/xiaohongshu', async (req, res) => {
         })
       }
       
-      // 自动查找并读取pageinfo（如果存在content.json或社媒文案.json）
-      try {
-        const files = await fs.readdir(userCardPath)
-        
-        // 查找JSON文件（优先级：content.json > 社媒文案.json > 其他.json）
-        const jsonFile = files.find(f => f === 'content.json') ||
-                        files.find(f => f.includes('社媒') && f.endsWith('.json')) ||
-                        files.find(f => f.endsWith('.json') && 
-                                      !f.includes('meta') && 
-                                      !f.includes('response'))
-        
-        if (jsonFile) {
-          const jsonPath = path.join(userCardPath, jsonFile)
-          const jsonContent = await fs.readFile(jsonPath, 'utf8')
-          pageinfoContent = jsonContent
-          logger.info('[ShareXHS] 找到pageinfo文件', { file: jsonFile })
+      // 自动查找并读取pageinfo（如果存在*content.json文件）
+      // 注意：Pod2Post生成的content.json格式与Engagia不兼容，需要跳过
+      const isPod2Post = folderName.startsWith('pod2post_') || 
+                         userCardPath.includes('pod2post_')
+      
+      if (!isPod2Post) {
+        try {
+          const files = await fs.readdir(userCardPath)
+          
+          // 查找以content.json结尾的文件
+          const contentJsonFile = files.find(f => f.endsWith('content.json'))
+          
+          if (contentJsonFile) {
+            const jsonPath = path.join(userCardPath, contentJsonFile)
+            const jsonContent = await fs.readFile(jsonPath, 'utf8')
+            pageinfoContent = jsonContent
+            logger.info('[ShareXHS] 找到content.json文件', { file: contentJsonFile })
+          } else {
+            logger.debug('[ShareXHS] 未找到content.json文件')
+          }
+        } catch (error) {
+          // pageinfo是可选的，忽略错误
+          logger.debug('[ShareXHS] 读取content.json失败', { error: error.message })
         }
-      } catch (error) {
-        // pageinfo是可选的，忽略错误
-        logger.debug('[ShareXHS] 未找到pageinfo文件')
+      } else {
+        logger.info('[ShareXHS] Pod2Post文件夹，跳过content.json')
       }
       
     } 

@@ -103,13 +103,17 @@ router.post('/xiaohongshu', async (req, res) => {
       }
       
       // 自动查找并读取pageinfo（如果存在包含content.json的文件）
-      try {
-        const files = await fs.readdir(userCardPath)
-        
-        // 查找包含content.json的文件（可以是xxx_content.json或content.json等）
-        const contentJsonFile = files.find(f => f.includes('content.json'))
-        
-        if (contentJsonFile) {
+      // 注意：由于Engagia API的bug，暂时完全跳过content.json
+      const skipContentJson = true // 临时标志，待Engagia修复后可改为false
+      
+      if (!skipContentJson) {
+        try {
+          const files = await fs.readdir(userCardPath)
+          
+          // 查找包含content.json的文件（可以是xxx_content.json或content.json等）
+          const contentJsonFile = files.find(f => f.includes('content.json'))
+          
+          if (contentJsonFile) {
           const jsonPath = path.join(userCardPath, contentJsonFile)
           const jsonContent = await fs.readFile(jsonPath, 'utf8')
           
@@ -117,40 +121,39 @@ router.post('/xiaohongshu', async (req, res) => {
           try {
             const parsedJson = JSON.parse(jsonContent)
             
-            // 检测是否是Pod2Post格式（有title和content.summary结构）
+            // 将content.json转换为简单的schema（类似马斯克文件成功的格式）
+            // 由于马斯克文件没有pageinfo也能成功，说明Engagia主要从HTML提取信息
+            // 我们只需要提供最简单的结构即可
+            
+            // 检测是否是Pod2Post格式
             const isPod2PostFormat = parsedJson.title && 
                                     parsedJson.content && 
                                     typeof parsedJson.content === 'object' &&
                                     parsedJson.content.summary
             
             if (isPod2PostFormat) {
-              // Pod2Post格式：由于Engagia API存在bug，暂时跳过pageinfo
-              // 即使我们正确映射了字段，Engagia内部还是会报错
-              logger.info('[ShareXHS] 检测到Pod2Post格式，暂时跳过pageinfo（Engagia bug）', { 
-                file: contentJsonFile 
+              // Pod2Post格式：转换为最简单的结构
+              const simpleJson = {
+                title: parsedJson.title,
+                content: parsedJson.content.summary || '',
+                hashtags: parsedJson.hashtag || parsedJson.hashtags || []
+              }
+              
+              pageinfoContent = JSON.stringify(simpleJson)
+              logger.info('[ShareXHS] Pod2Post content.json已转换为简单格式', { 
+                file: contentJsonFile,
+                title: simpleJson.title.substring(0, 20)
               })
-              pageinfoContent = null
             } else {
-              // 其他格式的content.json：进行字段映射
-              // 注意：目前实际上没有其他格式会生成content.json文件
-              
-              // 处理title字段
-              if (parsedJson.title && !parsedJson.post_title) {
-                parsedJson.post_title = parsedJson.title
+              // 其他格式：保持原样或简单映射
+              const simpleJson = {
+                title: parsedJson.title || parsedJson.post_title || '',
+                content: parsedJson.content || parsedJson.post_content || '',
+                hashtags: parsedJson.hashtag || parsedJson.hashtags || parsedJson.post_hashtags || []
               }
               
-              // 处理content字段
-              if (parsedJson.content && !parsedJson.post_content) {
-                parsedJson.post_content = parsedJson.content
-              }
-              
-              // 处理hashtag/hashtags字段
-              if ((parsedJson.hashtag || parsedJson.hashtags) && !parsedJson.post_hashtags) {
-                parsedJson.post_hashtags = parsedJson.hashtag || parsedJson.hashtags || []
-              }
-              
-              pageinfoContent = JSON.stringify(parsedJson)
-              logger.info('[ShareXHS] 找到并处理content.json文件', { file: contentJsonFile })
+              pageinfoContent = JSON.stringify(simpleJson)
+              logger.info('[ShareXHS] content.json已处理', { file: contentJsonFile })
             }
           } catch (parseError) {
             // 如果解析或转换失败，使用原始内容
@@ -160,9 +163,12 @@ router.post('/xiaohongshu', async (req, res) => {
         } else {
           logger.debug('[ShareXHS] 未找到content.json文件')
         }
-      } catch (error) {
-        // pageinfo是可选的，忽略错误
-        logger.debug('[ShareXHS] 读取content.json失败', { error: error.message })
+        } catch (error) {
+          // pageinfo是可选的，忽略错误
+          logger.debug('[ShareXHS] 读取content.json失败', { error: error.message })
+        }
+      } else {
+        logger.info('[ShareXHS] 跳过content.json读取（Engagia bug临时处理）')
       }
       
     } 

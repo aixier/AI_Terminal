@@ -134,7 +134,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { assetsApi } from '../../api/assets'
+import { assetsApi, assetEvents } from '../../api/assets'
 
 // 解码文件名的工具函数
 const decodeFileName = (fileName) => {
@@ -610,15 +610,12 @@ const createFolder = async () => {
   }
   
   try {
-    // 生成一个简单的英文key
-    const categoryKey = 'folder_' + Date.now()
-    
+    // 使用新的真实文件系统 API
     await assetsApi.createCategory({
       label: newFolderName.value,
-      key: categoryKey,
-      parent: currentCategory.value || undefined  // 传递当前分类key
+      parent: currentCategory.value || undefined
     })
-    ElMessage.success('分类创建成功')
+    ElMessage.success('文件夹创建成功')
     closeNewFolderDialog()
     loadData()
   } catch (error) {

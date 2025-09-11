@@ -18,7 +18,8 @@ import generateRoutes from './routes/generate/index.js'
 import uploadRoutes from './routes/upload.js'
 import workspaceRoutes from './routes/workspace.js'
 import transcriptionRoutes from './routes/transcription.js'
-import assetsRoutes from './routes/assets.js'
+import assetsRoutes from './routes/v2/assets.js'
+import { router as sseRouter } from './routes/v2/sse.js'
 import stsRoutes from './routes/sts.js'
 import ossDirectRoutes from './routes/oss-direct.js'
 import { setupSocketHandlers } from './services/socketService.js'
@@ -285,7 +286,9 @@ app.use('/api/oss-direct', ossDirectRoutes)
 console.log('     ✓ /api/transcription route registered')
 
 app.use('/api/assets', assetsRoutes)
-console.log('     ✓ /api/assets route registered')
+console.log('     ✓ /api/assets route registered (Chokidar-based Real FileSystem)')
+app.use('/api/assets/events', sseRouter)
+console.log('     ✓ /api/assets/events SSE route registered')
 
 // 5. API信息路由 (移到/api-info避免与静态文件冲突)
 console.log('  6️⃣ Registering API info route...')

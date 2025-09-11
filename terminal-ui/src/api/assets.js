@@ -1,239 +1,301 @@
 /**
- * 素材管理 API 服务
- * 用于处理素材的上传、查询、删除等操作
+ * 素材管理 API - 新版实时文件系统
+ * 基于Chokidar的真实文件管理系统
  */
 
 import request from './config'
 
+// 默认用户ID（可从store或登录信息获取）
+const getUserId = () => {
+  return localStorage.getItem('userId') || 'default'
+}
+
 export const assetsApi = {
   /**
-   * 获取素材列表
+   * 获取文件列表
    * @param {Object} params - 查询参数
-   * @param {string} params.type - 文件类型筛选 (image, document, other)
-   * @param {string} params.folder - 文件夹筛选
-   * @param {number} params.limit - 限制返回数量
-   * @param {number} params.offset - 分页偏移
+   * @param {string} params.path - 文件路径
    * @param {string} params.search - 搜索关键词
    */
   getAssets(params = {}) {
-    return request.get('/assets', { params })
+    return request.get('/assets/list', { 
+      params: {
+        ...params,
+        userId: getUserId()
+      }
+    })
   },
 
   /**
-   * 获取单个素材详情
-   * @param {string} id - 素材ID
+   * 获取目录树结构
    */
-  getAsset(id) {
-    return request.get(`/assets/${id}`)
+  getTree() {
+    return request.get('/assets/tree', {
+      params: { userId: getUserId() }
+    })
   },
 
   /**
-   * 上传素材（支持批量）
-   * @param {FormData|File[]} data - FormData对象或文件数组
-   * @param {Object} options - 上传选项
+   * 获取分类（兼容旧代码）
    */
-  uploadAssets(data, options = {}) {
-    let formData = data
+  getCategories() {
+    // 将树形结构转换为旧格式
+    return this.getTree().then(res => {
+      if (res.success && res.data) {
+        // 转换为旧的分类格式
+        const categories = {}
+        const labels = {}
+        const tree = res.data.tree || []
+        
+        const processNode = (node, parentKey = '') => {
+          const key = parentKey ? `${parentKey}.${node.name}` : node.name
+          categories[key] = node.files || []
+          labels[key] = node.name
+          
+          if (node.children) {
+            node.children.forEach(child => processNode(child, key))
+          }
+        }
+        
+        tree.forEach(node => processNode(node))
+        
+        return {
+          success: true,
+          data: {
+            categories,
+            labels,
+            tree
+          }
+        }
+      }
+      return res
+    })
+  },
+
+  /**
+   * 创建文件夹
+   * @param {Object} data - 文件夹信息
+   * @param {string} data.path - 文件夹路径
+   * @param {string} data.label - 显示名称（兼容旧代码）
+   */
+  createFolder(data) {
+    return request.post('/assets/folder', {
+      path: data.path || data.label,
+      userId: getUserId()
+    })
+  },
+
+  /**
+   * 创建分类（兼容旧代码）
+   */
+  createCategory(data) {
+    // 转换为新的文件夹创建
+    const path = data.parent 
+      ? `${data.parent}/${data.label}`
+      : data.label
     
-    // 如果传入的是文件数组，转换为FormData
-    if (Array.isArray(data)) {
-      formData = new FormData()
-      data.forEach(file => {
-        formData.append('files', file)
-      })
-      
-      // 添加其他参数
-      if (options.folderId) {
-        formData.append('folderId', options.folderId)
-      }
-      if (options.tags && options.tags.length > 0) {
-        formData.append('tags', options.tags.join(','))
-      }
-      if (options.description) {
-        formData.append('description', options.description)
-      }
+    return this.createFolder({ path })
+  },
+
+  /**
+   * 上传文件
+   * @param {FormData} formData - 包含文件的表单数据
+   */
+  uploadAssets(formData) {
+    // 添加用户ID
+    formData.append('userId', getUserId())
+    
+    // 如果有category参数，转换为path
+    const category = formData.get('category')
+    if (category) {
+      formData.delete('category')
+      formData.append('path', category)
     }
     
     return request.post('/assets/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      },
-      onUploadProgress: options.onProgress
-    })
-  },
-
-  /**
-   * 更新素材信息
-   * @param {string} id - 素材ID
-   * @param {Object} data - 更新数据
-   */
-  updateAsset(id, data) {
-    return request.put(`/assets/${id}`, data)
-  },
-
-  /**
-   * 删除单个素材
-   * @param {string} id - 素材ID
-   */
-  deleteAsset(id) {
-    return request.delete(`/assets/${id}`)
-  },
-
-  /**
-   * 批量删除素材
-   * @param {string[]} ids - 素材ID数组
-   */
-  deleteAssets(ids) {
-    return request.delete('/assets', {
-      data: { ids }
-    })
-  },
-
-  /**
-   * 获取素材引用列表（用于@选择器）
-   * @param {boolean} recent - 是否只返回最近使用的
-   * @param {number} limit - 限制数量
-   */
-  getReferences(recent = false, limit = 20) {
-    return request.get('/assets/references', {
-      params: { recent, limit }
-    })
-  },
-
-  /**
-   * 获取存储使用情况
-   */
-  getStorageInfo() {
-    return request.get('/assets/storage')
-  },
-
-  /**
-   * 健康检查
-   */
-  checkHealth() {
-    return request.get('/assets/health')
-  },
-
-  // ========== 文件夹相关API ==========
-  
-  /**
-   * 创建文件夹
-   * @param {Object} data - 文件夹数据
-   * @param {string} data.name - 文件夹名称
-   * @param {string} data.parentId - 父文件夹ID
-   * @param {string} data.color - 文件夹颜色
-   * @param {string} data.description - 描述
-   */
-  createCategory(data) {
-    return request.post('/assets/categories', data)
-  },
-
-  /**
-   * 获取文件夹列表（树形结构）
-   */
-  getCategories() {
-    return request.get('/assets/categories')
-  },
-
-  /**
-   * 更新文件夹信息
-   * @param {string} id - 文件夹ID
-   * @param {Object} data - 更新数据
-   */
-  updateCategory(category, data) {
-    return request.put(`/assets/categories/${encodeURIComponent(category)}`, data)
-  },
-
-  /**
-   * 删除文件夹
-   * @param {string} id - 文件夹ID
-   * @param {boolean} moveToParent - 是否将子内容移动到父文件夹
-   */
-  deleteCategory(category, moveToParent = false) {
-    return request.delete(`/assets/categories/${encodeURIComponent(category)}`, {
-      params: { moveToParent }
-    })
-  },
-
-  /**
-   * 删除文件
-   * @param {string} fileName - 文件名
-   * @param {string} category - 文件所属分类
-   */
-  deleteFile(fileName, category = '') {
-    return request.delete('/assets/file', {
-      data: { 
-        filename: fileName,  // 注意：后端使用的是 filename 而不是 fileName
-        category: category
       }
     })
   },
 
   /**
-   * 移动文件或文件夹
-   * @param {Object} data - 移动数据
-   * @param {Array} data.items - 要移动的项目 [{id, type: 'asset'|'folder'}]
-   * @param {string} data.targetFolderId - 目标文件夹ID
+   * 移动文件/文件夹
+   * @param {string} oldPath - 原路径
+   * @param {string} newPath - 新路径
    */
-  moveItems(data) {
-    return request.post('/assets/move', data)
+  move(oldPath, newPath) {
+    return request.put('/assets/move', {
+      oldPath,
+      newPath,
+      userId: getUserId()
+    })
+  },
+
+  /**
+   * 重命名
+   * @param {string} path - 文件/文件夹路径
+   * @param {string} newName - 新名称
+   */
+  rename(path, newName) {
+    return request.put('/assets/rename', {
+      path,
+      newName,
+      userId: getUserId()
+    })
+  },
+
+  /**
+   * 删除文件/文件夹
+   * @param {string} path - 要删除的路径
+   */
+  delete(path) {
+    return request.delete('/assets', {
+      params: {
+        path,
+        userId: getUserId()
+      }
+    })
+  },
+
+  /**
+   * 删除文件（兼容旧代码）
+   */
+  deleteFile(fileName, category) {
+    const path = category ? `${category}/${fileName}` : fileName
+    return this.delete(path)
+  },
+
+  /**
+   * 删除分类（兼容旧代码）
+   */
+  deleteCategory(categoryKey) {
+    return this.delete(categoryKey)
+  },
+
+  /**
+   * 批量操作
+   * @param {string} operation - 操作类型 (move, copy, delete)
+   * @param {Array} items - 要操作的项目列表
+   */
+  batch(operation, items) {
+    return request.post('/assets/batch', {
+      operation,
+      items,
+      userId: getUserId()
+    })
+  },
+
+  /**
+   * 搜索文件
+   * @param {string} query - 搜索关键词
+   * @param {Object} options - 搜索选项
+   */
+  search(query, options = {}) {
+    return request.get('/assets/search', {
+      params: {
+        q: query,
+        ...options,
+        userId: getUserId()
+      }
+    })
+  },
+
+  /**
+   * 获取文件内容
+   * @param {string} path - 文件路径
+   */
+  getFileContent(path) {
+    return request.get('/assets/content', {
+      params: {
+        path,
+        userId: getUserId()
+      }
+    })
+  },
+
+  /**
+   * 获取缩略图
+   * @param {string} path - 文件路径
+   * @param {string} size - 缩略图尺寸 (small, medium, large)
+   */
+  getThumbnail(path, size = 'medium') {
+    return `/api/assets/thumbnail?path=${encodeURIComponent(path)}&size=${size}&userId=${getUserId()}`
+  },
+
+  /**
+   * 下载文件
+   * @param {string} path - 文件路径
+   */
+  download(path) {
+    return `/api/assets/download?path=${encodeURIComponent(path)}&userId=${getUserId()}`
+  },
+
+  /**
+   * 获取存储信息
+   */
+  getStorageInfo() {
+    return request.get('/assets/storage', {
+      params: { userId: getUserId() }
+    })
   }
 }
 
-// 工具函数
-export const assetUtils = {
+// 导出SSE事件监听
+export const assetEvents = {
   /**
-   * 获取文件类型图标
-   * @param {string} type - 文件类型
+   * 监听文件变化事件
+   * @param {Function} callback - 事件回调
+   * @returns {EventSource} 事件源对象
    */
-  getAssetIcon(type) {
-    const icons = {
-      image: '🖼️',
-      document: '📄',
-      media: '🎬',
-      other: '📦'
+  watch(callback) {
+    const userId = getUserId()
+    const eventSource = new EventSource(`/api/assets/events/${userId}`)
+    
+    // 文件事件
+    eventSource.addEventListener('file:added', (e) => {
+      callback({ type: 'file:added', data: JSON.parse(e.data) })
+    })
+    
+    eventSource.addEventListener('file:modified', (e) => {
+      callback({ type: 'file:modified', data: JSON.parse(e.data) })
+    })
+    
+    eventSource.addEventListener('file:deleted', (e) => {
+      callback({ type: 'file:deleted', data: JSON.parse(e.data) })
+    })
+    
+    // 文件夹事件
+    eventSource.addEventListener('folder:created', (e) => {
+      callback({ type: 'folder:created', data: JSON.parse(e.data) })
+    })
+    
+    eventSource.addEventListener('folder:deleted', (e) => {
+      callback({ type: 'folder:deleted', data: JSON.parse(e.data) })
+    })
+    
+    // 批量事件
+    eventSource.addEventListener('batch:completed', (e) => {
+      callback({ type: 'batch:completed', data: JSON.parse(e.data) })
+    })
+    
+    // 错误处理
+    eventSource.onerror = (error) => {
+      console.error('[SSE] Connection error:', error)
+      callback({ type: 'error', error })
     }
-    return icons[type] || icons.other
+    
+    return eventSource
   },
-
+  
   /**
-   * 格式化文件大小
-   * @param {number} bytes - 字节数
+   * 停止监听
+   * @param {EventSource} eventSource - 事件源对象
    */
-  formatFileSize(bytes) {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
-  },
-
-  /**
-   * 检查文件类型是否为图片
-   * @param {string} filename - 文件名
-   */
-  isImageFile(filename) {
-    const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
-    const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
-    return imageExts.includes(ext)
-  },
-
-  /**
-   * 检查文件类型是否为文档
-   * @param {string} filename - 文件名
-   */
-  isDocumentFile(filename) {
-    const docExts = ['.pdf', '.doc', '.docx', '.txt', '.md', '.rtf']
-    const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
-    return docExts.includes(ext)
-  },
-
-  /**
-   * 生成素材引用路径
-   * @param {Object} asset - 素材对象
-   */
-  generateReference(asset) {
-    return asset.referencePath || `@${asset.name}`
+  unwatch(eventSource) {
+    if (eventSource) {
+      eventSource.close()
+    }
   }
 }
 

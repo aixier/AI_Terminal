@@ -102,32 +102,61 @@ router.post('/xiaohongshu', async (req, res) => {
         })
       }
       
-      // 自动查找并读取pageinfo（如果存在*content.json文件）
-      // 注意：Pod2Post生成的content.json格式与Engagia不兼容，需要跳过
-      const isPod2Post = folderName.startsWith('pod2post_') || 
-                         userCardPath.includes('pod2post_')
-      
-      if (!isPod2Post) {
-        try {
-          const files = await fs.readdir(userCardPath)
+      // 自动查找并读取pageinfo（如果存在包含content.json的文件）
+      try {
+        const files = await fs.readdir(userCardPath)
+        
+        // 查找包含content.json的文件（可以是xxx_content.json或content.json等）
+        const contentJsonFile = files.find(f => f.includes('content.json'))
+        
+        if (contentJsonFile) {
+          const jsonPath = path.join(userCardPath, contentJsonFile)
+          const jsonContent = await fs.readFile(jsonPath, 'utf8')
           
-          // 查找以content.json结尾的文件
-          const contentJsonFile = files.find(f => f.endsWith('content.json'))
-          
-          if (contentJsonFile) {
-            const jsonPath = path.join(userCardPath, contentJsonFile)
-            const jsonContent = await fs.readFile(jsonPath, 'utf8')
+          // 尝试转换字段格式以适配Engagia API
+          try {
+            const parsedJson = JSON.parse(jsonContent)
+            
+            // 检测是否是Pod2Post格式（有title和content.summary结构）
+            const isPod2PostFormat = parsedJson.title && 
+                                    parsedJson.content && 
+                                    typeof parsedJson.content === 'object' &&
+                                    parsedJson.content.summary
+            
+            if (isPod2PostFormat) {
+              // Pod2Post格式：Engagia暂时无法正确处理，跳过pageinfo
+              logger.info('[ShareXHS] 检测到Pod2Post格式content.json，跳过pageinfo以避免Engagia错误', { 
+                file: contentJsonFile 
+              })
+              pageinfoContent = null
+            } else {
+              // 其他格式：进行字段映射
+              if (parsedJson.title && !parsedJson.post_title) {
+                parsedJson.post_title = parsedJson.title
+              }
+              
+              if (parsedJson.content && !parsedJson.post_content) {
+                parsedJson.post_content = parsedJson.content
+              }
+              
+              if ((parsedJson.hashtag || parsedJson.hashtags) && !parsedJson.post_hashtags) {
+                parsedJson.post_hashtags = parsedJson.hashtag || parsedJson.hashtags || []
+              }
+              
+              pageinfoContent = JSON.stringify(parsedJson)
+              logger.info('[ShareXHS] 找到并处理content.json文件', { file: contentJsonFile })
+            }
+          } catch (parseError) {
+            // 如果解析或转换失败，使用原始内容
             pageinfoContent = jsonContent
-            logger.info('[ShareXHS] 找到content.json文件', { file: contentJsonFile })
-          } else {
-            logger.debug('[ShareXHS] 未找到content.json文件')
+            logger.warn('[ShareXHS] JSON处理失败，使用原始内容', { error: parseError.message })
           }
-        } catch (error) {
-          // pageinfo是可选的，忽略错误
-          logger.debug('[ShareXHS] 读取content.json失败', { error: error.message })
+        } else {
+          logger.debug('[ShareXHS] 未找到content.json文件')
         }
-      } else {
-        logger.info('[ShareXHS] Pod2Post文件夹，跳过content.json')
+      } catch (error) {
+        // pageinfo是可选的，忽略错误
+        logger.debug('[ShareXHS] 读取content.json失败', { error: error.message })
       }
       
     } 

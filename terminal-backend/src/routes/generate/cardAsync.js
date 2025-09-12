@@ -221,7 +221,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
           prompt = processedTopic
           
           // 添加输出路径指示 - 注意路径末尾要加斜杠
-          prompt += `\n\n请将生成的内容用恰当的文件名和格式保存到这个文件夹下：\n[${backgroundUserCardPath}/]\n`
+          prompt += `\n\n请将生成的内容用恰当的文件名和格式写入到这个文件夹下：\n[${backgroundUserCardPath}/]\n`
           prompt += `注意：请根据内容类型生成相应的文件（如 .html, .json, .md 等）。`
           
         } else if (actualTemplateName) {

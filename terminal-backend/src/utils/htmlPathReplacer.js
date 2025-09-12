@@ -1,11 +1,19 @@
-import fs from 'fs/promises'
-import path from 'path'
-
 /**
- * HTML路径替换器
- * 负责将HTML中的本地资源路径替换为OSS URLs
+ * HTML路径替换器 - 兼容层
+ * 使用新的统一架构，保持向后兼容
  */
+
+import HtmlResourceParser from './HtmlResourceParser.js'
+import HtmlResourceReplacer from './HtmlResourceReplacer.js'
+import path from 'path'
+import fs from 'fs/promises'
+
 class HtmlPathReplacer {
+  constructor() {
+    this.parser = new HtmlResourceParser()
+    this.replacer = new HtmlResourceReplacer()
+  }
+
   /**
    * 替换HTML文件中的资源路径
    * @param {string} htmlFilePath - HTML文件路径
@@ -17,23 +25,47 @@ class HtmlPathReplacer {
     console.log(`[HtmlPathReplacer] Processing ${htmlFilePath}`)
     
     try {
-      // 读取HTML内容
-      const htmlContent = await fs.readFile(htmlFilePath, 'utf-8')
+      // 解析HTML
+      const parseResult = await this.parser.parseHtmlFile(htmlFilePath)
       
-      // 执行路径替换
-      const { content: replacedContent, replacements } = this.replacePaths(htmlContent, resourceMapping)
+      if (!parseResult.success) {
+        throw new Error(`Failed to parse HTML: ${parseResult.error}`)
+      }
+
+      // 转换映射格式
+      const replacementMap = new Map()
+      for (const [localPath, ossUrl] of Object.entries(resourceMapping)) {
+        if (ossUrl) {
+          replacementMap.set(localPath, ossUrl)
+          // 也添加基于文件名的映射
+          replacementMap.set(path.basename(localPath), ossUrl)
+        }
+      }
+
+      // 使用新的替换器
+      const ext = path.extname(outputPath)
+      const outputType = outputPath.includes('_oss') ? 'ossurl' : 'custom'
       
-      // 写入输出文件
-      await fs.writeFile(outputPath, replacedContent, 'utf-8')
+      // 临时修改输出文件名生成逻辑
+      const originalGenerateFileName = this.replacer.generateOutputFileName
+      this.replacer.generateOutputFileName = () => outputPath
       
-      console.log(`[HtmlPathReplacer] Replaced ${replacements} paths in ${path.basename(htmlFilePath)}`)
+      const result = await this.replacer.replaceAndSave(
+        parseResult,
+        replacementMap,
+        outputType,
+        htmlFilePath
+      )
+      
+      // 恢复原始函数
+      this.replacer.generateOutputFileName = originalGenerateFileName
       
       return {
-        success: true,
+        success: result.success,
         inputFile: htmlFilePath,
         outputFile: outputPath,
-        replacements: replacements,
-        message: `成功替换${replacements}个路径`
+        replacements: result.replacedCount || 0,
+        message: result.success ? `成功替换${result.replacedCount}个路径` : result.error
       }
     } catch (error) {
       console.error(`[HtmlPathReplacer] Error processing ${htmlFilePath}:`, error.message)
@@ -48,7 +80,7 @@ class HtmlPathReplacer {
   }
   
   /**
-   * 替换HTML内容中的资源路径
+   * 替换HTML内容中的资源路径（字符串操作）
    * @param {string} htmlContent - HTML内容
    * @param {Object} resourceMapping - 资源映射表
    * @returns {Object} {content: 替换后内容, replacements: 替换次数}
@@ -82,14 +114,32 @@ class HtmlPathReplacer {
     
     return { content, replacements }
   }
+
+  /**
+   * 替换HTML中的路径为OSS URLs（兼容customOssAsync.js）
+   * @param {string} htmlContent - HTML内容
+   * @param {Array} resourceMappings - 资源映射数组
+   * @param {string} templatePath - 模板路径（未使用）
+   * @returns {Promise<string>} 替换后的HTML内容
+   */
+  async replaceWithOSSUrls(htmlContent, resourceMappings, templatePath) {
+    // 转换数组格式为对象格式
+    const resourceMapping = {}
+    for (const mapping of resourceMappings) {
+      if (mapping.localPath && mapping.ossUrl) {
+        resourceMapping[mapping.localPath] = mapping.ossUrl
+      }
+    }
+    
+    const result = this.replacePaths(htmlContent, resourceMapping)
+    return result.content
+  }
   
   /**
    * 批量处理HTML文件
    * @param {string} htmlDir - HTML文件目录
    * @param {Object} resourceMapping - 资源映射表
    * @param {Object} options - 选项
-   * @param {string} options.suffix - 输出文件后缀，默认'_oss'
-   * @param {Array} options.excludePatterns - 排除的文件名模式
    * @returns {Promise<Array>} 处理结果列表
    */
   async batchReplaceInDirectory(htmlDir, resourceMapping, options = {}) {
@@ -100,15 +150,12 @@ class HtmlPathReplacer {
     try {
       const files = await fs.readdir(htmlDir)
       const htmlFiles = files.filter(f => {
-        // 只处理HTML文件
         if (!f.endsWith('.html')) return false
         
-        // 排除指定模式
         for (const pattern of excludePatterns) {
           if (f.includes(pattern)) return false
         }
         
-        // 排除已经处理过的文件（包含suffix）
         if (f.includes(suffix)) return false
         
         return true
@@ -122,7 +169,6 @@ class HtmlPathReplacer {
       
       const results = []
       
-      // 逐个处理HTML文件
       for (const htmlFile of htmlFiles) {
         const inputPath = path.join(htmlDir, htmlFile)
         const outputFileName = this.generateOutputFileName(htmlFile, suffix)
@@ -146,9 +192,6 @@ class HtmlPathReplacer {
   
   /**
    * 生成输出文件名
-   * @param {string} originalFileName - 原始文件名
-   * @param {string} suffix - 后缀
-   * @returns {string} 输出文件名
    */
   generateOutputFileName(originalFileName, suffix) {
     const ext = path.extname(originalFileName)
@@ -158,8 +201,6 @@ class HtmlPathReplacer {
   
   /**
    * 转义正则表达式特殊字符
-   * @param {string} string - 要转义的字符串
-   * @returns {string} 转义后的字符串
    */
   escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -167,8 +208,6 @@ class HtmlPathReplacer {
   
   /**
    * 从JSONL文件读取资源映射
-   * @param {string} mappingFilePath - 映射文件路径
-   * @returns {Promise<Object>} 资源映射对象
    */
   async loadResourceMapping(mappingFilePath) {
     try {
@@ -180,7 +219,6 @@ class HtmlPathReplacer {
         try {
           const resource = JSON.parse(line)
           if (resource.localPath && resource.ossUrl) {
-            // 支持多种路径格式
             mapping[resource.localPath] = resource.ossUrl
             mapping[path.basename(resource.localPath)] = resource.ossUrl
             mapping[resource.localPath.replace(/\\/g, '/')] = resource.ossUrl
@@ -200,8 +238,6 @@ class HtmlPathReplacer {
   
   /**
    * 验证映射文件格式
-   * @param {string} mappingFilePath - 映射文件路径
-   * @returns {Promise<Object>} 验证结果
    */
   async validateMappingFile(mappingFilePath) {
     try {
@@ -232,7 +268,7 @@ class HtmlPathReplacer {
         totalLines: lines.length,
         validCount,
         invalidCount,
-        errors: errors.slice(0, 10) // 最多返回10个错误
+        errors: errors.slice(0, 10)
       }
     } catch (error) {
       return {

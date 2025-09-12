@@ -11,8 +11,7 @@ import { SessionMetadata } from './utils/sessionMetadata.js'
 import zipProcessor from '../../utils/zipProcessor.js'
 import promptProcessor from '../../utils/promptProcessor.js'
 import resourceUploader from '../../utils/resourceUploader.js'
-import htmlPathReplacer from '../../utils/htmlPathReplacer.js'
-import htmlToBase64Converter from '../../utils/htmlToBase64Converter.js'
+import htmlProcessor from '../../utils/UnifiedHtmlProcessor.js'
 
 const router = express.Router()
 
@@ -595,7 +594,7 @@ async function executeBase64Fallback(result, userCardPath, metadata, apiId) {
     console.log('[CustomOssAsync Fallback] Template path for reference:', templatePath)
     
     // 使用专用组件进行转换
-    const conversionResult = await htmlToBase64Converter.convertHtmlToBase64(
+    const conversionResult = await htmlProcessor.convertHtmlToBase64(
       htmlFilePath,
       templatePath  // 模板基础路径用于解析相对路径
     )

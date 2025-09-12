@@ -8,8 +8,7 @@ import userService from '../../services/userService.js'
 import { ensureCardFolder, updateFolderStatus } from './utils/folderManager.js'
 import { SessionMetadata } from './utils/sessionMetadata.js'
 import promptProcessor from '../../utils/promptProcessor.js'
-import htmlToBase64Converter from '../../utils/htmlToBase64Converter.js'
-import htmlToOSSUrlConverter from '../../utils/htmlToOSSUrlConverter.js'
+import htmlProcessor from '../../utils/UnifiedHtmlProcessor.js'
 import { OSSUploader } from './utils/ossUploader.js'
 
 const router = express.Router()
@@ -339,7 +338,7 @@ async function processInBackground(
     console.log('[Pod2PostAsync Background] Template path for reference:', templatePath)
     
     // 【关键调用1】使用专用组件进行Base64转换
-    const base64Result = await htmlToBase64Converter.convertHtmlToBase64(
+    const base64Result = await htmlProcessor.convertHtmlToBase64(
       htmlFilePath,
       templatePath  // Pod2Post模板路径，用于解析相对路径
     )
@@ -380,7 +379,7 @@ async function processInBackground(
     
     // 【关键调用2】新增OSS URL转换，生成轻量级版本
     console.log('[Pod2PostAsync Background] Starting OSS URL conversion for lightweight version')
-    const ossUrlResult = await htmlToOSSUrlConverter.convertHtmlToOSSUrl(
+    const ossUrlResult = await htmlProcessor.convertHtmlToOSSUrl(
       htmlFilePath,
       templatePath,  // Pod2Post模板路径
       username,      // 用户名

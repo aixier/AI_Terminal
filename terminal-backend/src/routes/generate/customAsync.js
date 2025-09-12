@@ -10,7 +10,7 @@ import { ensureCardFolder, updateFolderStatus } from './utils/folderManager.js'
 import { SessionMetadata } from './utils/sessionMetadata.js'
 import zipProcessor from '../../utils/zipProcessor.js'
 import promptProcessor from '../../utils/promptProcessor.js'
-import htmlToBase64Converter from '../../utils/htmlToBase64Converter.js'
+import htmlProcessor from '../../utils/UnifiedHtmlProcessor.js'
 
 const router = express.Router()
 
@@ -267,7 +267,7 @@ async function processInBackground(
     console.log('[CustomAsync Background] Template path for reference:', templatePath)
     
     // 使用专用组件进行转换
-    const conversionResult = await htmlToBase64Converter.convertHtmlToBase64(
+    const conversionResult = await htmlProcessor.convertHtmlToBase64(
       htmlFilePath,
       templatePath  // 模板基础路径用于解析相对路径
     )

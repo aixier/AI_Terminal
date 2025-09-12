@@ -9,6 +9,7 @@ import { ensureCardFolder, updateFolderStatus } from './utils/folderManager.js'
 import { SessionMetadata } from './utils/sessionMetadata.js'
 import promptProcessor from '../../utils/promptProcessor.js'
 import htmlToBase64Converter from '../../utils/htmlToBase64Converter.js'
+import htmlToOSSUrlConverter from '../../utils/htmlToOSSUrlConverter.js'
 import { OSSUploader } from './utils/ossUploader.js'
 
 const router = express.Router()
@@ -326,47 +327,45 @@ async function processInBackground(
     metadata.addLog('info', '第一次AI生成完成', { fileName: firstResult.fileName })
     await metadata.save(userCardPath)
     
-    // =============== 阶段2：Base64图片嵌入【不能遗漏】===============
-    console.log('[Pod2PostAsync Background] Phase 2: Base64 conversion using component')
+    // =============== 阶段2：图片处理（Base64嵌入 + OSS URL替换）===============
+    console.log('[Pod2PostAsync Background] Phase 2: Image processing (Base64 + OSS URL conversion)')
     await updateFolderStatus(userCardPath, 'embedding', { taskId })
     metadata.data.custom.phases.base64Embedding = 'processing'
     metadata.status = 'processing'  // 保持processing状态
     await metadata.save(userCardPath)
     
     const htmlFilePath = path.join(userCardPath, firstResult.fileName)
-    console.log('[Pod2PostAsync Background] Converting HTML to base64:', htmlFilePath)
+    console.log('[Pod2PostAsync Background] Processing HTML file:', htmlFilePath)
     console.log('[Pod2PostAsync Background] Template path for reference:', templatePath)
     
-    // 【关键调用】使用专用组件进行Base64转换
-    const conversionResult = await htmlToBase64Converter.convertHtmlToBase64(
+    // 【关键调用1】使用专用组件进行Base64转换
+    const base64Result = await htmlToBase64Converter.convertHtmlToBase64(
       htmlFilePath,
       templatePath  // Pod2Post模板路径，用于解析相对路径
     )
     
     let secondResult
     
-    if (conversionResult.success) {
+    if (base64Result.success) {
       console.log('[Pod2PostAsync Background] Base64 conversion successful!')
-      console.log(`[Pod2PostAsync Background] Output file: ${conversionResult.outputFile}`)
-      console.log(`[Pod2PostAsync Background] Stats:`, conversionResult.stats)
+      console.log(`[Pod2PostAsync Background] Base64 output file: ${base64Result.outputFile}`)
+      console.log(`[Pod2PostAsync Background] Base64 stats:`, base64Result.stats)
       
-      metadata.data.custom.phases.base64Embedding = 'completed'
       metadata.addLog('info', 'Base64图片嵌入完成', { 
         originalFile: firstResult.fileName,
-        base64File: path.basename(conversionResult.outputFile),
-        stats: conversionResult.stats
+        base64File: path.basename(base64Result.outputFile),
+        stats: base64Result.stats
       })
       
       // 创建与原来相同格式的结果对象
       secondResult = {
-        htmlContent: await fs.readFile(conversionResult.outputFile, 'utf-8'),
-        fileName: path.basename(conversionResult.outputFile)
+        htmlContent: await fs.readFile(base64Result.outputFile, 'utf-8'),
+        fileName: path.basename(base64Result.outputFile)
       }
       
     } else {
-      console.error('[Pod2PostAsync Background] Base64 conversion failed:', conversionResult.error)
-      metadata.data.custom.phases.base64Embedding = 'failed'
-      metadata.addLog('error', 'Base64图片嵌入失败: ' + conversionResult.error)
+      console.error('[Pod2PostAsync Background] Base64 conversion failed:', base64Result.error)
+      metadata.addLog('error', 'Base64图片嵌入失败: ' + base64Result.error)
       
       // 转换失败时，复制原文件作为fallback
       const fallbackFileName = firstResult.fileName.replace('.html', '_with_base64.html')
@@ -377,6 +376,43 @@ async function processInBackground(
         htmlContent: firstResult.htmlContent,
         fileName: fallbackFileName
       }
+    }
+    
+    // 【关键调用2】新增OSS URL转换，生成轻量级版本
+    console.log('[Pod2PostAsync Background] Starting OSS URL conversion for lightweight version')
+    const ossUrlResult = await htmlToOSSUrlConverter.convertHtmlToOSSUrl(
+      htmlFilePath,
+      templatePath,  // Pod2Post模板路径
+      username,      // 用户名
+      taskId        // 任务ID
+    )
+    
+    let thirdResult = null
+    
+    if (ossUrlResult.success) {
+      console.log('[Pod2PostAsync Background] OSS URL conversion successful!')
+      console.log(`[Pod2PostAsync Background] OSS URL output file: ${ossUrlResult.outputFile}`)
+      console.log(`[Pod2PostAsync Background] OSS URL stats:`, ossUrlResult.stats)
+      
+      metadata.addLog('info', 'OSS URL版本生成完成', { 
+        originalFile: firstResult.fileName,
+        ossUrlFile: path.basename(ossUrlResult.outputFile),
+        stats: ossUrlResult.stats
+      })
+      
+      thirdResult = {
+        htmlContent: await fs.readFile(ossUrlResult.outputFile, 'utf-8'),
+        fileName: path.basename(ossUrlResult.outputFile)
+      }
+      
+      // 更新phases状态
+      metadata.data.custom.phases.base64Embedding = 'completed'
+      metadata.data.custom.phases.ossUrlConversion = 'completed'
+    } else {
+      console.error('[Pod2PostAsync Background] OSS URL conversion failed:', ossUrlResult.error)
+      metadata.addLog('warn', 'OSS URL版本生成失败: ' + ossUrlResult.error)
+      metadata.data.custom.phases.base64Embedding = base64Result.success ? 'completed' : 'failed'
+      metadata.data.custom.phases.ossUrlConversion = 'failed'
     }
     
     await metadata.save(userCardPath)
@@ -482,7 +518,8 @@ async function processInBackground(
     }
     metadata.data.custom.generatedFiles = {
       original: firstResult.fileName,
-      withBase64: secondResult.fileName
+      withBase64: secondResult.fileName,
+      withOSSUrl: thirdResult?.fileName || null
     }
     await metadata.save(userCardPath)
     
@@ -495,6 +532,9 @@ async function processInBackground(
     console.log(`[Pod2PostAsync Background] Files generated:`)
     console.log(`[Pod2PostAsync Background]   - Original: ${firstResult.fileName}`)
     console.log(`[Pod2PostAsync Background]   - With Base64: ${secondResult.fileName}`)
+    if (thirdResult) {
+      console.log(`[Pod2PostAsync Background]   - With OSS URL: ${thirdResult.fileName}`)
+    }
     
     // 清理共享session
     console.log(`[Pod2PostAsync Background] All tasks completed, destroying shared session ${apiId}`)

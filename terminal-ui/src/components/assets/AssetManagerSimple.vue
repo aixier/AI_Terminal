@@ -610,7 +610,12 @@ const handleFileSelect = async (event) => {
     ElMessage.success('上传成功')
     loadData()
   } catch (error) {
-    ElMessage.error('上传失败: ' + error.message)
+    // 特殊处理文件名冲突错误
+    if (error.response?.data?.error?.includes('已存在')) {
+      ElMessage.error(error.response.data.error)
+    } else {
+      ElMessage.error('上传失败: ' + (error.response?.data?.error || error.message))
+    }
   }
   
   event.target.value = ''

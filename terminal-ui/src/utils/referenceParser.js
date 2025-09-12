@@ -193,49 +193,73 @@ export const convertReferencesToParams = (references, metadata = null) => {
       // 用户输入的可能是label（如"abcd"），需要找到对应的key
       let actualKey = ref.value
       let actualLabel = ref.value
+      let actualPath = ref.value  // 文件夹的完整路径
       
-      // 如果metadata中有labels，尝试反查key
+      // 如果metadata中有labels，尝试反查key和路径
       if (metadata?.labels) {
         // 先检查value是否本身就是key
         if (metadata.labels[ref.value]) {
           // ref.value是key，直接使用
           actualLabel = metadata.labels[ref.value]
+          actualPath = ref.value  // key就是路径
         } else {
           // ref.value可能是label，需要反查key
           for (const [key, label] of Object.entries(metadata.labels)) {
             if (label === ref.value) {
               actualKey = key
               actualLabel = label
+              actualPath = key  // key就是路径
               break
             }
           }
         }
       }
       
+      // 为文件夹路径添加 /app/data/users/default/assets/ 前缀
+      const fullPath = actualPath.startsWith('/app/data/users/') 
+        ? actualPath 
+        : `/app/data/users/default/assets/${actualPath}`
+      
       return {
         type: 'category',
         key: actualKey,
         label: actualLabel,
+        path: fullPath,  // 添加完整路径
         action: 'include'  // 默认动作
       }
     } else if (ref.type === 'file') {
-      // 尝试从元数据中找到文件所属的分类
+      // 尝试从元数据中找到文件所属的分类和完整路径
       let category = null
       let categoryLabel = null
+      let filePath = ref.value
       
       if (metadata?.assets) {
         for (const [key, files] of Object.entries(metadata.assets)) {
-          if (files.includes(ref.value)) {
+          // 检查文件是否在这个分类中
+          const foundFile = files.find(f => {
+            // 文件可能是完整路径或只是文件名
+            return f === ref.value || f.endsWith(`/${ref.value}`) || f.includes(ref.value)
+          })
+          
+          if (foundFile) {
             category = key
             categoryLabel = metadata.labels?.[key] || key
+            // 如果找到的是完整路径，使用它
+            filePath = foundFile
             break
           }
         }
       }
       
+      // 为文件路径添加前缀（如果还没有）
+      const fullFilePath = filePath.startsWith('/app/data/users/') 
+        ? filePath 
+        : `/app/data/users/default/assets/${filePath}`
+      
       return {
         type: 'file',
         name: ref.value,
+        path: fullFilePath,  // 添加完整路径
         category: category || '',
         categoryLabel: categoryLabel || '',
         action: 'include'

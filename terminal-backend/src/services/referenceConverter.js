@@ -77,37 +77,72 @@ export const convertReferencesToPaths = async (references, username = 'default')
   for (const ref of references) {
     if (ref.type === 'category') {
       // 处理分类引用
-      // 首先尝试用key查找
-      let categoryKey = ref.key
-      let files = metadata.assets[categoryKey] || []
-      
-      // 如果没找到，尝试用label查找对应的key
-      if (files.length === 0 && ref.label) {
-        // 在labels中查找匹配的key
-        for (const [key, label] of Object.entries(metadata.labels || {})) {
-          if (label === ref.label || key === ref.label) {
-            categoryKey = key
-            files = metadata.assets[key] || []
-            break
+      // 如果前端已经提供了完整路径，直接使用
+      if (ref.path) {
+        console.log(`[ReferenceConverter] Using provided path for category: ${ref.path}`)
+        
+        // 直接将文件夹路径作为一个特殊的引用
+        filePaths.push({
+          type: 'category',
+          category: ref.key || ref.label,
+          categoryLabel: ref.label || ref.key,
+          fileName: ref.label || ref.key,  // 使用文件夹名作为文件名
+          fullPath: ref.path,  // 使用前端提供的完整路径
+          fileType: 'folder',
+          action: ref.action || 'include'
+        })
+      } else {
+        // 兼容旧逻辑：通过metadata查找文件
+        let categoryKey = ref.key
+        let files = metadata.assets[categoryKey] || []
+        
+        // 如果没找到，尝试用label查找对应的key
+        if (files.length === 0 && ref.label) {
+          // 在labels中查找匹配的key
+          for (const [key, label] of Object.entries(metadata.labels || {})) {
+            if (label === ref.label || key === ref.label) {
+              categoryKey = key
+              files = metadata.assets[key] || []
+              break
+            }
           }
         }
+        
+        console.log(`[ReferenceConverter] Category ${categoryKey} (${ref.label}) has ${files.length} files`)
+        
+        files.forEach(fileName => {
+          filePaths.push({
+            type: 'category_file',
+            category: categoryKey,
+            categoryLabel: ref.label || metadata.labels[categoryKey] || categoryKey,
+            fileName: fileName,
+            fullPath: path.join(basePath, fileName),
+            fileType: getFileType(fileName),
+            action: ref.action || 'include'
+          })
+        })
       }
+    } else if (ref.type === 'file') {
+      // 处理单个文件引用
       
-      console.log(`[ReferenceConverter] Category ${categoryKey} (${ref.label}) has ${files.length} files`)
-      
-      files.forEach(fileName => {
+      // 如果前端已经提供了完整路径，直接使用
+      if (ref.path) {
+        console.log(`[ReferenceConverter] Using provided path for file: ${ref.path}`)
+        const fileName = ref.name || ref.fileName || path.basename(ref.path)
+        
         filePaths.push({
-          type: 'category_file',
-          category: categoryKey,
-          categoryLabel: ref.label || metadata.labels[categoryKey] || categoryKey,
+          type: 'file',
+          category: ref.category || '',
+          categoryLabel: ref.categoryLabel || '',
           fileName: fileName,
-          fullPath: path.join(basePath, fileName),
+          fullPath: ref.path,  // 使用前端提供的完整路径
           fileType: getFileType(fileName),
           action: ref.action || 'include'
         })
-      })
-    } else if (ref.type === 'file') {
-      // 处理单个文件引用
+        continue  // 跳过后续的metadata查找逻辑
+      }
+      
+      // 兼容旧逻辑：通过metadata查找文件
       let fileName = ref.name || ref.fileName
       console.log(`[ReferenceConverter] Original file reference: ${fileName}`)
       

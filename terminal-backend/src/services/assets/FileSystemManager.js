@@ -100,12 +100,44 @@ class FileSystemManager {
    */
   async uploadFile(userId, file, targetFolder = '') {
     try {
-      const fileId = uuidv4()
-      const timestamp = Date.now()
-      const ext = path.extname(file.originalname)
-      const nameWithoutExt = path.basename(file.originalname, ext)
-      const fileName = `${fileId}_${timestamp}_${nameWithoutExt}${ext}`
+      // 确保文件名使用正确的UTF-8编码
+      let originalName = file.originalname
+      
+      // 尝试修复可能的编码问题
+      // 如果文件名看起来像是被错误编码的（包含常见的乱码字符）
+      if (/[àáâãäåæçèéêëìíîï]/.test(originalName)) {
+        try {
+          // 尝试将Latin-1编码转换为UTF-8
+          const buffer = Buffer.from(originalName, 'latin1')
+          const decoded = buffer.toString('utf8')
+          // 验证解码后的字符串是否包含有效的中文字符
+          if (/[\u4e00-\u9fa5]/.test(decoded)) {
+            originalName = decoded
+            logger.info(`[FileSystemManager] Fixed encoding for filename: ${originalName}`)
+          }
+        } catch (e) {
+          logger.warn(`[FileSystemManager] Could not fix encoding for filename: ${originalName}`)
+        }
+      }
+      
+      // 使用原始文件名，不添加前缀
+      const fileName = originalName
       const targetPath = path.join(this.getUserPath(userId, targetFolder), fileName)
+      
+      // 检查文件是否已存在
+      try {
+        await fs.access(targetPath)
+        // 文件已存在，抛出冲突错误
+        const error = new Error(`文件 "${fileName}" 已存在，请重命名后再上传`)
+        error.code = 'FILE_EXISTS'
+        throw error
+      } catch (e) {
+        if (e.code !== 'ENOENT') {
+          // 如果不是文件不存在的错误，重新抛出
+          throw e
+        }
+        // 文件不存在，可以继续上传
+      }
       
       // 确保目标目录存在
       await fs.mkdir(path.dirname(targetPath), { recursive: true })
@@ -121,10 +153,13 @@ class FileSystemManager {
       
       // 获取文件信息
       const stats = await fs.stat(targetPath)
+      const ext = path.extname(originalName)
+      const fileId = `${fileName}_${Date.now()}`  // 生成简单的文件ID用于索引
       
       const fileInfo = {
         id: fileId,
-        name: file.originalname,
+        name: originalName,  // 使用修复后的原始文件名
+        originalName: originalName,  // 添加原始文件名字段
         fileName: fileName,
         path: path.join(targetFolder, fileName),
         fullPath: targetPath,
@@ -269,18 +304,37 @@ class FileSystemManager {
       
       const contents = await Promise.all(
         items.map(async (item) => {
-          const itemPath = path.join(dirPath, item.name)
-          const fullItemPath = path.join(fullPath, item.name)
+          // 修复文件名编码问题
+          let fixedName = item.name
+          
+          // 如果文件名看起来像是被错误编码的（包含常见的乱码字符）
+          if (/[àáâãäåæçèéêëìíîï]/.test(fixedName)) {
+            try {
+              // 尝试将Latin-1编码转换为UTF-8
+              const buffer = Buffer.from(fixedName, 'latin1')
+              const decoded = buffer.toString('utf8')
+              // 验证解码后的字符串是否包含有效的中文字符
+              if (/[\u4e00-\u9fa5]/.test(decoded)) {
+                fixedName = decoded
+              }
+            } catch (e) {
+              // 忽略错误，使用原始文件名
+            }
+          }
+          
+          const itemPath = path.join(dirPath, fixedName)
+          const fullItemPath = path.join(fullPath, item.name)  // 使用原始名称访问文件系统
           const stats = await fs.stat(fullItemPath)
           
           return {
-            name: item.name,
+            name: fixedName,  // 使用修复后的名称
+            originalName: fixedName,  // 添加原始文件名字段
             path: itemPath,
             isDirectory: item.isDirectory(),
             size: stats.size,
             createdAt: stats.birthtime,
             modifiedAt: stats.mtime,
-            type: item.isDirectory() ? 'folder' : this.getFileType(item.name)
+            type: item.isDirectory() ? 'folder' : this.getFileType(fixedName)
           }
         })
       )

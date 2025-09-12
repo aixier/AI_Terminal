@@ -629,14 +629,39 @@ const insertAssetReference = (asset) => {
   const textarea = textareaRef.value
   const value = inputText.value  // 使用本地状态而不是 props
   
+  // 修复编码问题的辅助函数
+  const fixEncoding = (str) => {
+    if (!str) return str
+    try {
+      // 检测是否包含乱码特征（如 å, é 等）
+      if (/[àáâãäåæçèéêëìíîï]/.test(str)) {
+        // 尝试将错误的Latin-1编码转换回UTF-8
+        const bytes = []
+        for (let i = 0; i < str.length; i++) {
+          bytes.push(str.charCodeAt(i))
+        }
+        // 使用TextDecoder重新解码
+        const decoder = new TextDecoder('utf-8')
+        const uint8Array = new Uint8Array(bytes)
+        return decoder.decode(uint8Array)
+      }
+    } catch (e) {
+      console.warn('[ChatInputPanel] Failed to fix encoding:', e)
+    }
+    return str
+  }
+  
   // 使用路径作为引用格式
   let reference
   if (asset.type === 'category') {
     // 文件夹引用：使用路径
-    reference = asset.path || asset.key || asset.label
+    reference = fixEncoding(asset.path || asset.key || asset.label)
   } else {
-    // 文件引用：使用路径
-    reference = asset.path || asset.name || asset.fileName
+    // 文件引用：优先使用name（原始文件名），如果没有则使用path
+    // 修复可能的编码问题
+    const originalName = asset.name || asset.originalName
+    const path = asset.path || asset.fileName
+    reference = fixEncoding(originalName || path)
   }
   
   console.log('[ChatInputPanel] Reference to insert:', reference)

@@ -10,6 +10,7 @@ import { SessionMetadata } from './utils/sessionMetadata.js'
 import promptProcessor from '../../utils/promptProcessor.js'
 import htmlProcessor from '../../utils/UnifiedHtmlProcessor.js'
 import { OSSUploader } from './utils/ossUploader.js'
+import { repairJsonContent } from '../../utils/jsonRepair.js'
 
 const router = express.Router()
 
@@ -338,9 +339,14 @@ async function processInBackground(
     console.log('[Pod2PostAsync Background] Template path for reference:', templatePath)
     
     // 【关键调用1】使用专用组件进行Base64转换
+    // 传入任务特定路径，以便正确解析任务目录下的CDN资源
+    const taskSpecificPath = taskId ? path.join(templatePath, 'tasks', taskId) : templatePath
+    console.log('[Pod2PostAsync Background] Task-specific path for resource resolution:', taskSpecificPath)
+    console.log('[Pod2PostAsync Background] Looking for CDN resources in:', path.join(taskSpecificPath, 'CDN'))
+
     const base64Result = await htmlProcessor.convertHtmlToBase64(
       htmlFilePath,
-      templatePath  // Pod2Post模板路径，用于解析相对路径
+      taskSpecificPath  // 使用任务特定路径，确保能找到上传的CDN文件
     )
     
     let secondResult
@@ -381,9 +387,9 @@ async function processInBackground(
     console.log('[Pod2PostAsync Background] Starting OSS URL conversion for lightweight version')
     const ossUrlResult = await htmlProcessor.convertHtmlToOSSUrl(
       htmlFilePath,
-      templatePath,  // Pod2Post模板路径
-      username,      // 用户名
-      taskId        // 任务ID
+      taskSpecificPath,  // 使用任务特定路径，确保能找到上传的CDN文件
+      username,          // 用户名
+      taskId            // 任务ID
     )
     
     let thirdResult = null
@@ -830,11 +836,49 @@ async function waitForRequiredFiles(folderPath, options = {}) {
       
       // 1. 检测 *content.json 文件（简化匹配）
       if (!contentJsonDetected) {
-        const contentFiles = files.filter(f => 
+        const contentFiles = files.filter(f =>
           f.toLowerCase().endsWith('content.json')  // 任何以content.json结尾的文件
         )
-        
+
         if (contentFiles.length > 0) {
+          // 检测到 JSON 文件，尝试修复
+          const jsonFileName = contentFiles[0]
+          const jsonFilePath = path.join(folderPath, jsonFileName)
+
+          try {
+            console.log(`[WaitForFiles] Checking JSON file: ${jsonFileName}`)
+            const jsonContent = await fs.readFile(jsonFilePath, 'utf-8')
+
+            // 尝试解析 JSON
+            try {
+              JSON.parse(jsonContent)
+              console.log(`[WaitForFiles] JSON file is valid, no repair needed`)
+            } catch (parseError) {
+              // JSON 格式错误，需要修复
+              console.log(`[WaitForFiles] JSON parse error, attempting repair: ${parseError.message}`)
+
+              const repairResult = await repairJsonContent(jsonContent, {
+                templateName: 'pod2post-content',
+                description: 'Pod2Post content JSON',
+                requiredFields: [], // Pod2Post 的 JSON 可能没有固定字段
+                timeout: 60000,
+                retries: 1
+              })
+
+              if (repairResult.success) {
+                console.log(`[WaitForFiles] JSON repaired successfully`)
+                // 保存修复后的 JSON
+                await fs.writeFile(jsonFilePath, JSON.stringify(repairResult.data, null, 2))
+                console.log(`[WaitForFiles] Repaired JSON saved to: ${jsonFileName}`)
+              } else {
+                console.error(`[WaitForFiles] JSON repair failed: ${repairResult.error}`)
+                // 即使修复失败，也标记为已检测到
+              }
+            }
+          } catch (error) {
+            console.error(`[WaitForFiles] Error processing JSON file: ${error.message}`)
+          }
+
           contentJsonDetected = true
           console.log(`[WaitForFiles] ✓ Content JSON detected: ${contentFiles.join(', ')}`)
         }

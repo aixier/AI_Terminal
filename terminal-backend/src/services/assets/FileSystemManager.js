@@ -22,6 +22,14 @@ class FileSystemManager {
   }
 
   /**
+   * 获取用户作品集路径
+   */
+  getUserWorkspacePath(userId, subPath = '') {
+    const basePath = path.join(this.dataPath, 'users', userId, 'workspace', 'card')
+    return subPath ? path.join(basePath, subPath) : basePath
+  }
+
+  /**
    * 获取缓存路径
    */
   getCachePath(userId, type = '') {
@@ -234,7 +242,15 @@ class FileSystemManager {
    */
   async delete(userId, itemPath) {
     try {
-      const fullPath = this.getUserPath(userId, itemPath)
+      // 处理作品集路径
+      let fullPath
+      if (itemPath.startsWith('作品集/')) {
+        const realPath = itemPath.replace('作品集/', '')
+        fullPath = this.getUserWorkspacePath(userId, realPath)
+      } else {
+        fullPath = this.getUserPath(userId, itemPath)
+      }
+      
       const stats = await fs.stat(fullPath)
       
       if (stats.isDirectory()) {
@@ -265,8 +281,17 @@ class FileSystemManager {
       const dir = path.dirname(oldPath)
       const newPath = path.join(dir, newName)
       
-      const source = this.getUserPath(userId, oldPath)
-      const target = this.getUserPath(userId, newPath)
+      // 处理作品集路径
+      let source, target
+      if (oldPath.startsWith('作品集/')) {
+        const realOldPath = oldPath.replace('作品集/', '')
+        const realNewPath = newPath.replace('作品集/', '')
+        source = this.getUserWorkspacePath(userId, realOldPath)
+        target = this.getUserWorkspacePath(userId, realNewPath)
+      } else {
+        source = this.getUserPath(userId, oldPath)
+        target = this.getUserPath(userId, newPath)
+      }
       
       await fs.rename(source, target)
       
@@ -287,6 +312,11 @@ class FileSystemManager {
    */
   async getDirectoryContents(userId, dirPath = '') {
     try {
+      // 处理虚拟目录 - 作品集
+      if (dirPath === '作品集' || dirPath.startsWith('作品集/')) {
+        return await this.getWorkspaceContents(userId, dirPath)
+      }
+      
       const fullPath = this.getUserPath(userId, dirPath)
       
       // 确保目录存在
@@ -339,6 +369,23 @@ class FileSystemManager {
         })
       )
       
+      // 如果是根目录，添加虚拟的作品集文件夹
+      if (dirPath === '' || dirPath === '/') {
+        contents.push({
+          name: '作品集',
+          originalName: '作品集',
+          path: '作品集',
+          isDirectory: true,
+          size: 0,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          type: 'folder',
+          virtual: true,  // 标记为虚拟目录
+          icon: 'collection', // 特殊图标
+          source: 'workspace' // 标记来源
+        })
+      }
+      
       return contents.sort((a, b) => {
         // 文件夹优先
         if (a.isDirectory && !b.isDirectory) return -1
@@ -348,6 +395,56 @@ class FileSystemManager {
       })
     } catch (error) {
       logger.error(`[FileSystemManager] Failed to get directory contents:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * 获取作品集目录内容
+   */
+  async getWorkspaceContents(userId, dirPath) {
+    try {
+      // 移除虚拟路径前缀
+      const realPath = dirPath.replace('作品集/', '').replace('作品集', '')
+      const fullPath = this.getUserWorkspacePath(userId, realPath)
+      
+      // 检查目录是否存在
+      try {
+        await fs.access(fullPath)
+      } catch (error) {
+        // 作品集目录不存在，返回空数组
+        return []
+      }
+      
+      const items = await fs.readdir(fullPath, { withFileTypes: true })
+      
+      const contents = await Promise.all(
+        items.map(async (item) => {
+          const itemPath = path.join('作品集', realPath, item.name)
+          const fullItemPath = path.join(fullPath, item.name)
+          const stats = await fs.stat(fullItemPath)
+          
+          return {
+            name: item.name,
+            originalName: item.name,
+            path: itemPath,
+            isDirectory: item.isDirectory(),
+            size: stats.size,
+            createdAt: stats.birthtime,
+            modifiedAt: stats.mtime,
+            type: item.isDirectory() ? 'folder' : this.getFileType(item.name),
+            source: 'workspace'  // 标记来源
+          }
+        })
+      )
+      
+      return contents.sort((a, b) => {
+        if (a.isDirectory && !b.isDirectory) return -1
+        if (!a.isDirectory && b.isDirectory) return 1
+        return a.name.localeCompare(b.name)
+      })
+    } catch (error) {
+      logger.error(`[FileSystemManager] Failed to get workspace contents:`, error)
       throw error
     }
   }

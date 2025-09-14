@@ -3,6 +3,7 @@ import path from 'path'
 import { promises as fs } from 'fs'
 import logger from '../utils/logger.js'
 import config from '../config/config.js'
+import { repairJsonContent } from '../utils/jsonRepair.js'
 
 class ClaudeService {
   constructor() {
@@ -127,20 +128,52 @@ class ClaudeService {
           clearInterval(checkOutput)
           clearTimeout(timeout)
 
+          let jsonContent
+          let jsonString = jsonMatch[1]
+
           try {
-            const jsonContent = JSON.parse(jsonMatch[1])
-            
-            // 保存JSON到文件
+            // 尝试直接解析
+            jsonContent = JSON.parse(jsonString)
+            logger.info('[ClaudeService] JSON parsed successfully without repair')
+          } catch (parseError) {
+            // 解析失败，尝试修复
+            logger.warn('[ClaudeService] JSON parse failed, attempting repair:', parseError.message)
+
+            try {
+              const repairResult = await repairJsonContent(jsonString, {
+                templateName: 'claude-generated',
+                description: 'Claude generated JSON content',
+                requiredFields: [], // 不强制要求特定字段
+                timeout: 60000,
+                retries: 1
+              })
+
+              if (repairResult.success) {
+                logger.info('[ClaudeService] JSON repaired successfully')
+                jsonContent = repairResult.data
+                jsonString = repairResult.fixedContent
+              } else {
+                throw new Error(`JSON repair failed: ${repairResult.error}`)
+              }
+            } catch (repairError) {
+              logger.error('[ClaudeService] JSON repair failed:', repairError)
+              reject(new Error(`Failed to parse or repair JSON: ${repairError.message}`))
+              return
+            }
+          }
+
+          try {
+            // 保存JSON到文件（使用修复后的或原始的）
             await fs.writeFile(jsonPath, JSON.stringify(jsonContent, null, 2))
-            
+
             resolve({
               success: true,
               filePath: `users/${session.id}/cards/${topic}/content.json`,
               absolutePath: jsonPath,
               content: jsonContent
             })
-          } catch (parseError) {
-            reject(new Error('Failed to parse JSON from Claude output'))
+          } catch (writeError) {
+            reject(new Error(`Failed to write JSON file: ${writeError.message}`))
           }
         }
 

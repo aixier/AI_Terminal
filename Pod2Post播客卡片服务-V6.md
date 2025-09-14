@@ -14,6 +14,7 @@ Pod2Post播客卡片服务是一个专门用于将播客内容转化为社媒平
 - 🆕 **多任务并发**: 支持同用户多任务并发处理（最多5个）
 - 🆕 **任务级资源隔离**: 每个任务拥有独立的资源目录，避免冲突
 - 🆕 **性能优化**: Content接口不再实时上传，响应速度提升10倍以上
+- 🆕 **OSS URL轻量级版本**: 支持生成仅27KB的OSS URL版本HTML，文件大小减少99.88%
 
 ## 🔗 API端点列表
 
@@ -36,21 +37,22 @@ Pod2Post播客卡片服务是一个专门用于将播客内容转化为社媒平
 - **远程API**: `http://cardapi.paitongai.com`
 
 #### 认证方式
-使用Token认证，在请求头或请求体中传入：
+使用Token认证，根据不同接口使用不同方式：
 
 ```javascript
-// 方式1：请求头
-headers: {
-  'Authorization': 'Bearer lijing-token-2025-pod2post'
-}
+// 文件上传接口（/cdn, /pic, /resources）
+// 注意：文件上传接口通常不需要token，仅通过taskId隔离
 
-// 方式2：请求体
+// 任务提交接口（/async）- 请求体方式
 {
-  "token": "lijing-token-2025-pod2post"
+  "prompt": "...",
+  "taskId": "pod2post_xxx",
+  "token": "your-token-here"  // 可选，用户认证token
 }
 
-// 方式3：URL参数
-GET /api/generate/pod2post/content/pod2post_xxx?token=lijing-token-2025-pod2post
+// 状态查询和内容获取 - URL参数方式  
+GET /api/generate/pod2post/status/:taskId?token=your-token-here
+GET /api/generate/pod2post/content/:folderName?token=your-token-here
 ```
 
 ### 2. 基础工作流程（含OSS优化）
@@ -97,7 +99,7 @@ stateDiagram-v2
 |-----|------|------|
 | promptProcessing | 10% | Prompt处理和路径替换 |
 | firstGeneration | 50% | AI生成HTML和JSON |
-| base64Embedding | 25% | 图片转换为Base64 |
+| base64Embedding | 25% | 图片转换为Base64和生成OSS URL版本 |
 | **ossUpload** 🆕 | 15% | 上传文件到OSS |
 
 ## 📤 资源上传接口
@@ -115,11 +117,9 @@ Content-Type: multipart/form-data
 
 Parameters:
 - images: 图片文件（支持多个）  // 注意：照片上传使用images字段
-- clearBase64: "true" | "false" (可选，清理已生成的Base64文件)
-- token: "lijing-token-2025-pod2post" (可选，用户认证)
 
 Query Parameters:
-- taskId: "pod2post_1757482406080_abc123" (可选，任务ID，用于任务级资源隔离)
+- taskId: "pod2post_1757482406080_abc123" (必需，任务ID，用于任务级资源隔离)
 ```
 
 ### CDN素材上传
@@ -135,11 +135,9 @@ Content-Type: multipart/form-data
 
 Parameters:
 - files: 图片文件（支持多个）  // 重要：CDN上传使用files字段，不是images
-- clearBase64: "true" | "false" (可选)
-- token: "lijing-token-2025-pod2post" (可选)
 
 Query Parameters:
-- taskId: "pod2post_1757482406080_abc123" (可选，任务ID)
+- taskId: "pod2post_1757482406080_abc123" (必需，任务ID)
 ```
 
 ### 参考文档上传
@@ -147,6 +145,17 @@ Query Parameters:
 #### 端点
 ```
 POST /api/generate/pod2post/resources
+```
+
+#### 请求格式
+```http
+Content-Type: multipart/form-data
+
+Parameters:
+- files: 文档文件（支持多个）  // 注意：文档上传使用files字段
+
+Query Parameters:
+- taskId: "pod2post_1757482406080_abc123" (必需，任务ID)
 ```
 
 #### 支持的文件类型
@@ -167,7 +176,7 @@ POST /api/generate/pod2post/async
 ```json
 {
   "prompt": "阅读[播客小红书图文卡片需求文档.md]...",
-  "token": "lijing-token-2025-pod2post",
+  "token": "your-token-here",  // 可选，用户认证token
   "taskId": "pod2post_1757482406080_abc123"  // 可选，用于任务级资源隔离
 }
 ```
@@ -269,13 +278,16 @@ GET /api/generate/pod2post/content/:folderName
     "pod2postFiles": {
       "original": "podcast_cards.html",
       "withBase64": "podcast_cards_with_base64.html",
+      "ossUrl": "podcast_cards_ossurl.html",  // 🆕 OSS URL轻量级版本
       "metadata": "20250110_032615_lijing_meta.json"
     },
     "content": {
       // 🆕 从meta文件读取的OSS链接
       "originalHtmlOssUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/lijing/...",
       "base64HtmlOssUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/lijing/...",
+      "ossUrlHtmlOssUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/lijing/...",  // 🆕 OSS URL版本链接
       "base64HtmlSize": 23768530,
+      "ossUrlHtmlSize": 27648,  // 🆕 仅27KB
       "base64HtmlPreview": "<!DOCTYPE html>...", // 前50KB预览
       
       "metadata": {
@@ -329,7 +341,7 @@ import FormData from 'form-data'
 import fs from 'fs'
 
 class Pod2PostClient {
-  constructor(baseUrl = 'http://8.130.86.152:8083/api', token = 'lijing-token-2025-pod2post') {
+  constructor(baseUrl = 'http://8.130.86.152:8083/api', token = 'your-token-here') {
     this.baseUrl = baseUrl
     this.token = token
   }
@@ -341,19 +353,77 @@ class Pod2PostClient {
     return `pod2post_${timestamp}_${random}`
   }
 
-  // 1. 上传照片
+  // 1. 上传照片（注意：使用images字段，不需要token）
   async uploadPhotos(photoPaths, taskId) {
     const formData = new FormData()
     
     for (const photoPath of photoPaths) {
-      formData.append('images', fs.createReadStream(photoPath))
+      formData.append('images', fs.createReadStream(photoPath))  // 照片使用images字段
     }
-    formData.append('token', this.token)
-    formData.append('clearBase64', 'true')
 
     const url = taskId 
       ? `${this.baseUrl}/generate/pod2post/pic?taskId=${taskId}`
       : `${this.baseUrl}/generate/pod2post/pic`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData
+    })
+
+    return await response.json()
+  }
+
+  // 1.5 上传CDN素材（注意：使用files字段，不需要token）  
+  async uploadCDN(cdnPaths, taskId) {
+    const formData = new FormData()
+    
+    for (const cdnPath of cdnPaths) {
+      formData.append('files', fs.createReadStream(cdnPath))  // CDN使用files字段
+    }
+
+    const url = taskId 
+      ? `${this.baseUrl}/generate/pod2post/cdn?taskId=${taskId}`
+      : `${this.baseUrl}/generate/pod2post/cdn`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData
+    })
+
+    return await response.json()
+  }
+
+  // 1.6 上传参考文档（注意：使用files字段，不需要token）
+  async uploadResources(resourcePaths, taskId) {
+    const formData = new FormData()
+    
+    for (const resourcePath of resourcePaths) {
+      formData.append('files', fs.createReadStream(resourcePath))  // 文档使用files字段
+    }
+
+    const url = taskId 
+      ? `${this.baseUrl}/generate/pod2post/resources?taskId=${taskId}`
+      : `${this.baseUrl}/generate/pod2post/resources`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData
+    })
+
+    return await response.json()
+  }
+
+  // 1.6 上传参考文档（注意：使用files字段，不需要token）
+  async uploadResources(resourcePaths, taskId) {
+    const formData = new FormData()
+    
+    for (const resourcePath of resourcePaths) {
+      formData.append('files', fs.createReadStream(resourcePath))  // 文档使用files字段
+    }
+
+    const url = taskId 
+      ? `${this.baseUrl}/generate/pod2post/resources?taskId=${taskId}`
+      : `${this.baseUrl}/generate/pod2post/resources`
 
     const response = await fetch(url, {
       method: 'POST',
@@ -414,7 +484,14 @@ class Pod2PostClient {
         console.log(`✅ 使用缓存的OSS链接（响应时间<500ms）`)
         console.log(`📦 Base64 HTML: ${content.base64HtmlOssUrl}`)
         console.log(`📏 文件大小: ${(content.base64HtmlSize / 1024 / 1024).toFixed(2)}MB`)
-      } else {
+      }
+      
+      // 🆕 OSS URL轻量级版本
+      if (content.ossUrlHtmlOssUrl) {
+        console.log(`✨ OSS URL版本: ${content.ossUrlHtmlOssUrl}`)
+        console.log(`🔍 文件大小: ${(content.ossUrlHtmlSize / 1024).toFixed(2)}KB (减少99.88%)`)
+        console.log(`🌐 可直接在线预览`)
+      } else if (!content.base64HtmlOssUrl) {
         console.warn(`⚠️ 未找到OSS链接，可能任务未完成OSS上传阶段`)
       }
       
@@ -454,7 +531,7 @@ class Pod2PostClient {
   }
 
   // 完整流程
-  async generatePod2PostCards(photoPaths, cdnPaths, prompt) {
+  async generatePod2PostCards(photoPaths, cdnPaths, resourcePaths, prompt) {
     try {
       console.log('🚀 开始Pod2Post卡片生成流程...')
 
@@ -463,8 +540,20 @@ class Pod2PostClient {
       console.log(`📝 任务ID: ${taskId}`)
 
       // 1. 上传资源
-      console.log('📸 上传照片...')
-      await this.uploadPhotos(photoPaths, taskId)
+      if (photoPaths && photoPaths.length > 0) {
+        console.log('📸 上传照片...')
+        await this.uploadPhotos(photoPaths, taskId)
+      }
+      
+      if (cdnPaths && cdnPaths.length > 0) {
+        console.log('📦 上传CDN素材...')
+        await this.uploadCDN(cdnPaths, taskId)
+      }
+      
+      if (resourcePaths && resourcePaths.length > 0) {
+        console.log('📄 上传参考文档...')
+        await this.uploadResources(resourcePaths, taskId)
+      }
 
       // 2. 提交任务
       console.log('⚡ 提交生成任务...')
@@ -538,10 +627,11 @@ class Pod2PostClient {
 - **超时时间**: 30分钟
 
 ### 输出规格
-- **HTML文件**: 原始版本和Base64嵌入版本
+- **HTML文件**: 原始版本、Base64嵌入版本和OSS URL轻量级版本
 - **JSON文案**: 包含标题、内容、标签等
 - **图片数量**: 封面1张 + 内容页10张
 - **OSS链接**: 1年有效期
+- **文件大小优化**: OSS URL版本约27KB（相比Base64版本减少99.88%）
 
 ## 🚨 注意事项
 
@@ -562,12 +652,13 @@ class Pod2PostClient {
 
 ---
 
-**文档版本**: v6.0.0  
-**更新时间**: 2025-01-10  
+**文档版本**: v6.1.0  
+**更新时间**: 2025-01-12  
 **主要更新**: 
 - 新增OSS自动上传机制
 - Content接口性能优化（不再实时上传）
 - 新增OSS上传阶段状态
 - 响应时间从5-30秒优化至<500ms
+- 新增OSS URL轻量级HTML版本，文件大小从22MB优化至27KB
 
 **适用环境**: 生产环境

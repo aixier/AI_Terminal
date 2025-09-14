@@ -662,13 +662,27 @@ const handleItemContextMenu = (event, item) => {
   
   const items = []
   
+  // 检查是否是作品集
+  const isWorkspaceItem = item.source === 'workspace' || item.path?.startsWith('作品集')
+  
   if (item.type === 'folder') {
     items.push(
       { label: '打开', icon: 'folder-open', action: 'open' },
-      { separator: true },
+      { separator: true }
+    )
+    
+    // 作品集和普通文件夹都支持重命名和删除
+    items.push(
       { label: '重命名', icon: 'edit', action: 'rename' },
       { label: '删除', icon: 'delete', action: 'delete' }
     )
+    
+    if (isWorkspaceItem) {
+      items.push(
+        { separator: true },
+        { label: '查看详情', icon: 'info', action: 'info' }
+      )
+    }
   } else {
     items.push(
       { label: '打开', icon: 'file', action: 'open' },

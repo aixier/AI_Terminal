@@ -4,6 +4,7 @@
  */
 
 import { ref } from 'vue'
+import { assetsApiV2 } from '@/api/assetsV2'
 
 // 内存缓存（L1）
 const memoryCache = ref(null)
@@ -19,25 +20,31 @@ export const useAssetCache = () => {
    * 保存到 localStorage（L2缓存）
    */
   const saveToCache = (data) => {
+    console.log('[asset_metadata_debug] Saving to cache, data:', data)
+    console.log('[asset_metadata_debug] Data has workspace:', !!data.workspace)
+    console.log('[asset_metadata_debug] Workspace keys:', data.workspace ? Object.keys(data.workspace) : 'none')
+    console.log('[asset_metadata_debug] Assets keys:', Object.keys(data.assets || {}))
+
     const cacheData = {
       data: data,
       timestamp: Date.now(),
       version: data.version || '3.0',
       lastUpdated: data.lastUpdated || new Date().toISOString()
     }
-    
+
     try {
       // 直接保存 JSON
       localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData))
       localStorage.setItem(CACHE_VERSION_KEY, cacheData.lastUpdated)
-      
+
       // 同时更新内存缓存
       memoryCache.value = data
       memoryCacheTime.value = Date.now()
-      
+
+      console.log('[asset_metadata_debug] Successfully saved to localStorage')
       return true
     } catch (e) {
-      console.warn('localStorage 存储失败:', e)
+      console.warn('[asset_metadata_debug] localStorage save failed:', e)
       // 存储失败时清理过期数据
       clearExpiredCache()
       return false
@@ -118,26 +125,77 @@ export const useAssetCache = () => {
   }
   
   /**
-   * 智能获取数据（仅使用本地缓存）
-   * @param {boolean} forceRefresh - 是否强制刷新（此参数现在无效）
+   * 智能获取数据（支持从服务器获取）
+   * @param {boolean} forceRefresh - 是否强制刷新
    */
   const getMetadata = async (forceRefresh = false) => {
-    // 1. 优先使用内存缓存（L1 - 零延迟 < 1ms）
-    const memoryData = getFromMemory()
-    if (memoryData) {
-      console.log('[AssetCache] L1命中 - 内存缓存')
-      return memoryData
+    console.log('[asset_metadata_debug] getMetadata called, forceRefresh:', forceRefresh)
+
+    // 如果不强制刷新，尝试使用缓存
+    if (!forceRefresh) {
+      // 1. 优先使用内存缓存（L1 - 零延迟 < 1ms）
+      const memoryData = getFromMemory()
+      if (memoryData) {
+        console.log('[asset_metadata_debug] L1 hit - checking memory cache')
+        console.log('[asset_metadata_debug] Memory cache has workspace:', !!memoryData.workspace)
+
+        // 检查缓存数据是否有效（不为空）
+        const hasContent = memoryData.assets && Object.keys(memoryData.assets).length > 0
+        if (hasContent) {
+          console.log('[asset_metadata_debug] Memory cache has content, returning')
+          return memoryData
+        } else {
+          console.log('[asset_metadata_debug] Memory cache is empty, will fetch from server')
+          // 清除无效的内存缓存
+          memoryCache.value = null
+        }
+      }
+
+      // 2. 尝试localStorage缓存（L2 - < 10ms）
+      const cached = getFromCache()
+      if (cached) {
+        console.log('[asset_metadata_debug] L2 hit - checking localStorage cache')
+        console.log('[asset_metadata_debug] localStorage cache has workspace:', !!cached.workspace)
+
+        // 检查缓存数据是否有效（不为空）
+        const hasContent = cached.assets && Object.keys(cached.assets).length > 0
+        if (hasContent) {
+          console.log('[asset_metadata_debug] localStorage cache has content, returning')
+          return cached
+        } else {
+          console.log('[asset_metadata_debug] localStorage cache is empty, will fetch from server')
+          // 清除无效的缓存
+          localStorage.removeItem(CACHE_KEY)
+          localStorage.removeItem(CACHE_VERSION_KEY)
+        }
+      }
     }
-    
-    // 2. 尝试localStorage缓存（L2 - < 10ms）
-    const cached = getFromCache()
-    if (cached) {
-      console.log('[AssetCache] L2命中 - localStorage缓存')
-      return cached
+
+    // 3. 从服务器获取（L3 - 200-500ms）
+    try {
+      console.log('[asset_metadata_debug] L3 request - fetching from server')
+      const response = await assetsApiV2.getMetadata()
+      console.log('[asset_metadata_debug] Server response:', response)
+
+      if (response.data && response.data.success) {
+        const metadata = response.data.data
+        console.log('[asset_metadata_debug] Server metadata received:', metadata)
+        console.log('[asset_metadata_debug] Server metadata has workspace:', !!metadata.workspace)
+        console.log('[asset_metadata_debug] Server workspace keys:', metadata.workspace ? Object.keys(metadata.workspace) : 'none')
+        console.log('[asset_metadata_debug] Server assets keys:', Object.keys(metadata.assets || {}))
+
+        // 保存到缓存
+        saveToCache(metadata)
+
+        console.log('[asset_metadata_debug] Server data cached successfully')
+        return metadata
+      }
+    } catch (error) {
+      console.error('[asset_metadata_debug] Server fetch failed:', error)
     }
-    
-    // 3. 没有缓存数据，返回空
-    console.log('[AssetCache] 没有找到缓存的元数据')
+
+    // 4. 所有方法都失败，返回空
+    console.log('[asset_metadata_debug] All methods failed, returning null')
     return null
   }
   

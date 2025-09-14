@@ -307,15 +307,18 @@ const handleSearch = () => {
 // 加载元数据
 const loadMetadata = async () => {
   try {
-    console.log('[AssetReferencePicker] Loading metadata...')
-    
+    console.log('[asset_metadata_debug][AssetReferencePicker] Loading metadata...')
+
     // 先清空旧数据
     assetMetadata.value = null
     assetIndex.value = null
-    
+
     // 重新获取数据
     assetMetadata.value = await assetCache.getMetadata()
-    console.log('[AssetReferencePicker] Metadata loaded:', JSON.stringify(assetMetadata.value, null, 2))
+    console.log('[asset_metadata_debug][AssetReferencePicker] Metadata loaded:', JSON.stringify(assetMetadata.value, null, 2))
+    console.log('[asset_metadata_debug][AssetReferencePicker] Has workspace:', !!assetMetadata.value?.workspace)
+    console.log('[asset_metadata_debug][AssetReferencePicker] Workspace keys:', assetMetadata.value?.workspace ? Object.keys(assetMetadata.value.workspace) : 'none')
+    console.log('[asset_metadata_debug][AssetReferencePicker] Assets keys:', assetMetadata.value?.assets ? Object.keys(assetMetadata.value.assets) : 'none')
     
     if (assetMetadata.value) {
       buildAssetIndex()

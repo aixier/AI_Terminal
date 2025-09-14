@@ -21,6 +21,20 @@ const getUserStoragePath = (username = 'default') => {
 }
 
 /**
+ * 获取用户作品集路径
+ */
+const getUserWorkspacePath = (username = 'default') => {
+  const isDocker = process.env.NODE_ENV === 'production' || process.env.DATA_PATH
+  const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+  
+  if (isDocker) {
+    return `/app/data/users/${username}/workspace/card`
+  } else {
+    return path.join(dataPath, 'users', username, 'workspace', 'card')
+  }
+}
+
+/**
  * 获取用户元数据路径
  */
 const getUserMetadataPath = (username = 'default') => {
@@ -81,13 +95,26 @@ export const convertReferencesToPaths = async (references, username = 'default')
       if (ref.path) {
         console.log(`[ReferenceConverter] Using provided path for category: ${ref.path}`)
         
+        // 检查是否是作品集路径
+        let fullPath = ref.path
+        if (ref.path.startsWith('作品集/')) {
+          // 转换作品集路径
+          const workspacePath = getUserWorkspacePath(username)
+          const relativePath = ref.path.replace('作品集/', '')
+          fullPath = path.join(workspacePath, relativePath)
+          console.log(`[ReferenceConverter] Converted workspace path: ${ref.path} -> ${fullPath}`)
+        } else if (!path.isAbsolute(ref.path)) {
+          // 相对路径转换为绝对路径
+          fullPath = path.join(basePath, ref.path)
+        }
+        
         // 直接将文件夹路径作为一个特殊的引用
         filePaths.push({
           type: 'category',
           category: ref.key || ref.label,
           categoryLabel: ref.label || ref.key,
           fileName: ref.label || ref.key,  // 使用文件夹名作为文件名
-          fullPath: ref.path,  // 使用前端提供的完整路径
+          fullPath: fullPath,  // 使用转换后的完整路径
           fileType: 'folder',
           action: ref.action || 'include'
         })
@@ -130,12 +157,25 @@ export const convertReferencesToPaths = async (references, username = 'default')
         console.log(`[ReferenceConverter] Using provided path for file: ${ref.path}`)
         const fileName = ref.name || ref.fileName || path.basename(ref.path)
         
+        // 检查是否是作品集路径
+        let fullPath = ref.path
+        if (ref.path.startsWith('作品集/')) {
+          // 转换作品集路径
+          const workspacePath = getUserWorkspacePath(username)
+          const relativePath = ref.path.replace('作品集/', '')
+          fullPath = path.join(workspacePath, relativePath)
+          console.log(`[ReferenceConverter] Converted workspace file path: ${ref.path} -> ${fullPath}`)
+        } else if (!path.isAbsolute(ref.path)) {
+          // 相对路径转换为绝对路径
+          fullPath = path.join(basePath, ref.path)
+        }
+        
         filePaths.push({
           type: 'file',
           category: ref.category || '',
           categoryLabel: ref.categoryLabel || '',
           fileName: fileName,
-          fullPath: ref.path,  // 使用前端提供的完整路径
+          fullPath: fullPath,  // 使用转换后的完整路径
           fileType: getFileType(fileName),
           action: ref.action || 'include'
         })

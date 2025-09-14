@@ -134,7 +134,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { assetsApi, assetEvents } from '../../api/assets'
+import { assetsApiV2 } from '../../api/assetsV2'
 
 // 解码文件名的工具函数
 const decodeFileName = (fileName) => {
@@ -235,77 +235,96 @@ const saveMetadataToCache = (data) => {
 const loadData = async () => {
   loading.value = true
   try {
-    // 新系统不再需要获取分类元数据，直接使用目录结构
-    // 获取目录树（可选，用于显示树形结构）
-    const treeRes = await assetsApi.getTree()
-    if (treeRes.success && treeRes.data) {
-      // 简化的树形结构，不再维护复杂的分类系统
-      categoryTree.value = Array.isArray(treeRes.data.children) ? treeRes.data.children : []
-      updateBreadcrumb()
-      
-      // 为兼容性保存简化的元数据
-      const metadata = {
-        categories: {},
-        labels: {},
+    // 获取完整的元数据（包含作品集）
+    const metadataRes = await assetsApiV2.getMetadata()
+    let metadata = null
+
+    if (metadataRes.success && metadataRes.data) {
+      // 使用元数据中的 tree 结构（包含作品集）
+      categoryTree.value = metadataRes.data.tree || []
+
+      // 保存元数据到缓存
+      metadata = {
+        categories: metadataRes.data.assets || {},
+        labels: metadataRes.data.labels || {},
         tree: categoryTree.value,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: metadataRes.data.lastUpdated || new Date().toISOString()
       }
       saveMetadataToCache(metadata)
+      updateBreadcrumb()
     }
 
-    // 获取文件 - 新API使用path而不是category
-    const params = { path: currentCategory.value || '' }
-    if (searchQuery.value) {
-      params.search = searchQuery.value
-    }
-    
-    const assetsRes = await assetsApi.getAssets(params)
-    if (assetsRes.success) {
-      // 新API直接返回数组，不再嵌套在assets属性中
-      const assets = Array.isArray(assetsRes.data) ? assetsRes.data : (assetsRes.data.assets || [])
-      
-      // 从新API响应中分离文件夹和文件
-      const folders = assets.filter(item => item.isDirectory || item.type === 'folder')
-      const files = assets.filter(item => !item.isDirectory && item.type !== 'folder')
-      
-      // 获取当前分类的子分类和文件（兼容旧数据结构）
-      const currentFiles = files.length > 0 ? files : (categoriesData.value[currentCategory.value] || [])
-      
-      // 新系统：文件夹已经在assets数组中返回了，不需要单独处理子分类
-      let subCategories = []
-      
-      // 合并文件夹和文件显示
+    // 如果在根目录，显示作品集文件夹
+    if (!currentCategory.value && metadata) {
+      // 从元数据中获取作品集列表
+      const metadataCategories = metadata.categories || {}
+      const metadataLabels = metadata.labels || {}
+
+      // 构建显示项
       displayItems.value = [
-        // 显示新API返回的文件夹
-        ...folders.map(folder => ({
-          key: folder.path || folder.name,
-          label: folder.name,
+        // 显示作品集文件夹
+        ...Object.keys(metadataCategories).map(key => ({
+          key: key,
+          label: metadataLabels[key] || key,
           type: 'category',
-          fileCount: 0,
-          isNewApi: true
-        })),
-        // 显示旧分类结构（如果有）
-        ...subCategories.filter(cat => !folders.some(f => f.name === cat.label)).map(cat => ({ 
-          key: cat.key,
-          label: cat.label,
-          type: 'category',
-          fileCount: cat.files.length
-        })),
-        // 显示文件
-        ...(files.length > 0 ? files.map(file => ({
-          name: file.name,
+          fileCount: metadataCategories[key]?.length || 0,
+          isCollection: true
+        }))
+      ]
+    } else if (metadata) {
+      // 对于作品集，直接从缓存的元数据中获取文件
+      const metadataCategories = metadata.categories || {}
+
+      if (metadataCategories[currentCategory.value]) {
+        // 作品集中的文件
+        const files = metadataCategories[currentCategory.value] || []
+        displayItems.value = files.map(file => ({
+          name: file.name || file.fileName,
           path: file.path,
           size: file.size,
           type: 'file',
-          mimeType: file.mimeType,
-          isNewApi: true
-        })) : currentFiles.map(filename => ({
-          name: decodeFileName(filename),  // 解码文件名
-          originalName: filename,  // 保留原始文件名用于后端操作
-          type: 'file',
+          mimeType: file.type,
+          isNewApi: true,
           category: currentCategory.value
-        })))
-      ]
+        }))
+      } else {
+        // 普通文件夹，从API获取
+        const params = { path: currentCategory.value }
+        if (searchQuery.value) {
+          params.search = searchQuery.value
+        }
+
+        const assetsRes = await assetsApiV2.getAssets(params)
+        if (assetsRes.success) {
+          // 新API直接返回数组，不再嵌套在assets属性中
+          const assets = Array.isArray(assetsRes.data) ? assetsRes.data : (assetsRes.data.assets || [])
+
+        // 从新API响应中分离文件夹和文件
+        const folders = assets.filter(item => item.isDirectory || item.type === 'folder')
+        const files = assets.filter(item => !item.isDirectory && item.type !== 'folder')
+      
+        // 合并文件夹和文件显示
+        displayItems.value = [
+          // 显示新API返回的文件夹
+          ...folders.map(folder => ({
+            key: folder.path || folder.name,
+            label: folder.name,
+            type: 'category',
+            fileCount: 0,
+            isNewApi: true
+          })),
+          // 显示文件
+          ...files.map(file => ({
+            name: file.name,
+            path: file.path,
+            size: file.size,
+            type: 'file',
+            mimeType: file.mimeType,
+            isNewApi: true
+          }))
+        ]
+        }
+      }
     }
   } catch (error) {
     console.error('Failed to load data:', error)
@@ -606,7 +625,7 @@ const handleFileSelect = async (event) => {
     // 添加编码标记，告诉后端这是UTF-8编码的
     formData.append('encoding', 'utf-8')
     
-    await assetsApi.uploadAssets(formData)
+    await assetsApiV2.uploadBatch(formData)
     ElMessage.success('上传成功')
     loadData()
   } catch (error) {
@@ -629,7 +648,7 @@ const createFolder = async () => {
   
   try {
     // 使用新的真实文件系统 API
-    await assetsApi.createFolder({
+    await assetsApiV2.createFolder({
       path: currentCategory.value || '',
       name: newFolderName.value
     })
@@ -661,12 +680,12 @@ const renameCategory = async () => {
     if (renameItem.value.type === 'category') {
       // 使用新的rename API重命名文件夹
       const folderPath = renameItem.value.key || renameItem.value.path
-      await assetsApi.rename(folderPath, renameName.value)
+      await assetsApiV2.rename({ oldPath: folderPath, newName: renameName.value })
       ElMessage.success('文件夹重命名成功')
     } else {
       // 重命名文件
       const filePath = renameItem.value.path || renameItem.value.originalName || renameItem.value.name
-      await assetsApi.rename(filePath, renameName.value)
+      await assetsApiV2.rename({ oldPath: filePath, newName: renameName.value })
       ElMessage.success('文件重命名成功')
     }
     closeRenameDialog()
@@ -687,7 +706,7 @@ const deleteSelected = async () => {
     for (const item of selectedItems.value) {
       // 使用统一的delete方法
       const itemPath = item.path || item.key || (item.category ? `${item.category}/${item.originalName || item.name}` : item.originalName || item.name)
-      await assetsApi.delete(itemPath)
+      await assetsApiV2.delete(itemPath)
     }
     ElMessage.success('删除成功')
     selectedItems.value = []

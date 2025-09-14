@@ -43,21 +43,22 @@ class HtmlResourceParser {
       const cssResources = await this.parseCssUrls(document, htmlFileDir, templateBasePath)
       resources.push(...cssResources)
       
-      // 去重（基于localPath）
-      const uniqueResources = this.deduplicateResources(resources)
-      
-      console.log(`[HtmlResourceParser] Found ${uniqueResources.length} unique local resources`)
-      
+      // 不再去重，保留所有资源引用，确保每个元素都能被替换
+      // 即使多个元素引用同一个文件，也需要分别替换
+      console.log(`[HtmlResourceParser] Found ${resources.length} resource references`)
+      console.log(`[HtmlResourceParser] Unique paths: ${new Set(resources.map(r => r.localPath)).size}`)
+
       return {
         success: true,
         htmlContent,
         dom,
         document,
-        resources: uniqueResources,
+        resources: resources,  // 使用所有资源，不去重
         stats: {
           totalImgTags: imgResources.length,
           totalCssUrls: cssResources.length,
-          uniqueResources: uniqueResources.length
+          totalResources: resources.length,
+          uniquePaths: new Set(resources.map(r => r.localPath)).size
         }
       }
     } catch (error) {

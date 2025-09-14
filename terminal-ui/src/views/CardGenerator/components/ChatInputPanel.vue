@@ -3,7 +3,7 @@
     <!-- 模板快选按钮和高级选项在同一行 -->
     <div v-if="showTemplates || isMobile" class="template-shortcuts">
       <!-- 高级选项按钮（移动端放在最左边） -->
-      <div v-if="false && isMobile" class="advanced-toggle-container">
+      <div v-if="isMobile" class="advanced-toggle-container">
         <button 
           class="advanced-toggle-btn" 
           @click="showAdvancedOptions = !showAdvancedOptions"

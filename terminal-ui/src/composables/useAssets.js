@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { assetsApi } from '../api/assets'
+import { assetsApiV2 } from '../api/assetsV2'
 
 export function useAssets() {
   const assets = ref([])
@@ -20,7 +20,7 @@ export function useAssets() {
     error.value = null
     
     try {
-      const response = await assetsApi.getAssets({
+      const response = await assetsApiV2.getAssets({
         page: pagination.value.page,
         limit: pagination.value.limit,
         ...params
@@ -45,7 +45,7 @@ export function useAssets() {
     error.value = null
     
     try {
-      const response = await assetsApi.getCategories()
+      const response = await assetsApiV2.getCategories()
       
       if (response.data.success) {
         categories.value = response.data.data.categories || {}
@@ -71,7 +71,7 @@ export function useAssets() {
       formData.append('category', category)
     }
     
-    const response = await assetsApi.uploadAssets(formData)
+    const response = await assetsApiV2.uploadAssets(formData)
     
     if (response.data.success) {
       await refreshAssets()
@@ -83,7 +83,7 @@ export function useAssets() {
 
   // 创建分类
   const createCategory = async (categoryData) => {
-    const response = await assetsApi.createCategory(categoryData)
+    const response = await assetsApiV2.createCategory(categoryData)
     
     if (response.data.success) {
       await refreshCategories()
@@ -95,7 +95,7 @@ export function useAssets() {
 
   // 更新分类
   const updateCategory = async (categoryKey, updates) => {
-    const response = await assetsApi.updateCategory(categoryKey, updates)
+    const response = await assetsApiV2.updateCategory(categoryKey, updates)
     
     if (response.data.success) {
       await refreshCategories()
@@ -107,21 +107,21 @@ export function useAssets() {
 
   // 删除素材
   const deleteAssets = async (assetIds) => {
-    const promises = assetIds.map(id => assetsApi.deleteAsset(id))
+    const promises = assetIds.map(id => assetsApiV2.deleteAsset(id))
     await Promise.all(promises)
     await refreshAssets()
   }
 
   // 删除分类
   const deleteCategories = async (categoryKeys) => {
-    const promises = categoryKeys.map(key => assetsApi.deleteCategory(key))
+    const promises = categoryKeys.map(key => assetsApiV2.deleteCategory(key))
     await Promise.all(promises)
     await refreshFolders()
   }
 
   // 移动项目
   const moveItems = async (items, targetCategory) => {
-    const response = await assetsApi.moveItems({
+    const response = await assetsApiV2.moveItems({
       items: items.map(item => ({
         id: item.id,
         type: item.type || 'asset'
@@ -143,7 +143,7 @@ export function useAssets() {
     if (item.type === 'category') {
       return await updateCategory(item.key, { label: newName })
     } else {
-      const response = await assetsApi.updateAsset(item.id, { name: newName })
+      const response = await assetsApiV2.updateAsset(item.id, { name: newName })
       
       if (response.data.success) {
         await refreshAssets()
@@ -170,7 +170,7 @@ export function useAssets() {
     
     pagination.value.page++
     
-    const response = await assetsApi.getAssets({
+    const response = await assetsApiV2.getAssets({
       page: pagination.value.page,
       limit: pagination.value.limit
     })
@@ -184,7 +184,7 @@ export function useAssets() {
   // 获取存储信息
   const getStorageInfo = async () => {
     try {
-      const response = await assetsApi.getStorageInfo()
+      const response = await assetsApiV2.getStorageInfo()
       if (response.data.success) {
         return response.data.data
       }

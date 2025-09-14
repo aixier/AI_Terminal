@@ -46,6 +46,14 @@ class ChokidarWatcher extends EventEmitter {
   }
 
   /**
+   * 获取用户作品集目录路径
+   */
+  getUserWorkspacePath(userId) {
+    const dataPath = process.env.DATA_PATH || path.join(process.cwd(), 'data')
+    return path.join(dataPath, 'users', userId, 'workspace', 'card')
+  }
+
+  /**
    * 监控用户目录
    * @param {string} userId - 用户ID
    * @param {Function} callback - 事件回调
@@ -57,10 +65,15 @@ class ChokidarWatcher extends EventEmitter {
         this.unwatchUserDirectory(userId)
       }
 
-      const userPath = this.getUserAssetPath(userId)
-      logger.info(`[ChokidarWatcher] Starting watch for user: ${userId}, path: ${userPath}`)
+      // 监控多个目录：素材目录和作品集目录
+      const assetPath = this.getUserAssetPath(userId)
+      const workspacePath = this.getUserWorkspacePath(userId)
+      const watchPaths = [assetPath, workspacePath]
+      
+      logger.info(`[ChokidarWatcher] Starting watch for user: ${userId}`)
+      logger.info(`[ChokidarWatcher] Watching paths: ${watchPaths.join(', ')}`)
 
-      const watcher = chokidar.watch(userPath, this.config)
+      const watcher = chokidar.watch(watchPaths, this.config)
 
       // 绑定事件
       watcher
@@ -107,13 +120,31 @@ class ChokidarWatcher extends EventEmitter {
    * 处理文件系统事件
    */
   handleEvent(type, filePath, userId) {
-    const userPath = this.getUserAssetPath(userId)
-    const relativePath = path.relative(userPath, filePath)
+    const assetPath = this.getUserAssetPath(userId)
+    const workspacePath = this.getUserWorkspacePath(userId)
+    
+    // 判断文件来源
+    let relativePath
+    let source = 'assets'
+    
+    if (filePath.startsWith(workspacePath)) {
+      // 作品集文件，添加虚拟路径前缀
+      relativePath = '作品集/' + path.relative(workspacePath, filePath)
+      source = 'workspace'
+    } else if (filePath.startsWith(assetPath)) {
+      // 素材文件
+      relativePath = path.relative(assetPath, filePath)
+    } else {
+      // 未知来源，忽略
+      logger.warn(`[ChokidarWatcher] Unknown file source: ${filePath}`)
+      return
+    }
     
     const event = {
       type,
       path: relativePath,
       fullPath: filePath,
+      source,  // 标记来源
       userId,
       timestamp: Date.now()
     }

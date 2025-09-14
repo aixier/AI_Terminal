@@ -6,7 +6,9 @@
       class="grid-item"
       :class="{
         selected: isSelected(item),
-        folder: item.type === 'folder'
+        folder: item.type === 'folder',
+        workspace: item.source === 'workspace' || item.path?.startsWith('作品集'),
+        readonly: item.readonly
       }"
       @click="handleClick($event, item)"
       @dblclick="handleDoubleClick(item)"
@@ -15,7 +17,8 @@
       @dragstart="handleDragStart($event, item)"
     >
       <div class="item-icon">
-        <Icon v-if="item.type === 'folder'" name="folder" />
+        <Icon v-if="item.virtual && item.icon === 'collection'" name="folder-star" class="collection-icon" />
+        <Icon v-else-if="item.type === 'folder'" :name="item.icon || 'folder'" />
         <img v-else-if="item.thumbnail" :src="item.thumbnail" :alt="item.name" />
         <Icon v-else :name="getFileIcon(item)" />
       </div>
@@ -153,6 +156,41 @@ const formatSize = (bytes) => {
 
 .grid-item.folder .item-icon {
   color: #ffc107;
+}
+
+/* 作品集样式 */
+.grid-item.workspace {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8f4fd 100%);
+  border: 1px solid #d1e9ff;
+}
+
+.grid-item.workspace:hover {
+  background: linear-gradient(135deg, #e8f4fd 0%, #d1e9ff 100%);
+}
+
+.grid-item.workspace .item-icon {
+  color: #1890ff;
+}
+
+.grid-item.workspace .item-name {
+  color: #1890ff;
+  font-weight: 500;
+}
+
+/* 只读项样式 */
+.grid-item.readonly {
+  opacity: 0.9;
+}
+
+.grid-item.readonly .item-name::after {
+  content: ' 🔒';
+  font-size: 10px;
+}
+
+/* 特殊的作品集图标 */
+.collection-icon {
+  color: #722ed1 !important;
+  font-size: 48px;
 }
 
 .item-name {

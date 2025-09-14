@@ -150,10 +150,31 @@ class ApiTerminalService extends EventEmitter {
     const processedForShell = prompt.replace(/"/g, "'")
     // 始终使用 --dangerously-skip-permissions（假设使用非root用户）
     const command = `claude --dangerously-skip-permissions -p "${processedForShell}"`
-    
+
+    // 先执行 pwd 查看当前路径，方便检查 claude 执行记录
+    console.log(`[ApiTerminalService] Checking current directory with pwd...`)
+
+    // 清空输出缓冲区以便捕获 pwd 输出
+    const outputBuffer = this.outputBuffers.get(apiId) || []
+    outputBuffer.length = 0  // 清空缓冲区
+
+    terminal.pty.write('pwd\r')
+    await this.delay(300)  // 等待 pwd 执行完成
+
+    // 从输出缓冲区获取 pwd 的结果
+    const pwdOutput = outputBuffer
+      .map(item => item.data)
+      .join('')
+      .split('\n')
+      .filter(line => line && !line.includes('pwd') && !line.includes('$'))
+      .join('')
+      .trim()
+
+    console.log(`[ApiTerminalService] Current working directory: ${pwdOutput || 'unknown'}`)
+
     // 调试时可取消注释查看完整提示词
     console.log(`[ApiTerminalService] Command: ${command}`)
-    
+
     // 分开发送命令和回车，确保命令完整
     terminal.pty.write(command)
     await this.delay(100)  // 短暂延迟确保命令完整发送

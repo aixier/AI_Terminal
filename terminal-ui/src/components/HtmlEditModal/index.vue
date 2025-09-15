@@ -17,16 +17,27 @@
           <el-button
             v-for="tool in tools"
             :key="tool.mode"
-            :type="currentMode === tool.mode ? 'primary' : 'default'"
-            @click="setMode(tool.mode)"
+            :type="toolActive && currentMode === tool.mode ? 'primary' : 'default'"
+            @click="toggleTool(tool.mode)"
           >
             <el-icon><component :is="tool.icon" /></el-icon>
             {{ tool.label }}
           </el-button>
         </el-button-group>
+
+        <el-divider direction="vertical" />
+
+        <span v-if="toolActive" class="tool-status active">
+          <el-icon><EditPen /></el-icon>
+          工具已激活
+        </span>
+        <span v-else class="tool-status">
+          <el-icon><View /></el-icon>
+          浏览模式
+        </span>
       </div>
 
-      <div class="tool-group" v-if="currentMode === 'paint'">
+      <div class="tool-group" v-if="toolActive && currentMode === 'paint'">
         <span class="tool-label">画笔大小:</span>
         <el-slider
           v-model="brushSize"
@@ -60,14 +71,16 @@
             <iframe
               ref="iframeRef"
               class="content-iframe"
-              sandbox="allow-same-origin"
+              :class="{ 'interactive': !toolActive }"
+              sandbox="allow-same-origin allow-scripts"
               @load="handleIframeLoad"
             />
 
-            <!-- 选择覆盖层 -->
+            <!-- 选择覆盖层 - 只在工具激活时显示 -->
             <SelectionOverlay
+              v-if="toolActive"
               ref="selectionOverlayRef"
-              :visible="overlayVisible"
+              :visible="overlayVisible && toolActive"
               :container="htmlContainerRef"
               :config="overlayConfig"
               @selection-start="handleSelectionStart"
@@ -178,8 +191,8 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick } from 'vue'
-import { ElDialog, ElButton, ElButtonGroup, ElIcon, ElSlider, ElInput, ElTag, ElEmpty, ElMessage } from 'element-plus'
-import { Edit, Delete, Back, InfoFilled, Warning } from '@element-plus/icons-vue'
+import { ElDialog, ElButton, ElButtonGroup, ElIcon, ElSlider, ElInput, ElTag, ElEmpty, ElMessage, ElDivider } from 'element-plus'
+import { Edit, Delete, Back, InfoFilled, Warning, EditPen, View } from '@element-plus/icons-vue'
 import SelectionOverlay from '../SelectionOverlay/index.vue'
 import { HTMLSelectionAdapter } from '../SelectionOverlay/useSelectionOverlay'
 
@@ -214,6 +227,7 @@ const selectionOverlayRef = ref(null)
 
 // 状态
 const overlayVisible = ref(false)
+const toolActive = ref(false)  // 工具是否激活
 const currentMode = ref('paint')
 const brushSize = ref(20)
 const selectedElements = ref([])
@@ -269,6 +283,9 @@ const dialogWidth = computed(() => {
 })
 
 const currentTip = computed(() => {
+  if (!toolActive.value) {
+    return '当前为浏览模式，点击工具按钮激活选择功能'
+  }
   if (selectedElements.value.length === 0) {
     return '使用涂抹工具选择要编辑的内容'
   }
@@ -311,9 +328,24 @@ const handleIframeLoad = async () => {
 
 const handleClosed = () => {
   overlayVisible.value = false
+  toolActive.value = false
   clearSelections()
   editRequest.value = ''
   activeElementIndex.value = -1
+}
+
+const toggleTool = (mode) => {
+  // 如果点击的是当前激活的工具，则取消激活
+  if (toolActive.value && currentMode.value === mode) {
+    toolActive.value = false
+    console.log('工具已取消激活，进入浏览模式')
+  } else {
+    // 激活新工具或切换工具
+    currentMode.value = mode
+    overlayConfig.mode = mode
+    toolActive.value = true
+    console.log(`工具已激活: ${mode}`)
+  }
 }
 
 const setMode = (mode) => {
@@ -481,7 +513,8 @@ const clearSelections = () => {
   selectedElements.value = []
   activeElementIndex.value = -1
 
-  if (selectionOverlayRef.value) {
+  // 只在覆盖层存在且工具激活时清除
+  if (selectionOverlayRef.value && toolActive.value) {
     selectionOverlayRef.value.clearSelections()
   }
 }
@@ -628,6 +661,23 @@ watch(brushSize, (newSize) => {
   color: #666;
 }
 
+.tool-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #666;
+  background: #f5f5f5;
+}
+
+.tool-status.active {
+  color: #007AFF;
+  background: #e6f7ff;
+  font-weight: 500;
+}
+
 .brush-size-value {
   min-width: 40px;
   text-align: center;
@@ -674,6 +724,13 @@ watch(brushSize, (newSize) => {
   border: none;
   display: block;
   background: white;
+  pointer-events: none;  /* 默认禁用交互 */
+}
+
+/* 非激活状态下允许交互 */
+.content-iframe.interactive {
+  pointer-events: auto;
+  overflow: auto;
 }
 
 .tips-bar {

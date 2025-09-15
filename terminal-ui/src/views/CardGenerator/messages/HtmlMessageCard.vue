@@ -25,28 +25,36 @@
     ></iframe>
     
     <template #actions>
-      <el-button 
+      <el-button
+        size="small"
+        @click="handleEdit"
+        :icon="EditPen"
+        circle
+        title="编辑内容"
+        type="primary"
+      />
+      <el-button
         size="small"
         @click="handleFullscreen"
         :icon="FullScreen"
         circle
         title="全屏预览"
       />
-      <el-button 
+      <el-button
         size="small"
         @click="handleDownload"
         :icon="Download"
         circle
         title="下载HTML"
       />
-      <el-button 
+      <el-button
         size="small"
         @click="refreshPreview"
         :icon="Refresh"
         circle
         title="刷新预览"
       />
-      <el-button 
+      <el-button
         size="small"
         @click="handleShare"
         :icon="Share"
@@ -64,14 +72,24 @@
     @close="closeSocialShareDialog"
     @share-success="handleShareSuccess"
   />
+
+  <!-- HTML编辑模态框 -->
+  <HtmlEditModal
+    v-model="showEditModal"
+    :html-content="processedHtml"
+    title="编辑HTML内容"
+    @apply="handleEditApply"
+    @cancel="handleEditCancel"
+  />
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElButton, ElIcon, ElMessage } from 'element-plus'
-import { Refresh, FullScreen, CopyDocument, Download, Loading, Share } from '@element-plus/icons-vue'
+import { Refresh, FullScreen, CopyDocument, Download, Loading, Share, EditPen } from '@element-plus/icons-vue'
 import MessageCard from './MessageCard.vue'
 import SocialShareDialog from '../components/SocialShareDialog.vue'
+import HtmlEditModal from '../../../components/HtmlEditModal/index.vue'
 import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
 // 移除highlight.js相关导入，不再需要代码高亮
 
@@ -101,11 +119,14 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['copy', 'download', 'fullscreen'])
+const emit = defineEmits(['copy', 'download', 'fullscreen', 'edit'])
 
 // 移除viewMode，直接使用预览模式
 const isLoading = ref(false) // 初始设为false，因为使用v-show
 const previewFrame = ref(null)
+
+// 编辑模态框相关
+const showEditModal = ref(false)
 
 // 备用方案：通过文件路径从后端获取HTML内容
 const fetchHtmlContentByFilePath = async () => {
@@ -520,9 +541,41 @@ const handleShare = () => {
       name: folderName.value || getFolderFromResultData()
     }
   }
-  
+
   // 显示社媒选择对话框
   showSocialShareDialog.value = true
+}
+
+// 处理编辑按钮点击
+const handleEdit = () => {
+  showEditModal.value = true
+  emit('edit', {
+    htmlContent: processedHtml.value,
+    fileName: fileName.value
+  })
+}
+
+// 处理编辑应用
+const handleEditApply = async (data) => {
+  console.log('编辑数据:', data)
+
+  try {
+    // 这里可以调用API保存修改
+    // 例如：await api.saveHtmlEdit(data)
+
+    ElMessage.success('修改已应用')
+
+    // 刷新预览
+    refreshPreview()
+  } catch (error) {
+    console.error('应用编辑失败:', error)
+    ElMessage.error('应用修改失败，请重试')
+  }
+}
+
+// 处理编辑取消
+const handleEditCancel = () => {
+  showEditModal.value = false
 }
 
 // 从resultData中获取文件夹名

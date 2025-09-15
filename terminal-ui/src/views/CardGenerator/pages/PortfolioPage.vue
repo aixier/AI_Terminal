@@ -49,6 +49,9 @@
                   <button @click="$emit('preview-file', selectedFile)" class="action-btn">
                     <span>👁️</span> 预览
                   </button>
+                  <button @click="handleEditHtml" class="action-btn primary">
+                    <span>✏️</span> 编辑
+                  </button>
                   <button @click="shareToXiaohongshu(selectedFile, selectedFolder)" class="action-btn xhs-share-btn">
                     <span>📤</span> 分享小红书
                   </button>
@@ -115,6 +118,9 @@
               <button @click="$emit('preview-file', selectedFile)" class="action-btn" title="预览">
                 <span>👁️</span>
               </button>
+              <button @click="handleEditHtml" class="action-btn primary" title="编辑">
+                <span>✏️</span>
+              </button>
               <button @click="shareToXiaohongshu(selectedFile, selectedFolder)" class="action-btn xhs-share-btn" title="分享">
                 <span>📤</span>
               </button>
@@ -161,12 +167,22 @@
     @copy-short-link="copyShortLink"
     @open-link="openShareLink"
   />
+
+  <!-- HTML编辑模态框 -->
+  <HtmlEditModal
+    v-model="showEditModal"
+    :html-content="previewContent"
+    :title="`编辑: ${selectedFile?.name || 'HTML文件'}`"
+    @apply="handleEditApply"
+    @cancel="handleEditCancel"
+  />
 </template>
 
 <script setup>
 import { defineProps, defineEmits, ref } from 'vue'
 import FileManager from '../components/FileManager.vue'
 import ShareDialog from '../components/ShareDialog.vue'
+import HtmlEditModal from '../../../components/HtmlEditModal/index.vue'
 import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
 import { ElMessage } from 'element-plus'
 
@@ -237,6 +253,53 @@ const {
   copyShortLink,
   openShareLink
 } = useXiaohongshuShare()
+
+// 编辑功能状态
+const showEditModal = ref(false)
+
+// 编辑功能方法
+const handleEditHtml = () => {
+  if (!props.selectedFile || !props.previewContent) {
+    ElMessage.warning('请先选择一个HTML文件')
+    return
+  }
+  showEditModal.value = true
+}
+
+const handleEditApply = async (data) => {
+  console.log('编辑数据:', data)
+
+  try {
+    // 准备请求数据
+    const editRequest = {
+      fileName: props.selectedFile.name,
+      folderName: props.selectedFolder?.name,
+      elements: data.elements,
+      request: data.request,
+      timestamp: data.timestamp
+    }
+
+    // TODO: 调用API保存修改
+    // const response = await api.saveHtmlEdit(editRequest)
+
+    ElMessage.success('修改请求已提交')
+
+    // 刷新文件列表
+    emit('refresh-folders')
+
+    // 如果当前文件被修改，重新加载预览
+    if (props.selectedFile) {
+      emit('select-file', props.selectedFile, props.selectedFolder)
+    }
+  } catch (error) {
+    console.error('应用编辑失败:', error)
+    ElMessage.error('应用修改失败，请重试')
+  }
+}
+
+const handleEditCancel = () => {
+  showEditModal.value = false
+}
 
 // 工具函数
 const isHtmlFile = (filename) => {
@@ -390,6 +453,18 @@ const formatFileSize = (bytes) => {
   background: #fff5f5;
   border-color: #ff4757;
   color: #ff4757;
+}
+
+.action-btn.primary {
+  background: #007AFF;
+  color: white;
+  border-color: #007AFF;
+}
+
+.action-btn.primary:hover {
+  background: #0051D5;
+  border-color: #0051D5;
+  transform: translateY(-1px);
 }
 
 .xhs-share-btn {

@@ -171,23 +171,24 @@
   <!-- HTML编辑模态框 -->
   <HtmlEditModal
     v-model="showEditModal"
-    :html-content="previewContent"
-    :html-path="selectedFile?.path"
-    :file-id="selectedFile?.name"
-    :folder-id="selectedFolder?.name"
-    :title="`编辑: ${selectedFile?.name || 'HTML文件'}`"
+    :html-path="props.selectedFile?.path"
+    :file-id="props.selectedFile?.name"
+    :folder-id="props.selectedFolder?.name"
+    :title="`编辑: ${props.selectedFile?.name || 'HTML文件'}`"
+    :auto-fetch="true"
     @apply="handleEditApply"
     @cancel="handleEditCancel"
+    @content-updated="handleContentUpdated"
   />
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref } from 'vue'
+import { defineProps, defineEmits, ref, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import FileManager from '../components/FileManager.vue'
 import ShareDialog from '../components/ShareDialog.vue'
 import HtmlEditModal from '../../../components/HtmlEditModal/index.vue'
 import { useXiaohongshuShare } from '../../../composables/useXiaohongshuShare'
-import { ElMessage } from 'element-plus'
 
 // 状态管理
 
@@ -240,7 +241,8 @@ const emit = defineEmits([
   'preview-file',
   'download-file',
   'delete-file',
-  'delete-folder'
+  'delete-folder',
+  'update-preview-content'
 ])
 
 // 使用小红书分享模块
@@ -282,28 +284,52 @@ const handleEditHtml = () => {
 }
 
 const handleEditApply = async (data) => {
-  console.log('编辑应用结果:', data)
+  console.log('[PortfolioPage] 编辑应用结果:', data)
+
+  // 如果传递了新内容，直接更新
+  if (data.content) {
+    console.log('[PortfolioPage] Updating preview content from edit result')
+    emit('update-preview-content', data.content)
+  }
 
   // 检查是否需要重新加载HTML
   if (data.needReload && data.status === 'completed') {
     try {
-      console.log('重新加载HTML文件:', selectedFile.value?.path)
+      console.log('重新加载HTML文件:', props.selectedFile?.path)
 
       // 重新获取文件内容
-      if (selectedFile.value?.path) {
+      if (props.selectedFile?.path) {
         const username = localStorage.getItem('username') || 'default'
-        const response = await fetch(`/api/files/read?path=${encodeURIComponent(selectedFile.value.path)}&username=${username}`)
+        // 从绝对路径中提取相对路径 (去掉 /app/data/users/default/workspace/ 前缀)
+        const workspacePrefix = `/app/data/users/${username}/workspace/`
+        const relativePath = props.selectedFile.path.startsWith(workspacePrefix)
+          ? props.selectedFile.path.substring(workspacePrefix.length)
+          : props.selectedFile.path
+
+        // 添加时间戳和缓存控制头来确保获取最新内容
+        const timestamp = Date.now()
+        const response = await fetch(`/api/workspace/${username}/file/${encodeURIComponent(relativePath)}?t=${timestamp}`, {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        })
 
         if (response.ok) {
           const result = await response.json()
-          if (result.success) {
-            // 更新预览内容
-            previewContent.value = result.content
+          if (result.content) {
+            // 使用 emit 更新父组件的 previewContent
+            emit('update-preview-content', result.content)
 
-            // 强制刷新预览（如果有iframe的话）
-            const previewIframe = document.querySelector('.preview-iframe')
+            // 强制刷新预览iframe
+            const previewIframe = document.querySelector('.html-preview-iframe')
             if (previewIframe) {
-              previewIframe.src = previewIframe.src
+              // 先清空srcdoc，再设置新内容
+              previewIframe.srcdoc = ''
+              setTimeout(() => {
+                previewIframe.srcdoc = result.content
+              }, 100)
             }
 
             ElMessage.success('HTML内容已重新加载')
@@ -323,6 +349,13 @@ const handleEditApply = async (data) => {
 
 const handleEditCancel = () => {
   showEditModal.value = false
+}
+
+// 处理内容更新事件
+const handleContentUpdated = (newContent) => {
+  console.log('[PortfolioPage] Content updated from HtmlEditModal')
+  // 通知父组件更新预览内容
+  emit('update-preview-content', newContent)
 }
 
 // 工具函数

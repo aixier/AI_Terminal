@@ -57,6 +57,9 @@
         <el-button @click="undoSelection" :icon="Back" :disabled="!canUndo">
           撤销
         </el-button>
+        <el-button @click="handleManualReload" :icon="Refresh" type="success">
+          刷新内容
+        </el-button>
       </div>
     </div>
 
@@ -192,7 +195,7 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { ElDialog, ElButton, ElButtonGroup, ElIcon, ElSlider, ElInput, ElTag, ElEmpty, ElMessage, ElDivider } from 'element-plus'
-import { Edit, Delete, Back, InfoFilled, Warning, EditPen, View } from '@element-plus/icons-vue'
+import { Edit, Delete, Back, InfoFilled, Warning, EditPen, View, Refresh } from '@element-plus/icons-vue'
 import SelectionOverlay from '../SelectionOverlay/index.vue'
 import { HTMLSelectionAdapter } from '../SelectionOverlay/useSelectionOverlay'
 
@@ -203,11 +206,11 @@ const props = defineProps({
   },
   htmlContent: {
     type: String,
-    required: true
+    default: ''  // 改为可选，优先使用htmlPath获取
   },
   htmlPath: {
     type: String,
-    default: ''
+    required: true  // 路径是必需的
   },
   fileId: {
     type: String,
@@ -220,10 +223,15 @@ const props = defineProps({
   title: {
     type: String,
     default: '编辑HTML内容'
+  },
+  // 新增：是否自动获取最新内容
+  autoFetch: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'apply', 'cancel'])
+const emit = defineEmits(['update:modelValue', 'apply', 'cancel', 'content-updated'])
 
 // 响应式数据
 const visible = computed({
@@ -312,20 +320,52 @@ const canUndo = computed(() => {
 const handleOpened = async () => {
   await nextTick()
 
-  // 设置iframe内容
-  if (iframeRef.value && props.htmlContent) {
-    const iframeDoc = iframeRef.value.contentDocument || iframeRef.value.contentWindow.document
-    iframeDoc.open()
-    iframeDoc.write(props.htmlContent)
-    iframeDoc.close()
+  console.log('[HtmlEditModal] Dialog opened')
+  console.log('[HtmlEditModal] htmlPath:', props.htmlPath)
+  console.log('[HtmlEditModal] autoFetch:', props.autoFetch)
+
+  // 重置状态
+  selectedElements.value = []
+  selections.value = []
+  historyStack.value = []
+  isPolling.value = false
+  currentTaskId.value = null
+
+  // 决定如何获取内容
+  let contentToShow = null
+
+  if (props.autoFetch && props.htmlPath) {
+    // 自动获取最新内容
+    console.log('[HtmlEditModal] Auto-fetching content from path')
+    lastFetchedPath.value = ''  // 清除缓存
+    contentToShow = await fetchContentFromPath(true)
+  } else if (props.htmlContent) {
+    // 使用传入的内容
+    console.log('[HtmlEditModal] Using provided htmlContent')
+    contentToShow = props.htmlContent
+    currentHtmlContent.value = props.htmlContent
   }
 
-  console.log('Modal opened, waiting for iframe load')
+  // 设置iframe内容
+  if (contentToShow && iframeRef.value) {
+    updateIframeContent(contentToShow)
+  }
+
+  console.log('[HtmlEditModal] Modal opened, waiting for iframe load')
 }
 
 // iframe加载完成
 const handleIframeLoad = async () => {
-  console.log('Iframe loaded')
+  console.log('[HtmlEditModal] Iframe loaded')
+
+  // 如果有待显示的内容，现在显示
+  if (currentHtmlContent.value && iframeRef.value) {
+    const iframeDoc = iframeRef.value.contentDocument || iframeRef.value.contentWindow?.document
+    if (iframeDoc && !iframeDoc.body.innerHTML) {
+      // 只在iframe是空的时候才写入
+      updateIframeContent(currentHtmlContent.value)
+    }
+  }
 
   await nextTick()
   overlayVisible.value = true
@@ -335,7 +375,7 @@ const handleIframeLoad = async () => {
     htmlAdapter = new HTMLSelectionAdapter(selectionOverlayRef.value)
   }
 
-  console.log('Overlay initialized')
+  console.log('[HtmlEditModal] Overlay initialized')
 }
 
 const handleClosed = () => {
@@ -586,6 +626,138 @@ const getElementPreview = (element) => {
   return `<${element.tagName.toLowerCase()}>`
 }
 
+// 存储当前的HTML内容和状态
+const currentHtmlContent = ref('')
+const contentLoading = ref(false)
+const lastFetchedPath = ref('')
+const contentVersion = ref(0)  // 用于强制刷新
+
+// 监听内容的变化，通过路径获取
+watch(() => props.htmlPath, async (newPath, oldPath) => {
+  if (newPath && newPath !== oldPath && visible.value && props.autoFetch) {
+    console.log('[HtmlEditModal] htmlPath changed, fetching new content')
+    await fetchContentFromPath(true)
+    if (currentHtmlContent.value) {
+      updateIframeContent(currentHtmlContent.value)
+    }
+  }
+})
+
+// 监听对话框打开，获取最新内容
+watch(visible, async (isVisible) => {
+  if (isVisible && props.autoFetch && props.htmlPath) {
+    console.log('[HtmlEditModal] Dialog opened, fetching latest content')
+    // 强制重新获取
+    lastFetchedPath.value = ''
+    const content = await fetchContentFromPath(true)
+    if (content) {
+      updateIframeContent(content)
+    }
+  }
+})
+
+// 向后兼容：监听 htmlContent prop
+watch(() => props.htmlContent, (newContent) => {
+  if (newContent && visible.value && !props.autoFetch) {
+    console.log('[HtmlEditModal] htmlContent prop changed')
+    currentHtmlContent.value = newContent
+    updateIframeContent(newContent)
+  }
+})
+
+// 从路径获取最新内容
+const fetchContentFromPath = async (forceFetch = false) => {
+  if (!props.htmlPath) {
+    console.warn('[HtmlEditModal] No htmlPath provided')
+    return null
+  }
+
+  // 如果不强制获取且路径没变，使用缓存
+  if (!forceFetch && props.htmlPath === lastFetchedPath.value && currentHtmlContent.value) {
+    console.log('[HtmlEditModal] Using cached content')
+    return currentHtmlContent.value
+  }
+
+  contentLoading.value = true
+  try {
+    const username = localStorage.getItem('username') || 'default'
+    const timestamp = Date.now()
+    const url = `/api/files/read?path=${encodeURIComponent(props.htmlPath)}&username=${username}&t=${timestamp}&v=${contentVersion.value}`
+
+    console.log('[HtmlEditModal] Fetching content from:', url)
+
+    const response = await fetch(url, {
+      cache: 'no-cache',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+    if (result.success && result.content) {
+      // 更新内容和状态
+      currentHtmlContent.value = result.content
+      lastFetchedPath.value = props.htmlPath
+      contentVersion.value++
+
+      // 通知父组件
+      emit('content-updated', result.content)
+
+      console.log('[HtmlEditModal] Content fetched successfully')
+      return result.content
+    } else {
+      throw new Error(result.error || 'Failed to fetch content')
+    }
+  } catch (error) {
+    console.error('[HtmlEditModal] Failed to fetch content:', error)
+    ElMessage.error(`获取内容失败: ${error.message}`)
+    return null
+  } finally {
+    contentLoading.value = false
+  }
+}
+
+// 更新iframe内容
+const updateIframeContent = (content) => {
+  if (!content || !iframeRef.value) return
+
+  const iframeDoc = iframeRef.value.contentDocument || iframeRef.value.contentWindow?.document
+  if (iframeDoc) {
+    // 使用document.write方式更新
+    iframeDoc.open()
+    iframeDoc.write(content)
+    iframeDoc.close()
+    console.log('[HtmlEditModal] Iframe content updated')
+  }
+}
+
+// 公开的重新加载方法
+const reloadHtmlContent = async () => {
+  console.log('[HtmlEditModal] Reloading HTML content')
+
+  // 强制获取最新内容
+  const content = await fetchContentFromPath(true)
+
+  if (content) {
+    // 更新iframe
+    updateIframeContent(content)
+
+    // 清除选择
+    clearSelections()
+
+    ElMessage.success('内容已刷新')
+    return content
+  }
+
+  return null
+}
+
 const handleCancel = () => {
   visible.value = false
   emit('cancel')
@@ -594,7 +766,7 @@ const handleCancel = () => {
 // 轮询任务状态
 const pollTaskStatus = async (taskId) => {
   let retryCount = 0
-  const maxRetries = 30 // 最多轮询30次（60秒）
+  const maxRetries = 150 // 最多轮询150次（5分钟）- 匹配后端5分钟超时
   const pollInterval = 2000 // 每2秒查询一次
 
   const checkStatus = async () => {
@@ -619,7 +791,10 @@ const pollTaskStatus = async (taskId) => {
           overlayConfig.brush.drawnPixels.clear()
         }
 
-        // 触发应用成功事件，让父组件重新加载HTML
+        // 直接重新加载HTML内容到iframe
+        await reloadHtmlContent()
+
+        // 触发应用成功事件，让父组件也更新
         emit('apply', {
           status: 'completed',
           taskId,
@@ -666,6 +841,17 @@ const pollTaskStatus = async (taskId) => {
 
   // 开始轮询
   checkStatus()
+}
+
+// 手动刷新按钮处理
+const handleManualReload = async () => {
+  ElMessage.info('正在刷新内容...')
+  const success = await reloadHtmlContent()
+  if (success) {
+    ElMessage.success('内容已刷新')
+  } else {
+    ElMessage.error('刷新失败，请重试')
+  }
 }
 
 const handleApply = async () => {
@@ -766,8 +952,18 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
     editRequest.value = ''
 
     // 重置绘制数据
-    if (currentMode.value === 'brush') {
+    if (currentMode.value === 'brush' && overlayConfig.brush?.drawnPixels) {
       overlayConfig.brush.drawnPixels.clear()
+    }
+
+    // 更新 iframe 内容
+    const iframe = document.querySelector('.html-preview iframe')
+    if (iframe) {
+      iframe.srcdoc = ''
+      setTimeout(() => {
+        iframe.srcdoc = newContent
+        console.log('[HtmlEditModal] Iframe content updated with new content')
+      }, 100)
     }
 
     console.log('[HtmlEditModal] HTML content reloaded, selections cleared')

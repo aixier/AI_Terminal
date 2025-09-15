@@ -205,6 +205,18 @@ const props = defineProps({
     type: String,
     required: true
   },
+  htmlPath: {
+    type: String,
+    default: ''
+  },
+  fileId: {
+    type: String,
+    default: ''
+  },
+  folderId: {
+    type: String,
+    default: ''
+  },
   title: {
     type: String,
     default: '编辑HTML内容'
@@ -579,7 +591,90 @@ const handleCancel = () => {
   emit('cancel')
 }
 
+// 轮询任务状态
+const pollTaskStatus = async (taskId) => {
+  let retryCount = 0
+  const maxRetries = 30 // 最多轮询30次（60秒）
+  const pollInterval = 2000 // 每2秒查询一次
+
+  const checkStatus = async () => {
+    try {
+      const response = await fetch(`/api/html/status/${taskId}`)
+      const data = await response.json()
+
+      // 更新进度（如果需要显示进度条）
+      if (data.progress !== undefined) {
+        // updateProgressBar(data.progress)
+      }
+
+      if (data.status === 'completed') {
+        ElMessage.success('修改已完成，正在重新加载...')
+
+        // 清空之前的选择
+        selectedElements.value = []
+        editRequest.value = ''
+
+        // 重置绘制数据
+        if (currentMode.value === 'brush') {
+          overlayConfig.brush.drawnPixels.clear()
+        }
+
+        // 触发应用成功事件，让父组件重新加载HTML
+        emit('apply', {
+          status: 'completed',
+          taskId,
+          htmlPath: props.htmlPath,
+          needReload: true  // 标记需要重新加载
+        })
+
+        // 重置应用状态
+        isApplying.value = false
+
+        // 不立即关闭对话框，让用户可以继续编辑
+        // visible.value = false
+
+        return true
+      } else if (data.status === 'failed') {
+        ElMessage.error(`修改失败: ${data.error || '未知错误'}`)
+        isApplying.value = false
+        return true
+      } else if (retryCount >= maxRetries) {
+        ElMessage.warning('修改超时，请稍后查看结果')
+        isApplying.value = false
+        return true
+      }
+
+      // 继续轮询
+      retryCount++
+      setTimeout(checkStatus, pollInterval)
+      return false
+
+    } catch (error) {
+      console.error('查询任务状态失败:', error)
+
+      // 网络错误重试
+      if (retryCount < 3) {
+        retryCount++
+        setTimeout(checkStatus, pollInterval * 2)
+      } else {
+        ElMessage.error('网络错误，无法查询任务状态')
+        isApplying.value = false
+      }
+      return true
+    }
+  }
+
+  // 开始轮询
+  checkStatus()
+}
+
 const handleApply = async () => {
+  console.log('[HtmlEditModal] handleApply called')
+  console.log('[HtmlEditModal] props.htmlPath:', props.htmlPath)
+  console.log('[HtmlEditModal] props.fileId:', props.fileId)
+  console.log('[HtmlEditModal] props.folderId:', props.folderId)
+  console.log('[HtmlEditModal] selectedElements:', selectedElements.value.length)
+
   if (selectedElements.value.length === 0) {
     ElMessage.warning('请先选择要修改的元素')
     return
@@ -590,33 +685,66 @@ const handleApply = async () => {
     return
   }
 
+  if (!props.htmlPath) {
+    console.error('[HtmlEditModal] htmlPath is missing!')
+    console.log('[HtmlEditModal] All props:', props)
+    ElMessage.warning('缺少文件路径信息')
+    return
+  }
+
   isApplying.value = true
 
   try {
-    // 准备数据
-    const data = {
+    // 将绝对路径转换为相对于workspace的路径
+    const username = localStorage.getItem('username') || 'default'
+    let relativePath = props.htmlPath
+
+    // 移除路径前缀，只保留相对于workspace的部分
+    const workspacePrefix = `/app/data/users/${username}/workspace/`
+    if (relativePath.startsWith(workspacePrefix)) {
+      relativePath = relativePath.substring(workspacePrefix.length)
+    }
+
+    console.log('[HtmlEditModal] Using relative path:', relativePath)
+
+    // 准备请求数据
+    const requestData = {
+      htmlPath: relativePath,  // 使用相对路径
+      fileId: props.fileId,
+      folderId: props.folderId,
       elements: selectedElements.value.map(item => ({
-        tagName: item.element.tagName,
-        className: item.element.className,
-        id: item.element.id,
-        html: item.element.outerHTML,
-        coverage: item.coverage
+        selected_element: item.element.outerHTML,
+        selection_coverage_percentage: item.coverage * 100  // 转换为百分比
       })),
       request: editRequest.value,
       timestamp: Date.now()
     }
 
-    // 触发应用事件
-    emit('apply', data)
+    // 调用后端API
+    const response = await fetch('/api/html/edit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestData)
+    })
 
-    // 关闭对话框
-    visible.value = false
+    const result = await response.json()
 
-    ElMessage.success('修改请求已提交')
+    if (result.success) {
+      // 开始轮询任务状态
+      pollTaskStatus(result.taskId)
+
+      ElMessage.info({
+        message: '修改任务已提交，正在处理中...',
+        duration: 3000
+      })
+    } else {
+      throw new Error(result.error || '提交失败')
+    }
   } catch (error) {
-    console.error('Apply error:', error)
+    console.error('提交修改失败:', error)
     ElMessage.error('提交失败，请重试')
-  } finally {
     isApplying.value = false
   }
 }
@@ -628,6 +756,23 @@ watch(currentMode, (newMode) => {
 
 watch(brushSize, (newSize) => {
   overlayConfig.brush.size = newSize
+})
+
+// 监听htmlContent变化，重新初始化（用于修改完成后重新加载）
+watch(() => props.htmlContent, (newContent, oldContent) => {
+  if (newContent && newContent !== oldContent && visible.value) {
+    // 清空选择
+    selectedElements.value = []
+    editRequest.value = ''
+
+    // 重置绘制数据
+    if (currentMode.value === 'brush') {
+      overlayConfig.brush.drawnPixels.clear()
+    }
+
+    console.log('[HtmlEditModal] HTML content reloaded, selections cleared')
+    ElMessage.info('内容已更新，选择已清空')
+  }
 })
 </script>
 

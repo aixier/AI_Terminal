@@ -172,6 +172,9 @@
   <HtmlEditModal
     v-model="showEditModal"
     :html-content="previewContent"
+    :html-path="selectedFile?.path"
+    :file-id="selectedFile?.name"
+    :folder-id="selectedFolder?.name"
     :title="`编辑: ${selectedFile?.name || 'HTML文件'}`"
     @apply="handleEditApply"
     @cancel="handleEditCancel"
@@ -259,41 +262,62 @@ const showEditModal = ref(false)
 
 // 编辑功能方法
 const handleEditHtml = () => {
+  console.log('[PortfolioPage] handleEditHtml called')
+  console.log('[PortfolioPage] selectedFile:', props.selectedFile)
+  console.log('[PortfolioPage] selectedFolder:', props.selectedFolder)
+
   if (!props.selectedFile || !props.previewContent) {
     ElMessage.warning('请先选择一个HTML文件')
     return
   }
+
+  // 确保文件有路径信息
+  if (!props.selectedFile.path) {
+    console.error('[PortfolioPage] File path is missing in selectedFile:', props.selectedFile)
+    ElMessage.warning('文件路径信息缺失，请刷新后重试')
+    return
+  }
+
   showEditModal.value = true
 }
 
 const handleEditApply = async (data) => {
-  console.log('编辑数据:', data)
+  console.log('编辑应用结果:', data)
 
-  try {
-    // 准备请求数据
-    const editRequest = {
-      fileName: props.selectedFile.name,
-      folderName: props.selectedFolder?.name,
-      elements: data.elements,
-      request: data.request,
-      timestamp: data.timestamp
+  // 检查是否需要重新加载HTML
+  if (data.needReload && data.status === 'completed') {
+    try {
+      console.log('重新加载HTML文件:', selectedFile.value?.path)
+
+      // 重新获取文件内容
+      if (selectedFile.value?.path) {
+        const username = localStorage.getItem('username') || 'default'
+        const response = await fetch(`/api/files/read?path=${encodeURIComponent(selectedFile.value.path)}&username=${username}`)
+
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success) {
+            // 更新预览内容
+            previewContent.value = result.content
+
+            // 强制刷新预览（如果有iframe的话）
+            const previewIframe = document.querySelector('.preview-iframe')
+            if (previewIframe) {
+              previewIframe.src = previewIframe.src
+            }
+
+            ElMessage.success('HTML内容已重新加载')
+          } else {
+            ElMessage.error('重新加载失败: ' + result.error)
+          }
+        } else {
+          ElMessage.error('无法重新加载文件')
+        }
+      }
+    } catch (error) {
+      console.error('重新加载HTML失败:', error)
+      ElMessage.error('重新加载失败，请手动刷新')
     }
-
-    // TODO: 调用API保存修改
-    // const response = await api.saveHtmlEdit(editRequest)
-
-    ElMessage.success('修改请求已提交')
-
-    // 刷新文件列表
-    emit('refresh-folders')
-
-    // 如果当前文件被修改，重新加载预览
-    if (props.selectedFile) {
-      emit('select-file', props.selectedFile, props.selectedFolder)
-    }
-  } catch (error) {
-    console.error('应用编辑失败:', error)
-    ElMessage.error('应用修改失败，请重试')
   }
 }
 

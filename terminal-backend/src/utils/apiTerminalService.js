@@ -11,6 +11,19 @@ class ApiTerminalService extends EventEmitter {
     super()
     this.terminals = new Map() // apiId -> terminal info
     this.outputBuffers = new Map() // apiId -> output buffer
+
+    // 启动定期清理过期会话（每5分钟执行一次）
+    this.startAutoCleanup()
+  }
+
+  /**
+   * 启动自动清理定时器
+   */
+  startAutoCleanup() {
+    setInterval(() => {
+      console.log(`[ApiTerminalService] Running auto cleanup check...`)
+      this.cleanupExpiredSessions()
+    }, 300000) // 每5分钟检查一次
   }
 
   /**
@@ -122,6 +135,7 @@ class ApiTerminalService extends EventEmitter {
     
     
     // 选项2: 复杂测试 - 带图片的HTML页面（用于测试base64嵌入）
+    /*
     const timestamp = Date.now();
     const folderPath = `/mnt/d/work/AI_Terminal/terminal-backend/data/users/default/workspace/card/test_${timestamp}`;
     const mockPrompt = `请创建一个带图片的HTML展示页面：
@@ -136,8 +150,8 @@ class ApiTerminalService extends EventEmitter {
 5. 请确保所有内容都内嵌在HTML中
 
 这是用于测试自定义模板异步处理的mock prompt。`;
-    
-    
+    */
+
     // 如果启用了mock，取消下面这行的注释
     // console.log('[ApiTerminalService] ⚠️ Using MOCK prompt for testing!');
     // prompt = mockPrompt;
@@ -175,13 +189,55 @@ class ApiTerminalService extends EventEmitter {
     // 调试时可取消注释查看完整提示词
     console.log(`[ApiTerminalService] Command: ${command}`)
 
-    // 分开发送命令和回车，确保命令完整
+    // 分开发送命令和回车，确保命令完整发送
     terminal.pty.write(command)
     await this.delay(100)  // 短暂延迟确保命令完整发送
     terminal.pty.write('\r')  // 发送回车执行命令
-    
+
     terminal.lastActivity = Date.now()
-    return true
+
+    // 等待Claude执行完成（监听输出直到看到命令提示符）
+    console.log(`[ApiTerminalService] Waiting for Claude to complete...`)
+
+    return new Promise((resolve) => {
+      let checkCount = 0
+      const maxChecks = 300  // 最多检查300次（5分钟）
+
+      const checkInterval = setInterval(() => {
+        checkCount++
+        const outputBuffer = this.outputBuffers.get(apiId) || []
+
+        // 获取最近的输出
+        const recentOutput = outputBuffer
+          .slice(-5)
+          .map(item => item.data)
+          .join('')
+
+        // 检查是否出现命令提示符（表示Claude已完成）
+        const hasPrompt = recentOutput.includes('$') ||
+                         recentOutput.includes('>') ||
+                         recentOutput.includes('#')
+
+        // 检查是否有Claude完成的标志
+        const hasCompleted = recentOutput.includes('File modified successfully') ||
+                           recentOutput.includes('Changes saved') ||
+                           recentOutput.includes('Successfully updated') ||
+                           (outputBuffer.length > 10 && hasPrompt)
+
+        if (hasCompleted || checkCount >= maxChecks) {
+          clearInterval(checkInterval)
+
+          if (checkCount >= maxChecks) {
+            console.log(`[ApiTerminalService] Claude execution timeout after ${checkCount} checks`)
+          } else {
+            console.log(`[ApiTerminalService] Claude execution completed after ${checkCount} checks`)
+          }
+
+          terminal.lastActivity = Date.now()
+          resolve(true)
+        }
+      }, 1000)  // 每秒检查一次
+    })
   }
 
   /**

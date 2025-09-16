@@ -22,6 +22,8 @@ import assetsRoutes from './routes/v2/assets.js'
 import { router as sseRouter } from './routes/v2/sse.js'
 import stsRoutes from './routes/sts.js'
 import ossDirectRoutes from './routes/oss-direct.js'
+import htmlEditRoutes from './routes/htmlEdit.js'
+import cardExtractorRoutes from './routes/cardExtractor.js'
 import { setupSocketHandlers } from './services/socketService.js'
 import websocketService from './services/websocketService.js'
 // import { preventCommandInjection, limitRequestSize, auditLog, rateLimit } from './middleware/security.js'
@@ -155,9 +157,10 @@ console.log('     ✓ CORS middleware registered (fully open)')
 
 // 2. Body Parser中间件
 console.log('  2️⃣ Registering Body Parser middleware...')
-app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: true }))
-console.log('     ✓ Body Parser middleware registered')
+// 增加请求体大小限制到 10MB（用于处理大量选中元素的情况）
+app.use(bodyParser.json({ limit: '10mb' }))
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }))
+console.log('     ✓ Body Parser middleware registered (limit: 10MB)')
 
 // 3. 请求日志中间件 - 已禁用以减少日志噪音
 console.log('  3️⃣ Request Logging middleware disabled for cleaner output')
@@ -281,9 +284,53 @@ app.use('/api/workspace', workspaceRoutes)
 console.log('     ✓ /api/workspace route registered')
 
 app.use('/api/transcription', transcriptionRoutes)
-app.use('/api/sts', stsRoutes)
-app.use('/api/oss-direct', ossDirectRoutes)
 console.log('     ✓ /api/transcription route registered')
+app.use('/api/sts', stsRoutes)
+console.log('     ✓ /api/sts route registered')
+app.use('/api/oss-direct', ossDirectRoutes)
+console.log('     ✓ /api/oss-direct route registered')
+app.use('/api/html', htmlEditRoutes)
+console.log('     ✓ /api/html route registered')
+
+app.use('/api', cardExtractorRoutes)
+console.log('     ✓ /api/extract-cards routes registered')
+
+// 临时兼容路由 - 直接读取文件
+app.get('/api/files/read', async (req, res) => {
+  const { path: filePath, username } = req.query
+
+  if (!filePath || !username) {
+    return res.status(400).json({ error: 'Missing path or username' })
+  }
+
+  try {
+    const fs = await import('fs/promises')
+
+    // 直接使用提供的绝对路径（如果是合法的）
+    let fullPath = filePath
+
+    // 验证路径在用户的workspace内
+    const expectedPrefix = `/app/data/users/${username}/workspace/`
+    if (!fullPath.startsWith(expectedPrefix)) {
+      return res.status(403).json({ error: 'Invalid path' })
+    }
+
+    const content = await fs.default.readFile(fullPath, 'utf-8')
+
+    // 返回兼容的响应格式
+    res.json({
+      success: true,
+      content: content
+    })
+  } catch (error) {
+    console.error('[api/files/read] Error:', error)
+    res.status(404).json({
+      success: false,
+      error: 'File not found'
+    })
+  }
+})
+console.log('     ✓ /api/files/read compatibility route registered')
 
 app.use('/api/v2/assets', assetsRoutes)
 console.log('     ✓ /api/v2/assets route registered (Chokidar-based Real FileSystem)')

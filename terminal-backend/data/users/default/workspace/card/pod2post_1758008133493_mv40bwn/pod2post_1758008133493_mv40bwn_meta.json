@@ -1,0 +1,257 @@
+{
+  "sessionInfo": {
+    "sessionId": "1758008365056_default_5u6c9abue",
+    "userId": "default",
+    "createdAt": "2025-09-16T07:39:25.056Z",
+    "requestId": "pod2post_1758008133493_mv40bwn",
+    "apiEndpoint": "/api/generate/pod2post/async"
+  },
+  "request": {
+    "topic": "pod2post_template",
+    "templateName": "pod2post-template",
+    "templateType": "folder",
+    "userParameters": {},
+    "promptTemplate": null
+  },
+  "processing": {
+    "generatedParameters": {},
+    "assembledPrompt": null,
+    "claudePath": null,
+    "outputPath": null
+  },
+  "execution": {
+    "steps": [],
+    "totalDuration": 334016,
+    "finalStatus": "success"
+  },
+  "output": {
+    "generatedFiles": [
+      {
+        "fileName": "pod2post_1758008133493_mv40bwn_meta.json",
+        "filePath": "/app/data/users/default/workspace/card/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+        "fileType": "meta",
+        "fileSize": 1118,
+        "checksum": "ef993142370c0010f8c9efce3ee74ec7e1818c4050d0890cc08fab56727e644f",
+        "createdAt": "2025-09-16T07:39:25.061Z"
+      }
+    ],
+    "externalUrls": {}
+  },
+  "environment": {
+    "nodeVersion": "v22.19.0",
+    "platform": "linux",
+    "isDocker": true,
+    "dataPath": "/app/data",
+    "apiVersion": "1.0.0"
+  },
+  "logs": [
+    {
+      "timestamp": "2025-09-16T07:39:25.061Z",
+      "level": "info",
+      "message": "File added: pod2post_1758008133493_mv40bwn_meta.json",
+      "context": {
+        "fileName": "pod2post_1758008133493_mv40bwn_meta.json",
+        "filePath": "/app/data/users/default/workspace/card/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+        "fileType": "meta",
+        "fileSize": 1118,
+        "checksum": "ef993142370c0010f8c9efce3ee74ec7e1818c4050d0890cc08fab56727e644f",
+        "createdAt": "2025-09-16T07:39:25.061Z"
+      }
+    },
+    {
+      "timestamp": "2025-09-16T07:39:25.061Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-16T07:39:25.102Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-16T07:43:26.245Z",
+      "level": "info",
+      "message": "第一次AI生成完成",
+      "context": {
+        "fileName": "content.html"
+      }
+    },
+    {
+      "timestamp": "2025-09-16T07:43:26.248Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-16T07:43:26.264Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-16T07:43:27.618Z",
+      "level": "info",
+      "message": "Base64图片嵌入完成",
+      "context": {
+        "originalFile": "content.html",
+        "base64File": "content_base64.html",
+        "stats": {
+          "totalImgTags": 18,
+          "totalCssUrls": 17,
+          "totalResources": 35,
+          "uniquePaths": 16,
+          "total": 16,
+          "converted": 16,
+          "cached": 0,
+          "failed": 0,
+          "totalSize": 15329170,
+          "errors": [],
+          "processingTime": 1351
+        }
+      }
+    },
+    {
+      "timestamp": "2025-09-16T07:44:10.190Z",
+      "level": "info",
+      "message": "OSS URL版本生成完成",
+      "context": {
+        "originalFile": "content.html",
+        "ossUrlFile": "content_ossurl.html",
+        "stats": {
+          "totalImgTags": 18,
+          "totalCssUrls": 17,
+          "totalResources": 35,
+          "uniquePaths": 16,
+          "total": 16,
+          "uploaded": 16,
+          "cached": 0,
+          "failed": 0,
+          "totalSize": 15329170,
+          "errors": [],
+          "processingTime": 42523
+        }
+      }
+    },
+    {
+      "timestamp": "2025-09-16T07:44:10.195Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-16T07:44:14.215Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-16T07:44:59.032Z",
+      "level": "info",
+      "message": "OSS upload results set",
+      "context": {
+        "success": true,
+        "filesCount": 5,
+        "hasBase64Url": true,
+        "hasOriginalUrl": true,
+        "hasContentJson": true,
+        "otherFilesCount": 1
+      }
+    },
+    {
+      "timestamp": "2025-09-16T07:44:59.072Z",
+      "level": "info",
+      "message": "Session completed with status: success",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-16T07:44:59.072Z",
+      "level": "info",
+      "message": "任务处理完成",
+      "context": {}
+    }
+  ],
+  "custom": {
+    "templatePath": "/app/data/users/default/workspace/templates/pod2post",
+    "phases": {
+      "promptProcessing": "completed",
+      "firstGeneration": "completed",
+      "base64Embedding": "completed",
+      "ossUrlConversion": "completed",
+      "ossUpload": "completed"
+    },
+    "ossUpload": {
+      "success": true,
+      "uploadedAt": "2025-09-16T07:44:59.031Z",
+      "uploadedFiles": [
+        {
+          "fileName": "content.html",
+          "fileSize": 33899,
+          "ossKey": "pod2post/default/pod2post_1758008133493_mv40bwn/content.html",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/content.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544655&Signature=seTps4nQ6Vytg8IJY234VJef6Ew%3D",
+          "uploadedAt": "2025-09-16T07:44:14.913Z"
+        },
+        {
+          "fileName": "content.json",
+          "fileSize": 1643,
+          "ossKey": "pod2post/default/pod2post_1758008133493_mv40bwn/content.json",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/content.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544655&Signature=mG687DhLAOSfkX0P38dXwBxB0VQ%3D",
+          "uploadedAt": "2025-09-16T07:44:15.487Z"
+        },
+        {
+          "fileName": "content_base64.html",
+          "fileSize": 23651900,
+          "ossKey": "pod2post/default/pod2post_1758008133493_mv40bwn/content_base64.html",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/content_base64.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544698&Signature=kxco2T9%2BlFE3svUnoOcVccUZaRA%3D",
+          "uploadedAt": "2025-09-16T07:44:57.708Z"
+        },
+        {
+          "fileName": "content_ossurl.html",
+          "fileSize": 38193,
+          "ossKey": "pod2post/default/pod2post_1758008133493_mv40bwn/content_ossurl.html",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/content_ossurl.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544698&Signature=k%2BMZnSD1Dg6%2FRw9W8ei7boTbt%2BE%3D",
+          "uploadedAt": "2025-09-16T07:44:58.352Z"
+        },
+        {
+          "fileName": "pod2post_1758008133493_mv40bwn_meta.json",
+          "fileSize": 4808,
+          "ossKey": "pod2post/default/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544699&Signature=R4GukIOYbRe54%2FkN6t%2FqyxzkTHM%3D",
+          "uploadedAt": "2025-09-16T07:44:59.031Z"
+        }
+      ],
+      "error": null,
+      "urls": {
+        "originalHtml": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/content_ossurl.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544698&Signature=k%2BMZnSD1Dg6%2FRw9W8ei7boTbt%2BE%3D",
+        "withBase64": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/content_base64.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544698&Signature=kxco2T9%2BlFE3svUnoOcVccUZaRA%3D",
+        "metadata": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/pod2post_1758008133493_mv40bwn_meta.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544699&Signature=R4GukIOYbRe54%2FkN6t%2FqyxzkTHM%3D",
+        "contentJson": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/content.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544655&Signature=mG687DhLAOSfkX0P38dXwBxB0VQ%3D",
+        "otherFiles": [
+          {
+            "fileName": "content.json",
+            "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1758008133493_mv40bwn/content.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789544655&Signature=mG687DhLAOSfkX0P38dXwBxB0VQ%3D"
+          }
+        ]
+      },
+      "fileSizes": {
+        "originalHtml": 38193,
+        "withBase64": 23651900,
+        "metadata": 4808,
+        "contentJson": 1643,
+        "otherFiles": [
+          {
+            "fileName": "content.json",
+            "fileSize": 1643
+          }
+        ]
+      }
+    },
+    "endTime": "2025-09-16T07:44:59.072Z",
+    "generatedFiles": {
+      "original": "content.html",
+      "withBase64": "content_base64.html",
+      "withOSSUrl": "content_ossurl.html"
+    }
+  }
+}

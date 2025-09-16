@@ -1,0 +1,257 @@
+{
+  "sessionInfo": {
+    "sessionId": "1757864777689_default_jphyak3vy",
+    "userId": "default",
+    "createdAt": "2025-09-14T15:46:17.689Z",
+    "requestId": "pod2post_1757864554870_j97ggun",
+    "apiEndpoint": "/api/generate/pod2post/async"
+  },
+  "request": {
+    "topic": "pod2post_template",
+    "templateName": "pod2post-template",
+    "templateType": "folder",
+    "userParameters": {},
+    "promptTemplate": null
+  },
+  "processing": {
+    "generatedParameters": {},
+    "assembledPrompt": null,
+    "claudePath": null,
+    "outputPath": null
+  },
+  "execution": {
+    "steps": [],
+    "totalDuration": 401538,
+    "finalStatus": "success"
+  },
+  "output": {
+    "generatedFiles": [
+      {
+        "fileName": "pod2post_1757864554870_j97ggun_meta.json",
+        "filePath": "/app/data/users/default/workspace/card/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+        "fileType": "meta",
+        "fileSize": 1118,
+        "checksum": "d6f80210b5d27959090fe7b88dfc75100da82781672a0ecd353dd3c057252074",
+        "createdAt": "2025-09-14T15:46:17.692Z"
+      }
+    ],
+    "externalUrls": {}
+  },
+  "environment": {
+    "nodeVersion": "v22.19.0",
+    "platform": "linux",
+    "isDocker": true,
+    "dataPath": "/app/data",
+    "apiVersion": "1.0.0"
+  },
+  "logs": [
+    {
+      "timestamp": "2025-09-14T15:46:17.692Z",
+      "level": "info",
+      "message": "File added: pod2post_1757864554870_j97ggun_meta.json",
+      "context": {
+        "fileName": "pod2post_1757864554870_j97ggun_meta.json",
+        "filePath": "/app/data/users/default/workspace/card/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+        "fileType": "meta",
+        "fileSize": 1118,
+        "checksum": "d6f80210b5d27959090fe7b88dfc75100da82781672a0ecd353dd3c057252074",
+        "createdAt": "2025-09-14T15:46:17.692Z"
+      }
+    },
+    {
+      "timestamp": "2025-09-14T15:46:17.692Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-14T15:46:17.710Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-14T15:51:47.768Z",
+      "level": "info",
+      "message": "第一次AI生成完成",
+      "context": {
+        "fileName": "content.html"
+      }
+    },
+    {
+      "timestamp": "2025-09-14T15:51:47.769Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-14T15:51:47.775Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-14T15:51:48.803Z",
+      "level": "info",
+      "message": "Base64图片嵌入完成",
+      "context": {
+        "originalFile": "content.html",
+        "base64File": "content_base64.html",
+        "stats": {
+          "totalImgTags": 20,
+          "totalCssUrls": 17,
+          "totalResources": 37,
+          "uniquePaths": 16,
+          "total": 16,
+          "converted": 16,
+          "cached": 0,
+          "failed": 0,
+          "totalSize": 15329170,
+          "errors": [],
+          "processingTime": 1027
+        }
+      }
+    },
+    {
+      "timestamp": "2025-09-14T15:52:10.800Z",
+      "level": "info",
+      "message": "OSS URL版本生成完成",
+      "context": {
+        "originalFile": "content.html",
+        "ossUrlFile": "content_ossurl.html",
+        "stats": {
+          "totalImgTags": 20,
+          "totalCssUrls": 17,
+          "totalResources": 37,
+          "uniquePaths": 16,
+          "total": 16,
+          "uploaded": 16,
+          "cached": 0,
+          "failed": 0,
+          "totalSize": 15329170,
+          "errors": [],
+          "processingTime": 21943
+        }
+      }
+    },
+    {
+      "timestamp": "2025-09-14T15:52:10.802Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-14T15:52:24.817Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-14T15:52:59.217Z",
+      "level": "info",
+      "message": "OSS upload results set",
+      "context": {
+        "success": true,
+        "filesCount": 5,
+        "hasBase64Url": true,
+        "hasOriginalUrl": true,
+        "hasContentJson": true,
+        "otherFilesCount": 1
+      }
+    },
+    {
+      "timestamp": "2025-09-14T15:52:59.227Z",
+      "level": "info",
+      "message": "Session completed with status: success",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-09-14T15:52:59.227Z",
+      "level": "info",
+      "message": "任务处理完成",
+      "context": {}
+    }
+  ],
+  "custom": {
+    "templatePath": "/app/data/users/default/workspace/templates/pod2post",
+    "phases": {
+      "promptProcessing": "completed",
+      "firstGeneration": "completed",
+      "base64Embedding": "completed",
+      "ossUrlConversion": "completed",
+      "ossUpload": "completed"
+    },
+    "ossUpload": {
+      "success": true,
+      "uploadedAt": "2025-09-14T15:52:59.217Z",
+      "uploadedFiles": [
+        {
+          "fileName": "content.html",
+          "fileSize": 31267,
+          "ossKey": "pod2post/default/pod2post_1757864554870_j97ggun/content.html",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/content.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401145&Signature=t0qreN6nIPaZdSma3Bc0C3jNbMg%3D",
+          "uploadedAt": "2025-09-14T15:52:24.911Z"
+        },
+        {
+          "fileName": "content.json",
+          "fileSize": 1343,
+          "ossKey": "pod2post/default/pod2post_1757864554870_j97ggun/content.json",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/content.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401145&Signature=%2BRtVvmFrXpuP8K6BlSX2scqI09c%3D",
+          "uploadedAt": "2025-09-14T15:52:24.968Z"
+        },
+        {
+          "fileName": "content_base64.html",
+          "fileSize": 23770912,
+          "ossKey": "pod2post/default/pod2post_1757864554870_j97ggun/content_base64.html",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/content_base64.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401179&Signature=%2BEkvzGJRy16rd0Mt49R%2BH3R86J8%3D",
+          "uploadedAt": "2025-09-14T15:52:59.077Z"
+        },
+        {
+          "fileName": "content_ossurl.html",
+          "fileSize": 36069,
+          "ossKey": "pod2post/default/pod2post_1757864554870_j97ggun/content_ossurl.html",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/content_ossurl.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401179&Signature=RaY6y0Fwi%2BObGP1xJeCbgBdSXus%3D",
+          "uploadedAt": "2025-09-14T15:52:59.159Z"
+        },
+        {
+          "fileName": "pod2post_1757864554870_j97ggun_meta.json",
+          "fileSize": 4808,
+          "ossKey": "pod2post/default/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json",
+          "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401179&Signature=69VoX9VtGmABNeSrnwcxBcFiMkk%3D",
+          "uploadedAt": "2025-09-14T15:52:59.216Z"
+        }
+      ],
+      "error": null,
+      "urls": {
+        "originalHtml": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/content_ossurl.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401179&Signature=RaY6y0Fwi%2BObGP1xJeCbgBdSXus%3D",
+        "withBase64": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/content_base64.html?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401179&Signature=%2BEkvzGJRy16rd0Mt49R%2BH3R86J8%3D",
+        "metadata": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/pod2post_1757864554870_j97ggun_meta.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401179&Signature=69VoX9VtGmABNeSrnwcxBcFiMkk%3D",
+        "contentJson": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/content.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401145&Signature=%2BRtVvmFrXpuP8K6BlSX2scqI09c%3D",
+        "otherFiles": [
+          {
+            "fileName": "content.json",
+            "ossUrl": "https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/default/pod2post_1757864554870_j97ggun/content.json?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=1789401145&Signature=%2BRtVvmFrXpuP8K6BlSX2scqI09c%3D"
+          }
+        ]
+      },
+      "fileSizes": {
+        "originalHtml": 36069,
+        "withBase64": 23770912,
+        "metadata": 4808,
+        "contentJson": 1343,
+        "otherFiles": [
+          {
+            "fileName": "content.json",
+            "fileSize": 1343
+          }
+        ]
+      }
+    },
+    "endTime": "2025-09-14T15:52:59.227Z",
+    "generatedFiles": {
+      "original": "content.html",
+      "withBase64": "content_base64.html",
+      "withOSSUrl": "content_ossurl.html"
+    }
+  }
+}

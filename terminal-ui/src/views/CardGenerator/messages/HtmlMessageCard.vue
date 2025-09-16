@@ -77,6 +77,8 @@
   <HtmlEditModal
     v-model="showEditModal"
     :html-content="processedHtml"
+    :html-path="htmlFilePath"
+    :file-id="htmlFileId"
     title="编辑HTML内容"
     @apply="handleEditApply"
     @cancel="handleEditCancel"
@@ -127,6 +129,67 @@ const previewFrame = ref(null)
 
 // 编辑模态框相关
 const showEditModal = ref(false)
+
+// 获取HTML文件路径和ID
+const htmlFilePath = computed(() => {
+  console.log('[HtmlMessageCard] Computing htmlFilePath')
+  console.log('[HtmlMessageCard] props.resultData:', props.resultData)
+  console.log('[HtmlMessageCard] props.topic:', props.topic)
+  console.log('[HtmlMessageCard] props.fileName:', props.fileName)
+
+  // 从resultData中获取文件路径
+  if (props.resultData?.metadata?.filePath) {
+    console.log('[HtmlMessageCard] Found filePath in metadata:', props.resultData.metadata.filePath)
+    return props.resultData.metadata.filePath
+  }
+
+  // 从allFiles中获取
+  if (props.resultData?.allFiles?.length > 0) {
+    const htmlFile = props.resultData.allFiles.find(file => file.fileType === 'html')
+    console.log('[HtmlMessageCard] Found htmlFile in allFiles:', htmlFile)
+    if (htmlFile?.filePath) {
+      console.log('[HtmlMessageCard] Using filePath from htmlFile:', htmlFile.filePath)
+      return htmlFile.filePath
+    }
+    // 如果没有 filePath，尝试构造路径
+    if (htmlFile?.fileName) {
+      const username = localStorage.getItem('username') || 'default'
+      const folder = props.resultData.folderName || props.topic || 'default'
+      const path = `/terminal-backend/data/users/${username}/workspace/card/${folder}/${htmlFile.fileName}`
+      console.log('[HtmlMessageCard] Constructed path from htmlFile:', path)
+      return path
+    }
+  }
+
+  // 构造默认路径
+  if (props.topic && props.fileName) {
+    const username = localStorage.getItem('username') || 'default'
+    const path = `/terminal-backend/data/users/${username}/workspace/card/${props.topic}/${props.fileName}`
+    console.log('[HtmlMessageCard] Using default constructed path:', path)
+    return path
+  }
+
+  console.log('[HtmlMessageCard] No valid path found, returning empty string')
+  return ''
+})
+
+const htmlFileId = computed(() => {
+  // 从resultData中获取文件ID
+  if (props.resultData?.metadata?.fileId) {
+    return props.resultData.metadata.fileId
+  }
+
+  // 从allFiles中获取
+  if (props.resultData?.allFiles?.length > 0) {
+    const htmlFile = props.resultData.allFiles.find(file => file.fileType === 'html')
+    if (htmlFile?.fileId) {
+      return htmlFile.fileId
+    }
+  }
+
+  // 生成默认ID
+  return `file_${Date.now()}`
+})
 
 // 备用方案：通过文件路径从后端获取HTML内容
 const fetchHtmlContentByFilePath = async () => {
@@ -548,10 +611,17 @@ const handleShare = () => {
 
 // 处理编辑按钮点击
 const handleEdit = () => {
+  if (!htmlFilePath.value) {
+    ElMessage.warning('缺少文件路径信息，无法编辑')
+    return
+  }
+
   showEditModal.value = true
   emit('edit', {
     htmlContent: processedHtml.value,
-    fileName: fileName.value
+    fileName: fileName.value,
+    filePath: htmlFilePath.value,
+    fileId: htmlFileId.value
   })
 }
 
@@ -560,16 +630,22 @@ const handleEditApply = async (data) => {
   console.log('编辑数据:', data)
 
   try {
-    // 这里可以调用API保存修改
-    // 例如：await api.saveHtmlEdit(data)
+    // 如果任务已完成，刷新预览
+    if (data.status === 'completed') {
+      ElMessage.success('修改已完成')
 
-    ElMessage.success('修改已应用')
+      // 刷新预览
+      await refreshPreview()
 
-    // 刷新预览
-    refreshPreview()
+      // 触发文件更新事件
+      emit('file-modified', {
+        htmlPath: data.htmlPath,
+        taskId: data.taskId
+      })
+    }
   } catch (error) {
     console.error('应用编辑失败:', error)
-    ElMessage.error('应用修改失败，请重试')
+    ElMessage.error('处理修改结果失败')
   }
 }
 

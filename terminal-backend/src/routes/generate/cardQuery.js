@@ -154,6 +154,7 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
           const htmlContent = await fs.readFile(htmlFilePath, 'utf-8')
           allFiles.push({
             fileName: htmlFileName,
+            filePath: htmlFilePath,
             path: htmlFilePath,
             content: htmlContent,
             fileType: 'html'
@@ -173,6 +174,7 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
             const parsedJson = JSON.parse(jsonContent)
             allFiles.push({
               fileName: jsonFileName,
+              filePath: jsonFilePath,
               path: jsonFilePath,
               content: parsedJson,
               fileType: 'json'
@@ -182,6 +184,7 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
             // JSON解析失败，返回原始内容
             allFiles.push({
               fileName: jsonFileName,
+              filePath: jsonFilePath,
               path: jsonFilePath,
               content: jsonContent,
               fileType: 'json',
@@ -208,6 +211,7 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
             const content = await fs.readFile(filePath, 'utf-8')
             allFiles.push({
               fileName: fileName,
+              filePath: filePath,
               path: filePath,
               content: content,
               fileType: ext || 'text',
@@ -218,6 +222,7 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
             // 对于二进制文件，只记录元信息
             allFiles.push({
               fileName: fileName,
+              filePath: filePath,
               path: filePath,
               content: null,  // 不读取二进制内容
               fileType: ext || 'binary',
@@ -256,7 +261,7 @@ router.get('/:folderName', authenticateUserOrDefault, async (req, res) => {
         sanitizedTopic: sanitizedTopic,
         templateName: 'cardplanet-Sandra-json', // 默认模板，实际应该存储
         fileName: primaryFile.fileName,
-        filePath: primaryFile.path,
+        filePath: primaryFile.filePath,
         content: primaryFile.content,
         fileType: primaryFile.fileType,
         allFiles: allFiles

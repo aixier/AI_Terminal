@@ -1,0 +1,833 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>李静、养鸡对话戴军艳艳</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Long+Cang&family=Source+Han+Sans:wght@400;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Han Sans', 'Noto Sans SC', 'PingFang SC', -apple-system, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2c3e50;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(375px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        /* 共用卡片样式 */
+        .content-card {
+            width: 375px;
+            height: 500px;
+            aspect-ratio: 3/4;
+            position: relative;
+            border-radius: 0;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            margin: 0 auto;
+        }
+
+        /* 封面样式 */
+        .cover-card {
+            width: 375px;
+            height: 500px;
+            aspect-ratio: 3/4;
+            position: relative;
+            background-image: linear-gradient(rgba(255,255,255,0.5), rgba(255,255,255,0.5)),
+                              url("https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/%E5%B0%81%E9%9D%A2%E8%83%8C%E6%99%AF_1758008630018_428abd45.jpeg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=2073368631&Signature=aUKymqAEzxyk1vUwf9czxvNDMiM%3D");
+            background-size: cover, cover;
+            background-position: center, center;
+            background-repeat: no-repeat, no-repeat;
+            overflow: hidden;
+            box-shadow:
+                inset 0 1px 3px rgba(0,0,0,0.1),
+                0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .mask-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.18) 100%);
+            pointer-events: none;
+        }
+
+        .mask-left-gradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 55%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(0,0,0,0.28), transparent);
+            pointer-events: none;
+        }
+
+        .mask-top-gradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 350px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.30), transparent);
+            pointer-events: none;
+        }
+
+        .podcast-header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            height: 67px;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        .podcast-header-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .title-container {
+            position: absolute;
+            top: 110px;
+            left: 40px;
+            right: 40px;
+            z-index: 10;
+        }
+
+        .title-h1 {
+            margin: 0;
+            font-family: 'Source Han Sans', 'Noto Sans SC', 'PingFang SC', -apple-system, sans-serif;
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 0.95;
+            letter-spacing: -0.01em;
+            color: #FFF;
+            text-align: right;
+            text-shadow: 0 2px 3px rgba(0,0,0,0.25);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .title-h2 {
+            margin: 18px 0 0 0;
+            font-family: 'Source Han Sans', 'Noto Sans SC', 'PingFang SC', -apple-system, sans-serif;
+            font-size: 38px;
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -0.005em;
+            color: #FFF;
+            text-align: right;
+            text-shadow: 0 2px 3px rgba(0,0,0,0.25);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .capsule-container {
+            margin-top: 24px;
+            text-align: right;
+        }
+
+        .capsule-tag {
+            display: inline-block;
+            background-color: #F8F6F2;
+            font-family: 'Long Cang', cursive;
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.2;
+            padding: 8px 16px;
+            border-radius: 24px;
+            white-space: nowrap;
+        }
+
+        .capsule-text-normal {
+            color: #666;
+        }
+
+        .capsule-text-highlight {
+            color: #22C55E;
+        }
+
+        .host-section {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            overflow: hidden;
+        }
+
+        .host-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+        }
+
+        /* 样式1：上下分区式（浅色版） */
+        .style1-light {
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            position: relative;
+        }
+
+        .style1-light-image {
+            width: 100%;
+            height: 65%;
+            object-fit: cover;
+        }
+
+        .style1-light::before {
+            content: '';
+            position: absolute;
+            top: 55%;
+            left: 0;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(to bottom,
+                transparent 0%,
+                rgba(248,246,242,0.2) 30%,
+                rgba(248,246,242,0.6) 70%,
+                rgba(248,246,242,0.9) 100%
+            );
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .style1-light-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 38%;
+            padding: 20px;
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)),
+                url("https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/%E6%A0%B7%E5%BC%8F1%E7%BA%B9%E7%90%86_1758008631222_77fa16a2.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=2073368411&Signature=82WXQPAlBOg4wNxCOTXr3ktwoxM%3D");
+            background-size: cover;
+            background-position: center;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 3;
+            box-shadow:
+                0 -4px 16px rgba(0,0,0,0.06),
+                inset 0 2px 8px rgba(0,0,0,0.05);
+            backdrop-filter: blur(12px) saturate(180%);
+            clip-path: path('M 0 40 C 150 10, 225 10, 375 0 L 375 500 L 0 500 Z');
+        }
+
+        .style1-light-text {
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0;
+            text-align: left;
+        }
+
+        /* 样式2：左右分栏式（杂志感） */
+        .style2 {
+            display: flex;
+            background: #fff;
+        }
+
+        .style2-image {
+            width: 60%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .style2-content {
+            width: 40%;
+            padding: 25px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: #f8f9fa;
+            position: relative;
+        }
+
+        .style2-first-lines {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.4;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            border-left: 3px solid #22C55E;
+            padding-left: 10px;
+        }
+
+        .style2-text {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #555;
+            margin: 0;
+        }
+
+        .style2-quote {
+            font-size: 48px;
+            color: #22C55E;
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            line-height: 1;
+            opacity: 0.3;
+        }
+
+        /* 样式5：阶梯式photos叠加风格 */
+        .style5 {
+            position: relative;
+            background: #000;
+        }
+
+        .top-face-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            background-size: cover;
+            background-position: center 25%;
+            z-index: 7;
+        }
+
+        .bg-strip {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center 50%;
+        }
+
+        .strip-1 { top: 200px; z-index: 6; }
+        .strip-2 { top: 250px; z-index: 5; }
+        .strip-3 { top: 300px; z-index: 4; }
+        .strip-4 { top: 350px; z-index: 3; }
+        .strip-5 { top: 400px; z-index: 2; }
+        .strip-6 { top: 450px; z-index: 1; }
+
+        .strip-text {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            line-height: 1.4;
+            text-align: center;
+            padding: 4px 12px;
+            box-sizing: border-box;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
+            z-index: 10;
+        }
+
+        .text-strip-1 { top: 200px; }
+        .text-strip-2 { top: 250px; }
+        .text-strip-3 { top: 300px; }
+        .text-strip-4 { top: 350px; }
+        .text-strip-5 { top: 400px; }
+        .text-strip-6 { top: 450px; }
+
+        /* 样式4：首句放大式（抓眼） */
+        .style4 {
+            background: url("https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/%E6%A0%B7%E5%BC%8F4%E7%BA%B9%E7%90%86_1758008410964_f61dc4bb.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&Expires=2073368416&Signature=eZyJLDCOHDuk1kGspwteXMX%2BUJg%3D");
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .style4-image {
+            width: 100%;
+            height: 45%;
+            object-fit: cover;
+        }
+
+        .style4-content {
+            height: 55%;
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .style4-first-line {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c3e50;
+            line-height: 1.3;
+            margin-bottom: 15px;
+            border-left: 4px solid #F1C40F;
+            padding-left: 12px;
+        }
+
+        .style4-rest {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #555;
+            flex: 1;
+        }
+
+        /* 高亮词汇 */
+        .highlight {
+            color: #22C55E;
+            font-weight: 600;
+        }
+
+        .highlight-green {
+            color: #22C55E;
+            font-weight: 600;
+        }
+
+        /* 内容页小标题样式 */
+        .card-subtitle {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(51, 51, 51, 0.3);
+            white-space: nowrap;
+            z-index: 4;
+        }
+
+        .card-subtitle-style2 {
+            position: absolute;
+            bottom: 8px;
+            right: 18px;
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(51, 51, 51, 0.3);
+            white-space: nowrap;
+            z-index: 4;
+        }
+
+        .card-subtitle-style3 {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .card-subtitle-style4 {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(51, 51, 51, 0.3);
+            white-space: nowrap;
+            z-index: 4;
+        }
+
+        /* 水印样式 */
+        .watermark {
+            position: absolute;
+            right: 20px;
+            bottom: 4px;
+            width: 24px;
+            height: 24px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .watermark img {
+            width: 100%;
+            height: 100%;
+            filter: grayscale(100%) opacity(0.6);
+        }
+
+        .style2-content .watermark {
+            right: 18px;
+        }
+
+        .style2-content .watermark img {
+            filter: grayscale(100%) opacity(0.4) brightness(0.7);
+        }
+
+        /* 社媒平台内容区域 */
+        .social-section {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .social-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .social-item {
+            margin-bottom: 25px;
+            position: relative;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .social-item h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .social-item p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #6c757d;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 6px 12px;
+            background: #22C55E;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #16a34a;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            background: #e7f3ff;
+            color: #0366d6;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="page-title">李静、养鸡对话戴军艳艳</h1>
+
+        <div class="cards-grid">
+            <!-- 封面卡片 -->
+            <div class="cover-card">
+                <div class="mask-vignette"></div>
+                <div class="mask-left-gradient"></div>
+                <div class="mask-top-gradient"></div>
+
+                <div class="podcast-header">
+                    <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/%E5%B0%81%E9%9D%A2%E9%A1%B6%E9%83%A8_1758008607742_6df37188.png?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368615&amp;Signature=k5i8IoPG95w20nore%2BGlm4yA8GA%3D" alt="播客头部信息" class="podcast-header-image">
+                </div>
+
+                <div class="title-container">
+                    <h1 class="title-h1">20年友情的真相</h1>
+                    <h2 class="title-h2">从偶像到密友</h2>
+                    <div class="capsule-container">
+                        <span class="capsule-tag">
+                            <span class="capsule-text-normal">揭秘娱乐圈</span>
+                            <span class="capsule-text-highlight">真挚友谊</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="host-section">
+                    <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/%E5%B0%81%E9%9D%A2%E5%BA%95%E9%83%A8_1758008614767_cb292ed3.png?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368620&amp;Signature=WxOLCa%2BJWABfLf8IaDM598r17xs%3D" alt="主持人合照" class="host-image">
+                </div>
+            </div>
+
+            <!-- 内容页1 - 样式1 -->
+            <div class="content-card style1-light">
+                <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12431750995108_.pic_hd_1758008620469_d1a00a97.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368621&amp;Signature=p%2F9iDMLC%2BzhC7uywuczG2BgOhNw%3D" alt="访谈现场" class="style1-light-image">
+                <div class="style1-light-content">
+                    <p class="style1-light-text">
+                        "其实我们认识这么多年，<span class="highlight-green">最珍贵的</span>就是那种真实不做作的感觉。在这个圈子里面，能遇到真正的朋友真的不容易。我们从最开始的工作关系，慢慢变成了生活中无话不谈的知己。"
+                    </p>
+                    <div class="card-subtitle">真挚友谊的开始</div>
+                    <div class="watermark">
+                        <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/cardplanet_logo_filled_1758008621472_f469861c.svg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368622&amp;Signature=UJSDbreb8etAiAEhQjD0Uq4ZFzM%3D" alt="CardPlanet Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内容页2 - 样式2 -->
+            <div class="content-card style2">
+                <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12451750995110_.pic_1758008622033_232931ae.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368623&amp;Signature=wlhLvuHn%2BVyNmU%2Fd%2BQqSToWIoXM%3D" alt="访谈现场" class="style2-image">
+                <div class="style2-content">
+                    <div class="style2-quote">"</div>
+                    <div class="style2-first-lines">
+                        "那时候我还是个愣头青"
+                    </div>
+                    <p class="style2-text">
+                        什么都不懂，就觉得能在这个圈子里工作已经很幸运了。戴军当时就像个<span class="highlight">大哥哥</span>一样，总是耐心地教我很多东西，从专业技能到做人的道理。
+                    </p>
+                    <div class="card-subtitle-style2">初入圈子的回忆</div>
+                    <div class="watermark">
+                        <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/cardplanet_logo_filled_1758008621472_f469861c.svg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368622&amp;Signature=UJSDbreb8etAiAEhQjD0Uq4ZFzM%3D" alt="CardPlanet Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内容页3 - 样式5 -->
+            <div class="content-card style5">
+                <div class="top-face-layer" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12411750995105_.pic_hd_1758008415955_21b2bbf6.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368417&amp;Signature=wuAKRhtn2BIYwWITA3RMCofN1lQ%3D&quot;);"></div>
+
+                <div class="bg-strip strip-1" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12411750995105_.pic_hd_1758008415955_21b2bbf6.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368417&amp;Signature=wuAKRhtn2BIYwWITA3RMCofN1lQ%3D&quot;);"></div>
+                <div class="bg-strip strip-2" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12411750995105_.pic_hd_1758008415955_21b2bbf6.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368417&amp;Signature=wuAKRhtn2BIYwWITA3RMCofN1lQ%3D&quot;);"></div>
+                <div class="bg-strip strip-3" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12411750995105_.pic_hd_1758008415955_21b2bbf6.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368417&amp;Signature=wuAKRhtn2BIYwWITA3RMCofN1lQ%3D&quot;);"></div>
+                <div class="bg-strip strip-4" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12411750995105_.pic_hd_1758008415955_21b2bbf6.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368417&amp;Signature=wuAKRhtn2BIYwWITA3RMCofN1lQ%3D&quot;);"></div>
+                <div class="bg-strip strip-5" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12411750995105_.pic_hd_1758008415955_21b2bbf6.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368417&amp;Signature=wuAKRhtn2BIYwWITA3RMCofN1lQ%3D&quot;);"></div>
+                <div class="bg-strip strip-6" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12411750995105_.pic_hd_1758008415955_21b2bbf6.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368417&amp;Signature=wuAKRhtn2BIYwWITA3RMCofN1lQ%3D&quot;);"></div>
+
+                <div class="strip-text text-strip-1">"你还记得我们第一次合作吗？"</div>
+                <div class="strip-text text-strip-2">"当然记得，你紧张得话都说不利索"</div>
+                <div class="strip-text text-strip-3">"哈哈，现在想起来真的好笑"</div>
+                <div class="strip-text text-strip-4">"但是你的认真劲儿我印象特别深"</div>
+                <div class="strip-text text-strip-5">"那时候就想一定要做好"</div>
+                <div class="strip-text text-strip-6">"结果现在我们都成老江湖了"</div>
+
+                <div class="card-subtitle-style3">初次合作的回忆</div>
+            </div>
+
+            <!-- 内容页4 - 样式4 -->
+            <div class="content-card style4">
+                <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12441750995109_.pic_hd_1758008623121_dc1668a9.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368624&amp;Signature=MzovBDWEiichCQYH3IUjCDJmXIg%3D" alt="访谈现场" class="style4-image">
+                <div class="style4-content">
+                    <div class="style4-first-line">
+                        "友谊这东西真的需要时间来沉淀"
+                    </div>
+                    <div class="style4-rest">
+                        不是一朝一夕就能建立起来的。我们经历了很多事情，有过分歧，也有过误解，但最终都能坐下来好好聊聊。这种<span class="highlight">相互理解</span>和包容，我觉得是友谊最珍贵的地方。
+                    </div>
+                    <div class="card-subtitle-style4">友谊需要时间沉淀</div>
+                    <div class="watermark">
+                        <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/cardplanet_logo_filled_1758008621472_f469861c.svg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368622&amp;Signature=UJSDbreb8etAiAEhQjD0Uq4ZFzM%3D" alt="CardPlanet Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内容页5 - 样式1 -->
+            <div class="content-card style1-light">
+                <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12421750995106_.pic_hd_1758008624001_43ee43de.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368625&amp;Signature=5lZ0TDYkIOuKOJbrXm9eAZ6o6uw%3D" alt="访谈现场" class="style1-light-image">
+                <div class="style1-light-content">
+                    <p class="style1-light-text">
+                        "艳艳其实是个特别<span class="highlight-green">有趣的人</span>，平时看起来很安静，但熟悉之后你会发现她特别幽默。我们几个在一起的时候，总是笑声不断。这种轻松的氛围，让我们的友谊变得更加珍贵。"
+                    </p>
+                    <div class="card-subtitle">发现艳艳的有趣</div>
+                    <div class="watermark">
+                        <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/cardplanet_logo_filled_1758008621472_f469861c.svg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368622&amp;Signature=UJSDbreb8etAiAEhQjD0Uq4ZFzM%3D" alt="CardPlanet Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内容页6 - 样式2 -->
+            <div class="content-card style2">
+                <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12381750995098_.pic_hd_1758008624987_02944120.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368626&amp;Signature=xkQpi83HHKBBdy2putYugLE%2FLxQ%3D" alt="访谈现场" class="style2-image">
+                <div class="style2-content">
+                    <div class="style2-quote">"</div>
+                    <div class="style2-first-lines">
+                        "圈子里的友谊很难得"
+                    </div>
+                    <p class="style2-text">
+                        因为大家都有各自的利益考量，很少有人能够真正敞开心扉。但我们这几个人，从来不会因为工作上的事情影响私下的关系。这种<span class="highlight">纯粹的友谊</span>，真的很珍贵。
+                    </p>
+                    <div class="card-subtitle-style2">圈内友谊的珍贵</div>
+                    <div class="watermark">
+                        <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/cardplanet_logo_filled_1758008621472_f469861c.svg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368622&amp;Signature=UJSDbreb8etAiAEhQjD0Uq4ZFzM%3D" alt="CardPlanet Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内容页7 - 样式5 -->
+            <div class="content-card style5">
+                <div class="top-face-layer" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12391750995099_.pic_hd_1758008417130_5b5fb9ba.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368649&amp;Signature=jbp7WPM7sq7Qx%2BQg9kzxxbbfbHI%3D&quot;);"></div>
+
+                <div class="bg-strip strip-1" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12391750995099_.pic_hd_1758008417130_5b5fb9ba.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368649&amp;Signature=jbp7WPM7sq7Qx%2BQg9kzxxbbfbHI%3D&quot;);"></div>
+                <div class="bg-strip strip-2" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12391750995099_.pic_hd_1758008417130_5b5fb9ba.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368649&amp;Signature=jbp7WPM7sq7Qx%2BQg9kzxxbbfbHI%3D&quot;);"></div>
+                <div class="bg-strip strip-3" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12391750995099_.pic_hd_1758008417130_5b5fb9ba.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368649&amp;Signature=jbp7WPM7sq7Qx%2BQg9kzxxbbfbHI%3D&quot;);"></div>
+                <div class="bg-strip strip-4" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12391750995099_.pic_hd_1758008417130_5b5fb9ba.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368649&amp;Signature=jbp7WPM7sq7Qx%2BQg9kzxxbbfbHI%3D&quot;);"></div>
+                <div class="bg-strip strip-5" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12391750995099_.pic_hd_1758008417130_5b5fb9ba.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368649&amp;Signature=jbp7WPM7sq7Qx%2BQg9kzxxbbfbHI%3D&quot;);"></div>
+                <div class="bg-strip strip-6" style="background-image: url(&quot;https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12391750995099_.pic_hd_1758008417130_5b5fb9ba.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368649&amp;Signature=jbp7WPM7sq7Qx%2BQg9kzxxbbfbHI%3D&quot;);"></div>
+
+                <div class="strip-text text-strip-1">"李静，你觉得我们的友谊有什么特别的？"</div>
+                <div class="strip-text text-strip-2">"我觉得是真诚吧"</div>
+                <div class="strip-text text-strip-3">"对，没有那些虚头巴脑的东西"</div>
+                <div class="strip-text text-strip-4">"就是很简单很纯粹的关系"</div>
+                <div class="strip-text text-strip-5">"这在我们这个圈子里真的不容易"</div>
+                <div class="strip-text text-strip-6">"所以我们都很珍惜这份友谊"</div>
+
+                <div class="card-subtitle-style3">友谊的真诚与纯粹</div>
+            </div>
+
+            <!-- 内容页8 - 样式4 -->
+            <div class="content-card style4">
+                <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12361750995096_.pic_hd_1758008625808_7dcdaa1b.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368628&amp;Signature=olCUrSkW6bVLob096GkmYD9ElQc%3D" alt="访谈现场" class="style4-image">
+                <div class="style4-content">
+                    <div class="style4-first-line">
+                        "养鸡总是能在关键时刻给我们最中肯的建议"
+                    </div>
+                    <div class="style4-rest">
+                        她有一种很特别的<span class="highlight">人生智慧</span>，总能用最简单的话说出最深刻的道理。我们有什么困惑的时候，都喜欢找她聊聊，她总能给我们一些不一样的视角。
+                    </div>
+                    <div class="card-subtitle-style4">养鸡的人生智慧</div>
+                    <div class="watermark">
+                        <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/cardplanet_logo_filled_1758008621472_f469861c.svg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368622&amp;Signature=UJSDbreb8etAiAEhQjD0Uq4ZFzM%3D" alt="CardPlanet Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内容页9 - 样式1 -->
+            <div class="content-card style1-light">
+                <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12351750995095_.pic_hd_1758008627744_5d9b9d0b.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368629&amp;Signature=hCcE14qmaGmaWJuOVqhRCm18hxg%3D" alt="访谈现场" class="style1-light-image">
+                <div class="style1-light-content">
+                    <p class="style1-light-text">
+                        "这么多年下来，我们已经不仅仅是朋友了，更像是<span class="highlight-green">家人</span>一样。彼此的孩子都很熟悉，家里有什么事情也会第一时间分享。这种感情，真的是用金钱买不到的。"
+                    </p>
+                    <div class="card-subtitle">如家人般的深厚感情</div>
+                    <div class="watermark">
+                        <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/cardplanet_logo_filled_1758008621472_f469861c.svg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368622&amp;Signature=UJSDbreb8etAiAEhQjD0Uq4ZFzM%3D" alt="CardPlanet Logo">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内容页10 - 样式2 -->
+            <div class="content-card style2">
+                <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/12401750995103_.pic_hd_1758008629042_dceff454.jpg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368630&amp;Signature=iSp4dWJ2Rv9ELGjvZRN5GZ8Q2D0%3D" alt="访谈现场" class="style2-image">
+                <div class="style2-content">
+                    <div class="style2-quote">"</div>
+                    <div class="style2-first-lines">
+                        "希望我们的友谊能一直延续下去"
+                    </div>
+                    <p class="style2-text">
+                        即使以后我们各自的工作和生活发生变化，但这份感情应该是不会变的。因为它建立在<span class="highlight">相互理解</span>和真诚的基础上，这样的友谊是经得起时间考验的。
+                    </p>
+                    <div class="card-subtitle-style2">友谊的永恒价值</div>
+                    <div class="watermark">
+                        <img src="https://cms-mcp.oss-cn-hangzhou.aliyuncs.com/pod2post/images//pod2post_1758008133493_mv40bwn/cardplanet_logo_filled_1758008621472_f469861c.svg?OSSAccessKeyId=LTAI5tP7iEeXDKDgc8B1GWeW&amp;Expires=2073368622&amp;Signature=UJSDbreb8etAiAEhQjD0Uq4ZFzM%3D" alt="CardPlanet Logo">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 社媒平台内容区域 -->
+        <div class="social-section">
+            <h2 class="social-title">社媒平台内容</h2>
+
+            <div class="social-item">
+                <button class="copy-btn" onclick="copyToClipboard('title')">复制</button>
+                <h3>标题</h3>
+                <p id="title">20年友情的真相：从偶像到密友，揭秘娱乐圈真挚友谊</p>
+            </div>
+
+            <div class="social-item">
+                <button class="copy-btn" onclick="copyToClipboard('content')">复制</button>
+                <h3>正文</h3>
+                <p id="content">💫 五个高光总结：
+
+✨ 20年友情的真相：从偶像到密友，揭秘娱乐圈真挚友谊
+✨ 初入圈子如愣头青，戴军如大哥耐心教导成长路
+✨ 艳艳安静外表下的有趣灵魂，轻松氛围让友谊珍贵
+✨ 圈内友谊难得真诚，不因利益考量影响纯粹关系
+✨ 养鸡人生智慧深刻，关键时刻总能给出中肯建议
+
+🎙️ 播客总结：
+
+李静、养鸡与戴军、艳艳之间的20年友谊，见证了娱乐圈中罕见的真挚情感。从最初的工作关系，到后来如家人般的深厚感情，他们的友谊建立在相互理解、真诚和包容的基础上。在这个充满利益考量的圈子里，他们保持着纯粹的关系，没有虚头巴脑的东西，只有简单而珍贵的真情。这种经得起时间考验的友谊，让人感受到了人与人之间最美好的连接。</p>
+            </div>
+
+            <div class="social-item">
+                <button class="copy-btn" onclick="copyToClipboard('tags')">复制</button>
+                <h3>标签</h3>
+                <div class="tags" id="tags">
+                    <span class="tag">#李静</span>
+                    <span class="tag">#养鸡</span>
+                    <span class="tag">#戴军</span>
+                    <span class="tag">#艳艳</span>
+                    <span class="tag">#友谊</span>
+                    <span class="tag">#娱乐圈</span>
+                    <span class="tag">#真挚友情</span>
+                    <span class="tag">#20年友谊</span>
+                    <span class="tag">#播客</span>
+                    <span class="tag">#人生感悟</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 复制功能脚本 -->
+    <script>
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = elementId === 'tags' ?
+            Array.from(element.querySelectorAll('.tag')).map(tag => tag.textContent).join(' ') :
+            element.textContent;
+
+        navigator.clipboard.writeText(text).then(function() {
+            const button = element.parentElement.querySelector('.copy-btn');
+            const originalText = button.textContent;
+            button.textContent = '已复制!';
+            setTimeout(() => button.textContent = originalText, 2000);
+        });
+    }
+    </script>
+
+</body></html>

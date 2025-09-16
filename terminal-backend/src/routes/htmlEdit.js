@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import apiTerminalService from '../utils/apiTerminalService.js';
+import { OSSUploader } from './generate/utils/ossUploader.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,11 +19,18 @@ class FileChangeMonitor {
     this.watchers = new Map();
     this.taskStatuses = new Map();
     this.apiIds = new Map(); // taskId -> apiId 映射
+    this.taskMetadata = new Map(); // taskId -> 任务元数据映射
+    this.ossUploader = new OSSUploader();
   }
 
   // 设置任务的apiId
   setApiId(taskId, apiId) {
     this.apiIds.set(taskId, apiId);
+  }
+
+  // 设置任务元数据（用于OSS上传）
+  setTaskMetadata(taskId, metadata) {
+    this.taskMetadata.set(taskId, metadata);
   }
 
   // 监控文件变化
@@ -36,6 +44,8 @@ class FileChangeMonitor {
       mtimeBefore
     });
 
+    let changeDetected = false;  // 防止重复处理
+
     // 使用轮询检查文件修改时间（更可靠）
     const checkInterval = setInterval(async () => {
       try {
@@ -44,7 +54,8 @@ class FileChangeMonitor {
         const mtimeNow = stat.mtimeMs;
 
         // 检测到文件被修改
-        if (mtimeNow > mtimeBefore) {
+        if (mtimeNow > mtimeBefore && !changeDetected) {
+          changeDetected = true;
           console.log(`[FileChangeMonitor] File changed detected for task ${taskId}`);
           console.log(`[FileChangeMonitor] mtime before: ${mtimeBefore}, mtime now: ${mtimeNow}`);
 
@@ -58,7 +69,8 @@ class FileChangeMonitor {
 
     // 同时使用fs.watch作为备用
     const watcher = fsWatch.watch(filePath, (eventType) => {
-      if (eventType === 'change') {
+      if (eventType === 'change' && !changeDetected) {
+        changeDetected = true;
         console.log(`[FileChangeMonitor] fs.watch detected change for task ${taskId}`);
         clearInterval(checkInterval);
         this.handleFileChange(taskId, filePath);
@@ -83,19 +95,100 @@ class FileChangeMonitor {
   }
 
   // 处理文件变化
-  handleFileChange(taskId, filePath) {
+  async handleFileChange(taskId, filePath) {
+    console.log(`[FileChangeMonitor] handleFileChange called for task ${taskId}`);
     const task = this.watchers.get(taskId);
     if (task) {
       const duration = Date.now() - task.startTime;
+      console.log(`[FileChangeMonitor] Updating task ${taskId} to completed`);
 
-      // 更新任务状态
+      // 更新任务状态为处理中（准备上传OSS）
       this.taskStatuses.set(taskId, {
-        status: 'completed',
-        progress: 100,
+        status: 'uploading',
+        progress: 50,
         filePath,
+        message: '文件修改完成，正在上传到OSS...',
         completedAt: new Date().toISOString(),
         duration
       });
+
+      try {
+        // 获取任务元数据
+        const metadata = this.taskMetadata.get(taskId);
+        if (metadata && metadata.userId && metadata.folderId) {
+          console.log(`[FileChangeMonitor] Starting OSS upload for task ${taskId}`);
+
+          // 构建文件夹路径用于OSS上传
+          const folderPath = path.dirname(filePath);
+          const folderName = metadata.folderId || path.basename(folderPath);
+
+          // 上传修改后的文件到OSS
+          const uploadResult = await this.uploadModifiedFileToOSS(
+            metadata.userId,
+            folderName,
+            filePath
+          );
+
+          if (uploadResult.success) {
+            // OSS上传成功，更新meta文件中的ossUrl
+            try {
+              await this.updateMetaFileWithNewOssUrl(metadata, uploadResult.ossUrl, uploadResult.fileName, filePath);
+              console.log(`[FileChangeMonitor] Meta file updated with new OSS URL for task ${taskId}`);
+            } catch (metaError) {
+              console.error(`[FileChangeMonitor] Failed to update meta file for task ${taskId}:`, metaError);
+            }
+
+            // 更新任务状态
+            this.taskStatuses.set(taskId, {
+              status: 'completed',
+              progress: 100,
+              filePath,
+              ossUrl: uploadResult.ossUrl,
+              uploadResult: uploadResult,
+              completedAt: new Date().toISOString(),
+              duration,
+              message: '文件修改并上传OSS完成'
+            });
+
+            console.log(`[FileChangeMonitor] Task ${taskId} completed with OSS upload success`);
+          } else {
+            // OSS上传失败
+            this.taskStatuses.set(taskId, {
+              status: 'upload_failed',
+              progress: 75,
+              filePath,
+              error: uploadResult.error,
+              completedAt: new Date().toISOString(),
+              duration,
+              message: '文件修改完成但OSS上传失败'
+            });
+
+            console.error(`[FileChangeMonitor] OSS upload failed for task ${taskId}:`, uploadResult.error);
+          }
+        } else {
+          // 没有元数据，只标记文件修改完成
+          console.log(`[FileChangeMonitor] No metadata found for task ${taskId}, skipping OSS upload`);
+          this.taskStatuses.set(taskId, {
+            status: 'completed',
+            progress: 100,
+            filePath,
+            completedAt: new Date().toISOString(),
+            duration,
+            message: '文件修改完成'
+          });
+        }
+      } catch (error) {
+        console.error(`[FileChangeMonitor] Error during OSS upload for task ${taskId}:`, error);
+        this.taskStatuses.set(taskId, {
+          status: 'upload_failed',
+          progress: 75,
+          filePath,
+          error: error.message,
+          completedAt: new Date().toISOString(),
+          duration,
+          message: '文件修改完成但OSS上传出错'
+        });
+      }
 
       // 立即清理终端会话（文件已修改完成）
       const apiId = this.apiIds.get(taskId);
@@ -108,8 +201,202 @@ class FileChangeMonitor {
         this.apiIds.delete(taskId);
       }
 
-      // 清理监听器
+      // 清理监听器和元数据
       this.cleanup(taskId);
+    }
+  }
+
+  // 上传修改后的文件到OSS
+  async uploadModifiedFileToOSS(userId, folderId, filePath) {
+    try {
+      console.log(`[FileChangeMonitor] Uploading modified file to OSS: ${filePath}`);
+
+      const fileName = path.basename(filePath);
+      const fileStats = await fs.stat(filePath);
+
+      // 对中文文件名进行URL编码
+      const encodedFileName = encodeURIComponent(fileName);
+      // OSS键名
+      const ossKey = `pod2post/${userId}/${folderId}/${encodedFileName}`;
+
+      // 获取文件MIME类型
+      const mimeType = this.getMimeType(fileName);
+
+      // 上传到OSS
+      const uploadResult = await this.ossUploader.ossService.client.uploadFile(filePath, ossKey, {
+        headers: {
+          'Content-Type': mimeType,
+          'Cache-Control': 'public, max-age=31536000',
+          'Content-Disposition': `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
+        }
+      });
+
+      if (uploadResult.success) {
+        // 生成1年有效期的签名URL
+        const signedUrlResult = await this.ossUploader.ossService.client.generateSignedUrl(ossKey, 3600 * 24 * 365);
+
+        return {
+          success: true,
+          ossUrl: signedUrlResult.url,
+          ossKey: ossKey,
+          fileName: fileName,
+          fileSize: fileStats.size,
+          uploadedAt: new Date().toISOString()
+        };
+      } else {
+        return {
+          success: false,
+          error: uploadResult.error || 'Upload failed'
+        };
+      }
+    } catch (error) {
+      console.error(`[FileChangeMonitor] OSS upload error:`, error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // 获取文件MIME类型
+  getMimeType(fileName) {
+    const ext = path.extname(fileName).toLowerCase();
+    const mimeTypes = {
+      '.html': 'text/html',
+      '.css': 'text/css',
+      '.js': 'application/javascript',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.pdf': 'application/pdf',
+      '.txt': 'text/plain'
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
+  }
+
+  // 更新meta文件中的OSS URL
+  async updateMetaFileWithNewOssUrl(metadata, newOssUrl, fileName, filePath) {
+    try {
+      console.log(`[FileChangeMonitor] Updating meta file with new OSS URL for file: ${fileName}`);
+
+      // 构建meta文件路径
+      const userWorkspace = `/app/data/users/${metadata.userId || 'default'}/workspace/`;
+      const metaFilePath = path.join(userWorkspace, `card/${metadata.folderId}/${metadata.folderId}_meta.json`);
+
+      console.log(`[FileChangeMonitor] Meta file path: ${metaFilePath}`);
+
+      // 检查meta文件是否存在
+      try {
+        await fs.access(metaFilePath);
+      } catch (error) {
+        console.log(`[FileChangeMonitor] Meta file not found: ${metaFilePath}, skipping update`);
+        return;
+      }
+
+      // 读取现有的meta文件
+      const metaContent = await fs.readFile(metaFilePath, 'utf8');
+      const metaData = JSON.parse(metaContent);
+
+      console.log(`[FileChangeMonitor] Checking meta structure for OSS update...`);
+
+      // 确保OSS上传结构存在
+      if (!metaData.custom) {
+        metaData.custom = {};
+      }
+      if (!metaData.custom.ossUpload) {
+        metaData.custom.ossUpload = { success: true };
+      }
+      if (!metaData.custom.ossUpload.urls) {
+        metaData.custom.ossUpload.urls = {};
+      }
+      if (!metaData.custom.ossUpload.uploadedFiles) {
+        metaData.custom.ossUpload.uploadedFiles = [];
+      }
+
+      // 确定要更新的字段
+      let updated = false;
+
+      // 根据文件名确定更新哪个URL字段
+      if (fileName.includes('content_ossurl') || (fileName.includes('content') && fileName.endsWith('.html'))) {
+        // 更新originalHtml URL
+        metaData.custom.ossUpload.urls.originalHtml = newOssUrl;
+        updated = true;
+        console.log(`[FileChangeMonitor] Updated originalHtml URL`);
+      } else if (fileName.includes('base64') && fileName.endsWith('.html')) {
+        // 更新withBase64 URL
+        metaData.custom.ossUpload.urls.withBase64 = newOssUrl;
+        updated = true;
+        console.log(`[FileChangeMonitor] Updated withBase64 URL`);
+      }
+
+      if (updated) {
+        // 更新对应的uploadedFiles数组中的记录
+        const existingFileIndex = metaData.custom.ossUpload.uploadedFiles.findIndex(
+          file => file.fileName === fileName
+        );
+
+        const currentTime = new Date().toISOString();
+
+        if (existingFileIndex !== -1) {
+          // 更新现有记录
+          metaData.custom.ossUpload.uploadedFiles[existingFileIndex].ossUrl = newOssUrl;
+          metaData.custom.ossUpload.uploadedFiles[existingFileIndex].uploadedAt = currentTime;
+          console.log(`[FileChangeMonitor] Updated existing file record for: ${fileName}`);
+        } else {
+          // 添加新记录 - 从uploadResult获取文件大小
+          const fileSize = await this.getFileSize(filePath);
+          metaData.custom.ossUpload.uploadedFiles.push({
+            fileName: fileName,
+            fileSize: fileSize,
+            ossKey: `pod2post/${metadata.userId}/${metadata.folderId}/${encodeURIComponent(fileName)}`,
+            ossUrl: newOssUrl,
+            uploadedAt: currentTime
+          });
+          console.log(`[FileChangeMonitor] Added new file record for: ${fileName}`);
+        }
+
+        // 更新上传时间
+        metaData.custom.ossUpload.uploadedAt = currentTime;
+
+        // 添加到logs数组
+        if (!metaData.logs) {
+          metaData.logs = [];
+        }
+        metaData.logs.push({
+          timestamp: currentTime,
+          level: "info",
+          message: "HTML文件编辑后重新上传OSS",
+          context: {
+            fileName: fileName,
+            newOssUrl: newOssUrl,
+            action: "html_edit_oss_update"
+          }
+        });
+
+        // 写回meta文件
+        await fs.writeFile(metaFilePath, JSON.stringify(metaData, null, 2), 'utf8');
+        console.log(`[FileChangeMonitor] Meta file updated successfully`);
+      } else {
+        console.log(`[FileChangeMonitor] No matching URL field found for file: ${fileName}, skipping meta update`);
+      }
+
+    } catch (error) {
+      console.error(`[FileChangeMonitor] Error updating meta file:`, error);
+      throw error;
+    }
+  }
+
+  // 获取文件大小
+  async getFileSize(filePath) {
+    try {
+      const stats = await fs.stat(filePath);
+      return stats.size;
+    } catch (error) {
+      console.error(`[FileChangeMonitor] Error getting file size for ${filePath}:`, error);
+      return 0;
     }
   }
 
@@ -152,6 +439,7 @@ class FileChangeMonitor {
       }
     }
     this.watchers.delete(taskId);
+    this.taskMetadata.delete(taskId);
 
     // 5分钟后清理状态缓存
     setTimeout(() => {
@@ -324,13 +612,31 @@ ${userRequest}
       const statBefore = await fs.stat(fullPath);
       const mtimeBefore = statBefore.mtimeMs;
 
-      // 7. 开始监控文件变化（先设置监控，再执行Claude）
+      // 7. 设置任务元数据（用于OSS上传）
+      this.monitor.setTaskMetadata(taskId, {
+        userId: userId,
+        folderId: request.folderId,
+        fileId: request.fileId,
+        htmlPath: request.htmlPath,
+        elements: request.elements,
+        originalRequest: request.request
+      });
+
+      // 8. 开始监控文件变化（先设置监控，再执行Claude）
       this.monitor.watchFile(fullPath, taskId, mtimeBefore);
 
-      // 8. 调用Claude CLI（Claude会直接修改文件），传递taskId用于管理
-      await this.callClaude(prompt, fullPath, userId, taskId);
+      // 9. 异步调用Claude（不等待完成，立即返回）
+      this.callClaude(prompt, fullPath, userId, taskId).catch(error => {
+        console.error('[HtmlEditService] Claude execution failed:', error);
+        // 更新任务状态为失败
+        this.monitor.taskStatuses.set(taskId, {
+          status: 'failed',
+          error: error.message,
+          filePath: fullPath
+        });
+      });
 
-      // 9. 返回成功响应（状态由文件监控器更新）
+      // 10. 立即返回响应（不等待Claude执行）
       return {
         success: true,
         taskId,

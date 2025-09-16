@@ -421,6 +421,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                 const htmlContent = await fs.readFile(htmlFilePath, 'utf-8')
                 result.files.push({
                   fileName: htmlFileName,
+                  filePath: htmlFilePath,
                   path: htmlFilePath,
                   content: htmlContent,
                   fileType: 'html'
@@ -439,6 +440,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                   const parsedJson = JSON.parse(jsonContent)
                   result.files.push({
                     fileName: jsonFileName,
+                    filePath: jsonFilePath,
                     path: jsonFilePath,
                     content: parsedJson,
                     fileType: 'json'
@@ -448,6 +450,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                   // JSON解析失败，返回原始内容
                   result.files.push({
                     fileName: jsonFileName,
+                    filePath: jsonFilePath,
                     path: jsonFilePath,
                     content: jsonContent,
                     fileType: 'json',
@@ -474,6 +477,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
               resolve({
                 success: true,
                 fileName: htmlFile ? htmlFile.fileName : result.files[0].fileName,
+                filePath: htmlFile ? htmlFile.filePath : result.files[0].filePath,
                 path: htmlFile ? htmlFile.path : result.files[0].path,
                 content: htmlFile ? htmlFile.content : result.files[0].content,
                 fileType: 'html',
@@ -500,6 +504,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                   resolve({
                     success: true,
                     fileName: fileName,
+                    filePath: filePath,
                     path: filePath,
                     content: jsonContent,
                     fileType: 'json'
@@ -510,6 +515,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                   resolve({
                     success: true,
                     fileName: fileName,
+                    filePath: filePath,
                     path: filePath,
                     content: content,  // 返回原始字符串
                     fileType: 'json',
@@ -521,6 +527,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
                 resolve({
                   success: true,
                   fileName: fileName,
+                  filePath: filePath,
                   path: filePath,
                   content: content,
                   fileType: 'html'
@@ -651,6 +658,7 @@ router.post('/', authenticateUserOrDefault, ensureUserFolder, async (req, res) =
         templateName: templateName,
         fileName: result.fileName,
         filePath: result.path,
+        path: result.path,
         generationTime: elapsedTime,
         content: result.content,
         apiId: apiId

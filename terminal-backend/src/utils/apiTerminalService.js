@@ -196,45 +196,81 @@ class ApiTerminalService extends EventEmitter {
 
     terminal.lastActivity = Date.now()
 
-    // 等待Claude执行完成（监听输出直到看到命令提示符）
+    // 等待Claude执行完成（监听输出直到稳定）
     console.log(`[ApiTerminalService] Waiting for Claude to complete...`)
 
     return new Promise((resolve) => {
       let checkCount = 0
       const maxChecks = 300  // 最多检查300次（5分钟）
+      let lastOutputLength = 0
+      let stableCount = 0  // 输出稳定计数
+      const requiredStableChecks = 3  // 需要3次连续稳定
 
       const checkInterval = setInterval(() => {
         checkCount++
         const outputBuffer = this.outputBuffers.get(apiId) || []
+        const currentOutputLength = outputBuffer.length
 
-        // 获取最近的输出
+        // 检查输出是否稳定（没有新输出）
+        if (currentOutputLength === lastOutputLength && currentOutputLength > 0) {
+          stableCount++
+          console.log(`[ApiTerminalService] Output stable for ${stableCount} checks`)
+        } else {
+          stableCount = 0  // 重置稳定计数
+          lastOutputLength = currentOutputLength
+        }
+
+        // 获取最近的输出用于检查
         const recentOutput = outputBuffer
-          .slice(-5)
+          .slice(-10)  // 看更多行
           .map(item => item.data)
-          .join('')
+          .join('\n')
 
-        // 检查是否出现命令提示符（表示Claude已完成）
-        const hasPrompt = recentOutput.includes('$') ||
-                         recentOutput.includes('>') ||
-                         recentOutput.includes('#')
+        // 检查是否有明确的完成标志
+        const hasExplicitComplete =
+          recentOutput.includes('File has been modified') ||
+          recentOutput.includes('Successfully modified') ||
+          recentOutput.includes('Changes saved to') ||
+          recentOutput.includes('File updated') ||
+          recentOutput.includes('修改完成') ||
+          recentOutput.includes('文件已更新')
 
-        // 检查是否有Claude完成的标志
-        const hasCompleted = recentOutput.includes('File modified successfully') ||
-                           recentOutput.includes('Changes saved') ||
-                           recentOutput.includes('Successfully updated') ||
-                           (outputBuffer.length > 10 && hasPrompt)
+        // 检查是否有新的命令提示符（在末尾）
+        const lines = recentOutput.split('\n').filter(line => line.trim())
+        const lastLine = lines[lines.length - 1] || ''
+        const hasPromptAtEnd =
+          lastLine.endsWith('$') ||
+          lastLine.endsWith('$ ') ||
+          lastLine.endsWith('#') ||
+          lastLine.endsWith('# ') ||
+          lastLine.endsWith('>') ||
+          lastLine.endsWith('> ')
 
-        if (hasCompleted || checkCount >= maxChecks) {
+        // 判断完成条件：
+        // 1. 有明确的完成标志，或
+        // 2. 输出稳定且有命令提示符，或
+        // 3. 超时
+        const isCompleted =
+          hasExplicitComplete ||
+          (stableCount >= requiredStableChecks && hasPromptAtEnd && outputBuffer.length > 10) ||
+          checkCount >= maxChecks
+
+        if (isCompleted) {
           clearInterval(checkInterval)
 
           if (checkCount >= maxChecks) {
             console.log(`[ApiTerminalService] Claude execution timeout after ${checkCount} checks`)
+          } else if (hasExplicitComplete) {
+            console.log(`[ApiTerminalService] Claude execution completed with explicit signal after ${checkCount} checks`)
           } else {
-            console.log(`[ApiTerminalService] Claude execution completed after ${checkCount} checks`)
+            console.log(`[ApiTerminalService] Claude execution completed (output stable) after ${checkCount} checks`)
           }
 
-          terminal.lastActivity = Date.now()
-          resolve(true)
+          // 额外等待一下确保Claude完全结束
+          setTimeout(() => {
+            terminal.lastActivity = Date.now()
+            resolve(true)
+          }, 2000)
         }
       }, 1000)  // 每秒检查一次
     })

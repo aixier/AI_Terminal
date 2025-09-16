@@ -1,0 +1,210 @@
+{
+  "social_content": {
+    "post_title": "2025年AI创作趋势报告",
+    "post_content": "🚀 AI创作正在重塑整个内容产业！\n\n五大核心趋势值得关注：\n• 创意生成技术实现重大突破，多模态融合能力大幅提升\n• 宠物拟人化、吉卜力美学等新兴创作形式快速崛起\n• 开源大模型降低技术门槛，人人都能成为AI创作者\n• 人机协作模式成为主流，\"AI创造力\"概念深入人心\n• 产业深度融合加速，IP开发运营效率显著提升\n\n虽然豆包、Kimi等产品DAU已突破百万，但现象级应用仍待出现。技术规范和伦理挑战也日益突出，需要在发展与规范间找到平衡。\n\n创造力的新时代已经到来，你准备好了吗？",
+    "highlights": [
+      "AI创意生成技术实现重大突破，多模态融合能力显著提升",
+      "宠物拟人化、吉卜力美学等新兴创作形式快速崛起",
+      "开源大模型如Deepseek降低技术门槛，普通人也能成为AI创作者",
+      "人机协作创作模式成为主流，\"AI创造力\"概念深入人心",
+      "AI深度融合内容产业，加速IP开发运营，推动产业多元化发展"
+    ],
+    "hashtags": [
+      "#AI创作",
+      "#人工智能",
+      "#内容创作",
+      "#技术趋势",
+      "#人机协作",
+      "#开源AI",
+      "#创意产业",
+      "#数字化转型",
+      "#未来预测",
+      "#科技发展"
+    ],
+    "metadata": {
+      "hosts": ["AI思考者"],
+      "guests": [],
+      "theme": "AI创作趋势分析",
+      "duration_years": 1,
+      "cards_count": 8,
+      "cover_cards": 1,
+      "content_cards": 7
+    }
+  },
+  "content_analysis": {
+    "total_trends": 7,
+    "trend_categories": [
+      "技术突破",
+      "创作形式",
+      "产业融合",
+      "技术普及",
+      "协作模式",
+      "市场表现",
+      "未来展望"
+    ],
+    "key_statistics": {
+      "dau_breakthrough": "100万+",
+      "cost_reduction": "60-70%",
+      "efficiency_improvement": "3-5倍",
+      "user_preference_personalization": "85%"
+    }
+  },
+  "design_analysis": {
+    "style_applied": "Apple文档风格",
+    "cover_template": "模板1-默认封面",
+    "font_family": "IBM Plex Sans",
+    "color_scheme": {
+      "primary": "#007AFF",
+      "secondary": "#5AC8FA",
+      "background": "#FAFAFA",
+      "text": "#333333",
+      "accent": "#8A8A8F"
+    },
+    "svg_design_approach": "技术感几何图形，体现AI创作的专业性和系统性"
+  },
+  "layout_safety": {
+    "bottom_margin_check": true,
+    "content_overflow_risk": "low",
+    "total_content_lines": 89,
+    "average_lines_per_card": 11.1,
+    "cards_in_danger_zone": [],
+    "optimization_applied": [
+      "最后卡片SVG缩小至45px",
+      "使用紧凑布局确保内容完整显示",
+      "统一应用底部安全边距20px"
+    ]
+  },
+  "watermark_info": {
+    "logo_file_path": "/Users/sandra/Downloads/cursor/post/cardplanet_logo.svg",
+    "position": "bottom_center",
+    "size": "30x30px",
+    "opacity": 0.3,
+    "color_adaptation": {
+      "style_matched": true,
+      "gradient_colors": ["#007AFF", "#5AC8FA"],
+      "integration_method": "Apple风格蓝色系渐变融合"
+    }
+  },
+  "card_density_analysis": [
+    {
+      "card_id": 1,
+      "title": "封面",
+      "density_analysis": {
+        "total_lines": 6,
+        "density_level": "low",
+        "svg_height": "100px",
+        "margin_spacing": "1.6rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "封面内容简洁，留白充足",
+          "recommendations": []
+        }
+      }
+    },
+    {
+      "card_id": 2,
+      "title": "创意生成技术突破",
+      "density_analysis": {
+        "total_lines": 12,
+        "density_level": "high",
+        "svg_height": "80px",
+        "margin_spacing": "1rem",
+        "risk_assessment": {
+          "level": "medium",
+          "reason": "内容刚好达到12行上限",
+          "recommendations": ["保持紧凑布局"]
+        }
+      }
+    },
+    {
+      "card_id": 3,
+      "title": "热门创作趋势",
+      "density_analysis": {
+        "total_lines": 11,
+        "density_level": "medium",
+        "svg_height": "80px",
+        "margin_spacing": "1.2rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "内容在安全区范围内",
+          "recommendations": []
+        }
+      }
+    },
+    {
+      "card_id": 4,
+      "title": "产业深度融合",
+      "density_analysis": {
+        "total_lines": 12,
+        "density_level": "high",
+        "svg_height": "80px",
+        "margin_spacing": "1rem",
+        "risk_assessment": {
+          "level": "medium",
+          "reason": "内容达到12行上限",
+          "recommendations": ["保持紧凑布局"]
+        }
+      }
+    },
+    {
+      "card_id": 5,
+      "title": "技术门槛降低",
+      "density_analysis": {
+        "total_lines": 12,
+        "density_level": "high",
+        "svg_height": "80px",
+        "margin_spacing": "1rem",
+        "risk_assessment": {
+          "level": "medium",
+          "reason": "内容达到12行上限",
+          "recommendations": ["保持紧凑布局"]
+        }
+      }
+    },
+    {
+      "card_id": 6,
+      "title": "人机协作模式",
+      "density_analysis": {
+        "total_lines": 11,
+        "density_level": "medium",
+        "svg_height": "80px",
+        "margin_spacing": "1.2rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "内容在安全区范围内",
+          "recommendations": []
+        }
+      }
+    },
+    {
+      "card_id": 7,
+      "title": "市场表现与挑战",
+      "density_analysis": {
+        "total_lines": 11,
+        "density_level": "medium",
+        "svg_height": "70px",
+        "margin_spacing": "1.2rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "内容在安全区范围内",
+          "recommendations": []
+        }
+      }
+    },
+    {
+      "card_id": 8,
+      "title": "未来展望与行动",
+      "density_analysis": {
+        "total_lines": 8,
+        "density_level": "low",
+        "svg_height": "45px",
+        "margin_spacing": "0.8rem",
+        "risk_assessment": {
+          "level": "low",
+          "reason": "符合最后卡片特殊规范，内容简洁",
+          "recommendations": []
+        }
+      }
+    }
+  ]
+}

@@ -69,6 +69,7 @@
             @download-file="downloadFile"
             @delete-file="deleteCardFile"
             @delete-folder="deleteFolderAction"
+            @update-preview-content="(content) => previewContent = content"
           />
           
           <!-- Terminal Page -->
@@ -135,6 +136,7 @@
             @download-file="downloadFile"
             @delete-file="deleteCardFile"
             @delete-folder="deleteFolderAction"
+            @update-preview-content="(content) => previewContent = content"
           />
           
           <!-- Terminal Page -->
@@ -526,9 +528,13 @@ const handleToggleFolder = (folderId) => {
 }
 
 const handleSelectFile = async (file, folder) => {
+  console.log('[handleSelectFile] Selected file:', file)
+  console.log('[handleSelectFile] File path:', file.path)
+  console.log('[handleSelectFile] Folder:', folder)
+
   selectedCard.value = file.id
   selectedCardInfo.value = { card: file, folder }
-  
+
   const content = await getFileContent(file)
   if (content) {
     previewContent.value = content

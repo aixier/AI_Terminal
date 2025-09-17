@@ -50,32 +50,20 @@ class FileSystemManager {
    */
   async initializeUserDirectories(userId) {
     try {
-      // 首先确保基础assets目录存在
-      const baseAssetsPath = this.getUserPath(userId)
-      await fs.mkdir(baseAssetsPath, { recursive: true })
-      
-      const directories = [
-        this.getUserPath(userId, 'images/photos'),
-        this.getUserPath(userId, 'images/designs'),
-        this.getUserPath(userId, 'images/screenshots'),
-        this.getUserPath(userId, 'videos'),
-        this.getUserPath(userId, 'documents/pdf'),
-        this.getUserPath(userId, 'documents/word'),
-        this.getUserPath(userId, 'documents/markdown'),
-        this.getUserPath(userId, 'audio'),
-        this.getUserPath(userId, 'projects/web'),
-        this.getUserPath(userId, 'projects/mobile'),
-        this.getCachePath(userId, 'thumbnails'),
-        this.getCachePath(userId, 'previews'),
-        this.getCachePath(userId, 'metadata'),
-        this.getSystemPath(userId)
+      // 只创建必要的基础目录，不创建预设的子文件夹
+      const baseDirectories = [
+        this.getUserPath(userId), // 基础assets目录
+        this.getCachePath(userId, 'thumbnails'), // 缩略图缓存
+        this.getCachePath(userId, 'previews'),   // 预览缓存
+        this.getCachePath(userId, 'metadata'),   // 元数据缓存
+        this.getSystemPath(userId)               // 系统文件目录
       ]
 
-      for (const dir of directories) {
+      for (const dir of baseDirectories) {
         await fs.mkdir(dir, { recursive: true })
       }
 
-      logger.info(`[FileSystemManager] Initialized directories for user: ${userId}`)
+      logger.info(`[FileSystemManager] Initialized base directories for user: ${userId}`)
       return true
     } catch (error) {
       logger.error(`[FileSystemManager] Failed to initialize directories for user ${userId}:`, error)

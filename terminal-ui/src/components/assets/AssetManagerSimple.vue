@@ -44,7 +44,8 @@
             @contextmenu.prevent.stop="handleItemContextMenu($event, item)"
           >
             <div class="file-icon">
-              <span v-if="item.type === 'category'">📁</span>
+              <span v-if="item.isCollectionRoot">📚</span>
+              <span v-else-if="item.type === 'category'">📁</span>
               <span v-else-if="item.type === 'image'">🖼️</span>
               <span v-else>📄</span>
             </div>
@@ -250,70 +251,102 @@ const loadData = async () => {
         tree: categoryTree.value,
         lastUpdated: metadataRes.data.lastUpdated || new Date().toISOString()
       }
+
+      // 保存到组件状态以供面包屑等功能使用
+      categoriesData.value = metadata.categories
+      labelsData.value = metadata.labels
+    }
+
+    // 获取用户文件系统的内容并合并到metadata
+    const userAssetsRes = await assetsApiV2.getAssets({ path: '' })
+    if (userAssetsRes.success && metadata) {
+      const assets = Array.isArray(userAssetsRes.data) ? userAssetsRes.data : (userAssetsRes.data.assets || [])
+
+      // 添加用户文件夹和文件到metadata
+      const userFiles = []
+      assets.forEach(item => {
+        if (!item.isDirectory && item.type !== 'folder') {
+          // 用户上传的文件
+          userFiles.push({
+            name: item.name,
+            fileName: item.name,
+            path: item.path || item.name,
+            type: item.mimeType || 'file',
+            size: item.size || 0
+          })
+        }
+      })
+
+      // 如果有用户文件，添加到根目录分类
+      if (userFiles.length > 0) {
+        metadata.categories['用户文件'] = userFiles
+        metadata.labels['用户文件'] = '我的文件'
+      }
+
+      // 保存包含用户文件的完整metadata
+      saveMetadataToCache(metadata)
+      updateBreadcrumb()
+    } else if (metadata) {
+      // 即使没有用户文件也要保存metadata
       saveMetadataToCache(metadata)
       updateBreadcrumb()
     }
 
-    // 如果在根目录，显示作品集文件夹
-    if (!currentCategory.value && metadata) {
-      // 从元数据中获取作品集列表
-      const metadataCategories = metadata.categories || {}
-      const metadataLabels = metadata.labels || {}
+    // 如果在根目录，显示后端返回的所有内容（包括作品集文件夹）
+    if (!currentCategory.value) {
+      // 获取根目录内容（后端会自动包含作品集文件夹）
+      const assetsRes = await assetsApiV2.getAssets({ path: '' })
 
-      // 构建显示项
-      displayItems.value = [
-        // 显示作品集文件夹
-        ...Object.keys(metadataCategories).map(key => ({
-          key: key,
-          label: metadataLabels[key] || key,
+      if (assetsRes.success) {
+        const assets = Array.isArray(assetsRes.data) ? assetsRes.data : (assetsRes.data.assets || [])
+        const folders = assets.filter(item => item.isDirectory || item.type === 'folder')
+        const files = assets.filter(item => !item.isDirectory && item.type !== 'folder')
+
+        // 处理文件夹（包括后端返回的作品集文件夹）
+        const folderItems = folders.map(folder => ({
+          key: folder.path || folder.name,
+          label: folder.name,
           type: 'category',
-          fileCount: metadataCategories[key]?.length || 0,
-          isCollection: true
+          fileCount: 0,
+          isNewApi: true,
+          // 标记作品集文件夹
+          isCollectionRoot: folder.name === '作品集' || folder.path === '作品集'
         }))
-      ]
-    } else if (metadata) {
-      // 对于作品集，直接从缓存的元数据中获取文件
-      const metadataCategories = metadata.categories || {}
 
-      if (metadataCategories[currentCategory.value]) {
-        // 作品集中的文件
-        const files = metadataCategories[currentCategory.value] || []
-        displayItems.value = files.map(file => ({
-          name: file.name || file.fileName,
+        // 处理文件
+        const fileItems = files.map(file => ({
+          name: file.name,
           path: file.path,
           size: file.size,
           type: 'file',
-          mimeType: file.type,
-          isNewApi: true,
-          category: currentCategory.value
+          mimeType: file.mimeType,
+          isNewApi: true
         }))
-      } else {
-        // 普通文件夹，从API获取
-        const params = { path: currentCategory.value }
-        if (searchQuery.value) {
-          params.search = searchQuery.value
-        }
 
-        const assetsRes = await assetsApiV2.getAssets(params)
-        if (assetsRes.success) {
-          // 新API直接返回数组，不再嵌套在assets属性中
-          const assets = Array.isArray(assetsRes.data) ? assetsRes.data : (assetsRes.data.assets || [])
+        // 合并显示
+        displayItems.value = [
+          ...folderItems,
+          ...fileItems
+        ]
+      }
+    } else if (currentCategory.value === '作品集') {
+      // 进入作品集根目录，通过API获取内容
+      const assetsRes = await assetsApiV2.getAssets({ path: '作品集' })
 
-        // 从新API响应中分离文件夹和文件
+      if (assetsRes.success) {
+        const assets = Array.isArray(assetsRes.data) ? assetsRes.data : (assetsRes.data.assets || [])
         const folders = assets.filter(item => item.isDirectory || item.type === 'folder')
         const files = assets.filter(item => !item.isDirectory && item.type !== 'folder')
-      
-        // 合并文件夹和文件显示
+
         displayItems.value = [
-          // 显示新API返回的文件夹
           ...folders.map(folder => ({
             key: folder.path || folder.name,
             label: folder.name,
             type: 'category',
             fileCount: 0,
-            isNewApi: true
+            isNewApi: true,
+            isCollection: true
           })),
-          // 显示文件
           ...files.map(file => ({
             name: file.name,
             path: file.path,
@@ -323,7 +356,39 @@ const loadData = async () => {
             isNewApi: true
           }))
         ]
-        }
+      }
+    } else {
+      // 其他路径（包括作品集内部和普通文件夹），统一通过API获取
+      const params = { path: currentCategory.value }
+      if (searchQuery.value) {
+        params.search = searchQuery.value
+      }
+
+      const assetsRes = await assetsApiV2.getAssets(params)
+      if (assetsRes.success) {
+        const assets = Array.isArray(assetsRes.data) ? assetsRes.data : (assetsRes.data.assets || [])
+        const folders = assets.filter(item => item.isDirectory || item.type === 'folder')
+        const files = assets.filter(item => !item.isDirectory && item.type !== 'folder')
+
+        displayItems.value = [
+          ...folders.map(folder => ({
+            key: folder.path || folder.name,
+            label: folder.name,
+            type: 'category',
+            fileCount: 0,
+            isNewApi: true,
+            // 如果在作品集路径下，标记为作品集内的文件夹
+            isCollection: currentCategory.value.startsWith('作品集/')
+          })),
+          ...files.map(file => ({
+            name: file.name,
+            path: file.path,
+            size: file.size,
+            type: 'file',
+            mimeType: file.mimeType,
+            isNewApi: true
+          }))
+        ]
       }
     }
   } catch (error) {
@@ -336,23 +401,43 @@ const loadData = async () => {
 const updateBreadcrumb = () => {
   const path = []
   let current = currentCategory.value
-  
-  // 新系统使用路径分隔符而不是点号
-  if (current && current.length > 0) {
+
+  // 特殊处理作品集路径
+  if (current === '作品集') {
+    path.push({
+      key: '作品集',
+      label: '作品集'
+    })
+  } else if (current && current.startsWith('作品集/')) {
+    // 在作品集内部
     const parts = current.split('/')
     let accumulated = ''
-    
+
     for (const part of parts) {
       if (part) {
         accumulated = accumulated ? `${accumulated}/${part}` : part
-        path.push({ 
-          key: accumulated, 
-          label: part 
+        path.push({
+          key: accumulated,
+          label: part === '作品集' ? '作品集' : (labelsData.value[part] || part)
+        })
+      }
+    }
+  } else if (current && current.length > 0) {
+    // 普通文件夹路径，使用路径分隔符
+    const parts = current.split('/')
+    let accumulated = ''
+
+    for (const part of parts) {
+      if (part) {
+        accumulated = accumulated ? `${accumulated}/${part}` : part
+        path.push({
+          key: accumulated,
+          label: part
         })
       }
     }
   }
-  
+
   breadcrumb.value = path
 }
 

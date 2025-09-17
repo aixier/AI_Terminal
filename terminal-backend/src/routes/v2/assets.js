@@ -661,6 +661,35 @@ router.get('/metadata', async (req, res) => {
         const items = await fs.readdir(dirPath, { withFileTypes: true })
         logger.info(`[asset_metadata_debug] Scanning ${dirPath}, found ${items.length} items`)
 
+        // 首先收集根目录的文件
+        const rootFiles = []
+        for (const item of items) {
+          if (!item.isDirectory()) {
+            const filePath = path.join(dirPath, item.name)
+            const stats = await fs.stat(filePath)
+            const relativePath = prefix ? `${prefix}/${item.name}` : item.name
+
+            rootFiles.push({
+              name: item.name,
+              fileName: item.name,
+              path: relativePath,
+              fullPath: filePath,
+              type: getFileType(item.name),
+              size: stats.size
+            })
+            logger.info(`[asset_metadata_debug] Added root file: ${item.name}`)
+          }
+        }
+
+        // 如果根目录有文件，添加到metadata
+        if (rootFiles.length > 0) {
+          const rootKey = prefix || '用户文件'
+          metadata.assets[rootKey] = rootFiles
+          metadata.labels[rootKey] = prefix || '我的文件'
+          logger.info(`[asset_metadata_debug] Added root files: ${rootKey} with ${rootFiles.length} files`)
+        }
+
+        // 处理子目录
         for (const item of items) {
           if (item.isDirectory()) {
             const subDirPath = path.join(dirPath, item.name)
@@ -688,10 +717,15 @@ router.get('/metadata', async (req, res) => {
             }
 
             const categoryKey = subPrefix.replace(/\//g, '_')
+
+            // 即使文件夹是空的，也要添加到metadata（用于显示空文件夹）
+            metadata.assets[categoryKey] = fileList
+            metadata.labels[categoryKey] = item.name
+
             if (fileList.length > 0) {
-              metadata.assets[categoryKey] = fileList
-              metadata.labels[categoryKey] = item.name
               logger.info(`[asset_metadata_debug] Added asset category: ${categoryKey} with ${fileList.length} files`)
+            } else {
+              logger.info(`[asset_metadata_debug] Added empty folder: ${categoryKey}`)
             }
 
             // 递归扫描子目录

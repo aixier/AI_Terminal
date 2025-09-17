@@ -4,10 +4,8 @@ import { getApiBaseUrl } from '../config/api.config'
 
 // 创建axios实例
 const service = axios.create({
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  timeout: 30000
+  // 不在这里设置默认的Content-Type，让请求拦截器根据数据类型动态设置
 })
 
 // 请求拦截器
@@ -15,12 +13,22 @@ service.interceptors.request.use(
   config => {
     // 动态设置baseURL
     config.baseURL = getApiBaseUrl()
-    
+
     // 在发送请求之前做些什么
     const token = localStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
+
+    // 根据数据类型设置Content-Type
+    if (config.data instanceof FormData) {
+      // FormData类型，删除Content-Type，让浏览器自动设置multipart/form-data
+      delete config.headers['Content-Type']
+    } else if (config.data && typeof config.data === 'object') {
+      // JSON数据，设置为application/json
+      config.headers['Content-Type'] = 'application/json'
+    }
+
     return config
   },
   error => {

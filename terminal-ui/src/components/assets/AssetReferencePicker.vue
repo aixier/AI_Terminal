@@ -334,118 +334,66 @@ const loadMetadata = async () => {
 // 构建索引
 const buildAssetIndex = () => {
   if (!assetMetadata.value) return
-  
+
   assetIndex.value = {
     categories: {},
     files: []
   }
-  
-  // 新的树形结构格式
-  if (assetMetadata.value.tree) {
-    console.log('[AssetReferencePicker] Processing tree structure:', assetMetadata.value.tree)
-    
-    // 递归处理树形结构
-    const processTreeNode = (node, parentPath = '') => {
-      if (node.isDirectory) {
-        // 处理文件夹
-        const folderPath = node.path
-        // 修复：从路径中提取实际的文件夹名称
-        const folderName = node.name.includes('/') 
-          ? node.name.split('/').pop() 
-          : node.name
-        
-        // 计算该文件夹下的文件数量
-        let fileCount = 0
-        if (node.children) {
-          node.children.forEach(child => {
-            if (!child.isDirectory) {
-              fileCount++
-            } else if (child.children) {
-              // 递归计算子文件夹的文件数
-              const countFiles = (n) => {
-                let count = 0
-                if (n.children) {
-                  n.children.forEach(c => {
-                    if (!c.isDirectory) count++
-                    else count += countFiles(c)
-                  })
-                }
-                return count
-              }
-              fileCount += countFiles(child)
-            }
-          })
-        }
-        
-        // 添加文件夹到分类索引
-        assetIndex.value.categories[folderPath] = {
-          key: folderPath,
-          label: folderName,
-          fullLabel: folderPath,
-          path: folderPath,
-          fileCount: fileCount
-        }
-        
-        console.log(`[AssetReferencePicker] Added folder: path="${folderPath}", name="${folderName}", fileCount=${fileCount}`)
-        
-        // 递归处理子节点
-        if (node.children) {
-          node.children.forEach(child => {
-            processTreeNode(child, folderPath)
-          })
-        }
-      } else {
-        // 处理文件
-        const fileName = node.name
-        const filePath = node.path
-        const parentFolder = parentPath || '根目录'
-        
-        assetIndex.value.files.push({
-          name: fileName,
-          fileName: fileName,
-          path: filePath,
-          category: parentPath,
-          categoryLabel: parentFolder.split('/').pop() || parentFolder
-        })
-        
-        console.log(`[AssetReferencePicker] Added file: name="${fileName}", path="${filePath}", parent="${parentFolder}"`)
-      }
-    }
-    
-    // 处理所有根节点
-    assetMetadata.value.tree.forEach(node => {
-      processTreeNode(node)
-    })
-  }
-  
-  // 兼容旧格式：使用 assets 和 labels
-  else if (assetMetadata.value.assets) {
+
+  // 优先使用assets字段（包含完整文件列表）
+  if (assetMetadata.value.assets) {
+    console.log('[AssetReferencePicker] Processing assets structure')
+
     Object.entries(assetMetadata.value.assets).forEach(([categoryKey, files]) => {
-      const categoryLabel = categoryKey === '' 
-        ? '根目录' 
-        : (assetMetadata.value.labels?.[categoryKey] || categoryKey)
-      
-      if (categoryKey !== '') {
-        const fileCount = files ? files.length : 0
-        
+      const categoryLabel = assetMetadata.value.labels?.[categoryKey] || categoryKey
+
+      // 添加分类
+      if (categoryKey) {
         assetIndex.value.categories[categoryKey] = {
           key: categoryKey,
           label: categoryLabel,
           fullLabel: categoryLabel,
-          files: files,
-          fileCount: fileCount
+          path: categoryKey,
+          fileCount: files ? files.length : 0
         }
       }
-      
-      if (files && files.length > 0) {
+
+      // 添加该分类下的文件
+      if (files && Array.isArray(files)) {
         files.forEach(file => {
-          assetIndex.value.files.push({
-            name: file,
-            fileName: file,
-            category: categoryKey,
-            categoryLabel: categoryLabel
-          })
+          // 确保file对象存在且有必要的属性
+          if (file && (file.name || file.fileName)) {
+            assetIndex.value.files.push({
+              name: file.name || file.fileName,
+              fileName: file.name || file.fileName,
+              path: file.path || file.name,
+              category: categoryKey,
+              categoryLabel: categoryLabel,
+              type: file.type,
+              size: file.size
+            })
+            console.log(`[AssetReferencePicker] Added file: name="${file.name || file.fileName}", path="${file.path}", parent="${categoryLabel}"`)
+          }
         })
+      }
+    })
+    return  // 如果成功处理assets，直接返回
+  }
+
+  // 备用：处理tree结构（如果存在但不是assets格式）
+  // 目前tree是摘要信息，不包含文件，所以这里只是占位
+  if (assetMetadata.value.tree && assetMetadata.value.tree.length > 0 && !assetMetadata.value.assets) {
+    console.log('[AssetReferencePicker] Warning: Only tree structure found, no file details available')
+    // tree结构只包含分类摘要，不包含具体文件
+    assetMetadata.value.tree.forEach(node => {
+      if (node.key) {
+        assetIndex.value.categories[node.key] = {
+          key: node.key,
+          label: node.label || node.key,
+          fullLabel: node.label || node.key,
+          path: node.key,
+          fileCount: node.count || 0
+        }
       }
     })
   }

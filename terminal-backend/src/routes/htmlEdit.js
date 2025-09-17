@@ -461,26 +461,23 @@ class HtmlEditService {
 
     return `用户通过涂抹选中了${filePath}如下元素， 
 
-${elementsJson}
+   ${elementsJson}
 
 //上面是用户选中的元素。selected_element是选中的元素，selection_coverage_percentage是涂抹或者选择区域和selected_element交集在selected_element的占比
 
-用户的修改需求如下： 
+用户的修改需求修改selected_element的内容： 
 
-${userRequest}    
+这个元素：${userRequest}    
 
-需要监测目标html文件变化是否完成，以便于变更修改的状态，是进行中还是已完成
+
 
 请执行以下操作：
 1. 读取文件 ${filePath}
 2. 找到用户选中的元素（根据selected_element内容匹配）
-3. 根据用户需求修改这些元素
-4. 保持其他内容完全不变
-5. 保持原有格式和缩进
-6. 直接覆盖原文件
+3. 只能修改selected_element元素，保持其他内容完全不变
 
 重要：
-- 只修改用户选中的元素
+- 只修改用户选中的selected_element元素
 - 确保修改后的HTML结构正确
 - 直接修改文件，不要只输出内容`;
   }

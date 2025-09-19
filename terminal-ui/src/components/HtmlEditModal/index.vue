@@ -11,56 +11,130 @@
     @closed="handleClosed"
   >
     <!-- 工具栏 -->
-    <div class="edit-toolbar">
-      <div class="tool-group">
-        <el-button-group>
-          <el-button
-            v-for="tool in tools"
-            :key="tool.mode"
-            :type="toolActive && currentMode === tool.mode ? 'primary' : 'default'"
-            @click="toggleTool(tool.mode)"
-          >
-            <el-icon><component :is="tool.icon" /></el-icon>
-            {{ tool.label }}
+    <div class="edit-toolbar" :class="{ 'mobile-toolbar': isMobile }">
+      <!-- 桌面端工具栏 -->
+      <template v-if="!isMobile">
+        <div class="tool-group">
+          <el-button-group>
+            <el-button
+              v-for="tool in tools"
+              :key="tool.mode"
+              :type="toolActive && currentMode === tool.mode ? 'primary' : 'default'"
+              @click="toggleTool(tool.mode)"
+            >
+              <el-icon><component :is="tool.icon" /></el-icon>
+              {{ tool.label }}
+            </el-button>
+          </el-button-group>
+
+          <el-divider direction="vertical" />
+
+          <span v-if="toolActive" class="tool-status active">
+            <el-icon><EditPen /></el-icon>
+            工具已激活
+          </span>
+          <span v-else class="tool-status">
+            <el-icon><View /></el-icon>
+            浏览模式
+          </span>
+        </div>
+
+        <div class="tool-group" v-if="toolActive && currentMode === 'paint'">
+          <span class="tool-label">画笔大小:</span>
+          <el-slider
+            v-model="brushSize"
+            :min="5"
+            :max="50"
+            :show-tooltip="true"
+            style="width: 120px"
+            @change="updateBrush"
+          />
+          <span class="brush-size-value">{{ brushSize }}px</span>
+        </div>
+
+        <div class="tool-group">
+          <el-button @click="clearSelections" :icon="Delete">
+            清除选区
           </el-button>
-        </el-button-group>
+          <el-button @click="undoSelection" :icon="Back" :disabled="!canUndo">
+            撤销
+          </el-button>
+          <el-button @click="handleManualReload" :icon="Refresh" type="success">
+            刷新内容
+          </el-button>
+        </div>
+      </template>
 
-        <el-divider direction="vertical" />
+      <!-- 移动端工具栏 - 单行布局 -->
+      <template v-else>
+        <div class="mobile-toolbar-content">
+          <!-- 单行工具栏 -->
+          <div class="mobile-single-row">
+            <!-- 选择工具 -->
+            <div class="tool-group-inline">
+              <button
+                v-for="tool in tools"
+                :key="tool.mode"
+                :class="[
+                  'mobile-tool-btn',
+                  { 'active': toolActive && currentMode === tool.mode }
+                ]"
+                @click="toggleTool(tool.mode)"
+                :title="tool.label"
+              >
+                <el-icon class="tool-icon">
+                  <component :is="getToolIcon(tool.mode)" />
+                </el-icon>
+              </button>
+            </div>
 
-        <span v-if="toolActive" class="tool-status active">
-          <el-icon><EditPen /></el-icon>
-          工具已激活
-        </span>
-        <span v-else class="tool-status">
-          <el-icon><View /></el-icon>
-          浏览模式
-        </span>
-      </div>
+            <!-- 分隔线 -->
+            <div class="mobile-divider"></div>
 
-      <div class="tool-group" v-if="toolActive && currentMode === 'paint'">
-        <span class="tool-label">画笔大小:</span>
-        <el-slider
-          v-model="brushSize"
-          :min="5"
-          :max="50"
-          :show-tooltip="true"
-          style="width: 120px"
-          @change="updateBrush"
-        />
-        <span class="brush-size-value">{{ brushSize }}px</span>
-      </div>
+            <!-- 操作工具 -->
+            <div class="tool-group-inline">
+              <button
+                class="mobile-tool-btn"
+                @click="clearSelections"
+                title="清除选区"
+              >
+                <el-icon class="tool-icon"><Close /></el-icon>
+              </button>
+              <button
+                class="mobile-tool-btn"
+                @click="undoSelection"
+                :disabled="!canUndo"
+                title="撤销"
+              >
+                <el-icon class="tool-icon"><ArrowLeft /></el-icon>
+              </button>
+              <button
+                class="mobile-tool-btn refresh"
+                @click="handleManualReload"
+                title="刷新"
+              >
+                <el-icon class="tool-icon"><Refresh /></el-icon>
+              </button>
+            </div>
+          </div>
+        </div>
 
-      <div class="tool-group">
-        <el-button @click="clearSelections" :icon="Delete">
-          清除选区
-        </el-button>
-        <el-button @click="undoSelection" :icon="Back" :disabled="!canUndo">
-          撤销
-        </el-button>
-        <el-button @click="handleManualReload" :icon="Refresh" type="success">
-          刷新内容
-        </el-button>
-      </div>
+        <!-- 画笔大小控制 -->
+        <div v-if="toolActive && currentMode === 'paint'" class="mobile-brush-control">
+          <span class="brush-label">笔刷大小</span>
+          <div class="brush-slider-container">
+            <input
+              type="range"
+              v-model="brushSize"
+              :min="5"
+              :max="50"
+              @input="updateBrush"
+              class="brush-slider"
+            />
+            <span class="brush-value">{{ brushSize }}px</span>
+          </div>
+        </div>
+      </template>
     </div>
 
     <!-- 主编辑区 -->
@@ -103,8 +177,8 @@
 
       <!-- 右侧面板 -->
       <div class="side-panel" :class="{ 'is-mobile': isMobile }">
-        <!-- 选中元素列表 -->
-        <div class="panel-section">
+        <!-- 选中元素列表 - 移动端隐藏 -->
+        <div v-if="!isMobile" class="panel-section">
           <div class="panel-header">
             <span>选中的元素 ({{ selectedElements.length }})</span>
             <el-button
@@ -157,31 +231,68 @@
         </div>
 
         <!-- 修改输入区 -->
-        <div class="panel-section">
-          <div class="panel-header">
+        <div class="panel-section" :class="{ 'mobile-input-section': isMobile }">
+          <!-- 桌面端显示标题 -->
+          <div v-if="!isMobile" class="panel-header">
             <span>修改内容</span>
           </div>
 
-          <div class="edit-form">
-            <el-input
-              v-model="editRequest"
-              type="textarea"
-              :rows="6"
-              placeholder="请描述您想要的修改，例如：&#10;- 将标题改为...&#10;- 修改文字颜色为红色&#10;- 删除这段内容"
-              :disabled="selectedElements.length === 0"
-            />
+          <div class="edit-form" :class="{ 'mobile-edit-form': isMobile }">
+            <!-- 桌面端布局 -->
+            <template v-if="!isMobile">
+              <el-input
+                v-model="editRequest"
+                type="textarea"
+                :rows="6"
+                placeholder="请描述您想要的修改，例如：&#10;- 将标题改为...&#10;- 修改文字颜色为红色&#10;- 删除这段内容"
+                :disabled="selectedElements.length === 0"
+              />
 
-            <div class="form-tips" v-if="selectedElements.length === 0">
-              <el-icon><Warning /></el-icon>
-              请先选择要修改的元素
-            </div>
+              <div class="form-tips" v-if="selectedElements.length === 0">
+                <el-icon><Warning /></el-icon>
+                请先选择要修改的元素
+              </div>
+            </template>
+
+            <!-- 移动端布局 - 输入框+发送按钮横向布局 -->
+            <template v-else>
+              <div class="mobile-input-container">
+                <el-input
+                  v-model="editRequest"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="请描述修改需求..."
+                  :disabled="selectedElements.length === 0"
+                  class="mobile-textarea"
+                />
+                <el-button
+                  type="primary"
+                  @click="handleApply"
+                  :loading="isApplying"
+                  :disabled="selectedElements.length === 0 || !editRequest.trim()"
+                  class="mobile-send-btn"
+                >
+                  <el-icon><Position /></el-icon>
+                </el-button>
+              </div>
+
+              <!-- 移动端提示信息 -->
+              <div class="mobile-tips" v-if="selectedElements.length === 0">
+                <el-icon><Warning /></el-icon>
+                <span>请先选择要修改的元素</span>
+              </div>
+              <div class="mobile-tips success" v-else-if="selectedElements.length > 0">
+                <el-icon><SuccessFilled /></el-icon>
+                <span>已选中 {{ selectedElements.length }} 个元素</span>
+              </div>
+            </template>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 底部按钮 -->
-    <template #footer>
+    <!-- 底部按钮 - 移动端隐藏 -->
+    <template v-if="!isMobile" #footer>
       <span class="dialog-footer">
         <el-button @click="handleCancel">取消</el-button>
         <el-button type="primary" @click="handleApply" :loading="isApplying">
@@ -195,9 +306,12 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { ElDialog, ElButton, ElButtonGroup, ElIcon, ElSlider, ElInput, ElTag, ElEmpty, ElMessage, ElDivider } from 'element-plus'
-import { Edit, Delete, Back, InfoFilled, Warning, EditPen, View, Refresh } from '@element-plus/icons-vue'
+import {
+  Edit, Delete, Back, InfoFilled, Warning, EditPen, View, Refresh, Position, SuccessFilled,
+  Close, ArrowLeft, Brush, Grid, Select
+} from '@element-plus/icons-vue'
 import SelectionOverlay from '../SelectionOverlay/index.vue'
-import { HTMLSelectionAdapter } from '../SelectionOverlay/useSelectionOverlay'
+// import { HTMLSelectionAdapter } from '../SelectionOverlay/useSelectionOverlay'
 
 const props = defineProps({
   modelValue: {
@@ -259,9 +373,9 @@ const selectionHistory = ref([])
 
 // 工具配置
 const tools = [
-  { mode: 'paint', label: '涂抹', icon: Edit },
-  { mode: 'rectangle', label: '矩形', icon: Edit },
-  { mode: 'lasso', label: '套索', icon: Edit }
+  { mode: 'paint', label: '涂抹', icon: Edit, category: 'select' },
+  { mode: 'rectangle', label: '矩形', icon: Edit, category: 'select' },
+  { mode: 'lasso', label: '套索', icon: Edit, category: 'select' }
 ]
 
 // 覆盖层配置
@@ -291,7 +405,7 @@ const overlayConfig = reactive({
 })
 
 // 适配器
-let htmlAdapter = null
+// let htmlAdapter = null
 
 const isMobile = computed(() => {
   return window.innerWidth < 768
@@ -304,17 +418,37 @@ const dialogWidth = computed(() => {
 
 const currentTip = computed(() => {
   if (!toolActive.value) {
-    return '当前为浏览模式，点击工具按钮激活选择功能'
+    return isMobile.value
+      ? '点击工具按钮开始选择'
+      : '当前为浏览模式，点击工具按钮激活选择功能'
   }
   if (selectedElements.value.length === 0) {
-    return '使用涂抹工具选择要编辑的内容'
+    return isMobile.value
+      ? '用手指涂抹选择要编辑的内容'
+      : '使用涂抹工具选择要编辑的内容'
   }
-  return `已选择 ${selectedElements.value.length} 个元素`
+  return isMobile.value
+    ? `已选中 ${selectedElements.value.length} 个元素，请输入修改需求`
+    : `已选择 ${selectedElements.value.length} 个元素`
 })
 
 const canUndo = computed(() => {
   return selectionHistory.value.length > 0
 })
+
+// 获取工具图标
+const getToolIcon = (mode) => {
+  switch (mode) {
+    case 'paint':
+      return Brush
+    case 'rectangle':
+      return Grid
+    case 'lasso':
+      return Select
+    default:
+      return Edit
+  }
+}
 
 // 方法
 const handleOpened = async () => {
@@ -326,10 +460,10 @@ const handleOpened = async () => {
 
   // 重置状态
   selectedElements.value = []
-  selections.value = []
-  historyStack.value = []
-  isPolling.value = false
-  currentTaskId.value = null
+  // selections.value = []
+  // historyStack.value = []
+  // isPolling.value = false
+  // currentTaskId.value = null
 
   // 决定如何获取内容
   let contentToShow = null
@@ -372,7 +506,7 @@ const handleIframeLoad = async () => {
 
   // 初始化适配器
   if (selectionOverlayRef.value) {
-    htmlAdapter = new HTMLSelectionAdapter(selectionOverlayRef.value)
+    // htmlAdapter = new HTMLSelectionAdapter(selectionOverlayRef.value)
   }
 
   console.log('[HtmlEditModal] Overlay initialized')
@@ -400,20 +534,20 @@ const toggleTool = (mode) => {
   }
 }
 
-const setMode = (mode) => {
-  currentMode.value = mode
-  overlayConfig.mode = mode
-}
+// const setMode = (mode) => {
+//   currentMode.value = mode
+//   overlayConfig.mode = mode
+// }
 
 const updateBrush = () => {
   overlayConfig.brush.size = brushSize.value
 }
 
-const handleSelectionStart = (event) => {
-  console.log('Selection started:', event)
+const handleSelectionStart = () => {
+  console.log('Selection started')
 }
 
-const handleSelectionUpdate = (event) => {
+const handleSelectionUpdate = () => {
   // 实时更新选区信息
 }
 
@@ -771,8 +905,22 @@ const pollTaskStatus = async (taskId) => {
 
   const checkStatus = async () => {
     try {
-      const response = await fetch(`/api/html/status/${taskId}`)
+      console.log(`[HtmlEditModal] Polling status for task: ${taskId}`)
+      const response = await fetch(`/api/html/status/${taskId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log(`[HtmlEditModal] Response status: ${response.status}`)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
       const data = await response.json()
+      console.log(`[HtmlEditModal] Status data:`, data)
 
       // 更新进度（如果需要显示进度条）
       if (data.progress !== undefined) {
@@ -825,14 +973,20 @@ const pollTaskStatus = async (taskId) => {
       return false
 
     } catch (error) {
-      console.error('查询任务状态失败:', error)
+      console.error(`[HtmlEditModal] Status check failed for task ${taskId}:`, error)
+      console.error(`[HtmlEditModal] Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        retryCount
+      })
 
       // 网络错误重试
       if (retryCount < 3) {
         retryCount++
+        console.log(`[HtmlEditModal] Retrying status check (${retryCount}/3) in ${pollInterval * 2}ms`)
         setTimeout(checkStatus, pollInterval * 2)
       } else {
-        ElMessage.error('网络错误，无法查询任务状态')
+        ElMessage.error(`网络错误，无法查询任务状态: ${error.message}`)
         isApplying.value = false
       }
       return true
@@ -979,6 +1133,32 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
   max-height: 700px;
   display: flex;
   flex-direction: column;
+  background: var(--color-bg-default, #161b22);
+  position: relative;
+  overflow: hidden;
+}
+
+.html-edit-modal :deep(.el-dialog) {
+  background: var(--color-bg-default, #161b22);
+  border: 1px solid var(--color-border-default, #30363d);
+}
+
+.html-edit-modal :deep(.el-dialog__header) {
+  background: var(--color-bg-default, #161b22);
+  border-bottom: 1px solid var(--color-border-default, #30363d);
+  color: var(--color-text-primary, #f0f6fc);
+}
+
+.html-edit-modal :deep(.el-dialog__title) {
+  color: var(--color-text-primary, #f0f6fc);
+}
+
+.html-edit-modal :deep(.el-dialog__headerbtn) {
+  color: var(--color-text-secondary, #8b949e);
+}
+
+.html-edit-modal :deep(.el-dialog__headerbtn):hover {
+  color: var(--color-text-primary, #f0f6fc);
 }
 
 .edit-toolbar {
@@ -989,6 +1169,167 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+/* 移动端工具栏样式 - 与深色主题统一 */
+.edit-toolbar.mobile-toolbar {
+  padding: 12px 16px;
+  background: var(--color-bg-default, #161b22);
+  border-bottom: 1px solid var(--color-border-default, #30363d);
+  min-height: auto;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.mobile-toolbar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-single-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tool-group-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mobile-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border-default, #30363d);
+  flex-shrink: 0;
+}
+
+
+.mobile-tool-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-default, #30363d);
+  background: var(--color-bg-subtle, #21262d);
+  color: var(--color-text-secondary, #8b949e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.mobile-tool-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted, #262c36);
+  border-color: var(--color-border-muted, #373e47);
+  color: var(--color-text-primary, #f0f6fc);
+}
+
+.mobile-tool-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.mobile-tool-btn.active {
+  background: var(--color-accent-emphasis, #0969da);
+  border-color: var(--color-accent-emphasis, #0969da);
+  color: white;
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.3);
+}
+
+.mobile-tool-btn.refresh {
+  background: var(--color-success-emphasis, #1a7f37);
+  border-color: var(--color-success-emphasis, #1a7f37);
+  color: white;
+}
+
+.mobile-tool-btn.refresh:hover {
+  background: var(--color-success-muted, #2ea043);
+}
+
+.mobile-tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tool-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/* 画笔控制样式 */
+.mobile-brush-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--color-bg-subtle, #21262d);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-default, #30363d);
+}
+
+.brush-label {
+  font-size: 12px;
+  color: var(--color-text-secondary, #8b949e);
+  min-width: 56px;
+}
+
+.brush-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.brush-slider {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border-default, #30363d);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.brush-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent-emphasis, #0969da);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.brush-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent-emphasis, #0969da);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.brush-value {
+  font-size: 12px;
+  color: var(--color-text-primary, #f0f6fc);
+  font-weight: 500;
+  min-width: 40px;
+  text-align: center;
 }
 
 .tool-group {
@@ -1030,13 +1371,15 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
   flex: 1;
   display: flex;
   overflow: hidden;
+  position: relative;
+  height: 100%;
 }
 
 .content-area {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fafafa;
+  background: var(--color-bg-canvas, #0d1117);
 }
 
 .content-wrapper {
@@ -1096,14 +1439,18 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 
 .side-panel.is-mobile {
   width: 100%;
-  position: absolute;
+  position: sticky;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 40%;
+  height: auto;
+  min-height: 100px;
+  max-height: 150px;
   border-left: none;
-  border-top: 1px solid #e0e0e0;
-  z-index: 100;
+  border-top: 1px solid var(--color-border-default, #30363d);
+  z-index: 10;
+  background: var(--color-bg-default, #161b22);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .panel-section {
@@ -1186,6 +1533,7 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -1195,14 +1543,14 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 
 .form-tips {
   margin-top: 10px;
-  padding: 10px;
+  padding: 8px 10px;
   background: #fff7e6;
   border: 1px solid #ffd591;
   border-radius: 4px;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 12px;
   color: #ad6800;
 }
 
@@ -1211,26 +1559,182 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
   gap: 10px;
 }
 
+/* 移动端输入区样式 - 深色主题 */
+.mobile-input-section {
+  border-bottom: none;
+  background: var(--color-bg-default, #161b22);
+}
+
+.mobile-edit-form {
+  padding: 12px 16px;
+  background: var(--color-bg-default, #161b22);
+}
+
+.mobile-input-container {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.mobile-textarea {
+  flex: 1;
+}
+
+.mobile-textarea :deep(.el-textarea__inner) {
+  background: var(--color-bg-subtle, #21262d);
+  border: 1px solid var(--color-border-default, #30363d);
+  color: var(--color-text-primary, #f0f6fc);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  resize: none;
+}
+
+.mobile-textarea :deep(.el-textarea__inner):focus {
+  border-color: var(--color-accent-emphasis, #0969da);
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.3);
+}
+
+.mobile-textarea :deep(.el-textarea__inner)::placeholder {
+  color: var(--color-text-placeholder, #656d76);
+}
+
+.mobile-send-btn {
+  height: 60px;
+  min-width: 44px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--color-accent-emphasis, #0969da);
+  border: none;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.mobile-send-btn:hover:not(:disabled) {
+  background: var(--color-accent-muted, #0850c5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(9, 105, 218, 0.3);
+}
+
+.mobile-send-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.mobile-send-btn:disabled {
+  background: var(--color-btn-inactive-bg, #21262d);
+  color: var(--color-btn-inactive-text, #656d76);
+  cursor: not-allowed;
+}
+
+.mobile-tips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--color-attention-subtle, #fff8c5);
+  color: var(--color-attention-fg, #9a6700);
+  border: 1px solid var(--color-attention-muted, #d4a72c);
+}
+
+.mobile-tips.success {
+  background: var(--color-success-subtle, #dafbe1);
+  color: var(--color-success-fg, #1a7f37);
+  border-color: var(--color-success-muted, #4ac26b);
+}
+
+.mobile-tips .el-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
 /* 移动端适配 */
 @media (max-width: 768px) {
   .edit-container {
     flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
   }
 
   .content-area {
-    height: 60%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: calc(100vh - 220px); /* 减去头部和底部高度 */
   }
 
-  .side-panel {
-    height: 40%;
+  .content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
   }
 
   .html-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 500px;
     max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    background: white;
   }
 
   .content-iframe {
-    height: 400px;
+    width: 100%;
+    height: 600px;
+    min-height: 500px;
+    border: none;
+    display: block;
+    background: white;
+  }
+
+  .side-panel {
+    height: auto;
+    min-height: 100px;
+    max-height: 150px;
+  }
+
+  /* 移动端对话框优化 */
+  .html-edit-modal :deep(.el-dialog__body) {
+    height: calc(100vh - 50px); /* 减去header高度 */
+    max-height: calc(100vh - 50px);
+    background: var(--color-bg-default, #161b22);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .html-edit-modal :deep(.el-dialog) {
+    margin: 0;
+    max-width: 100vw;
+    border-radius: 0;
+    background: var(--color-bg-default, #161b22);
+  }
+
+  .html-edit-modal :deep(.el-dialog__header) {
+    background: var(--color-bg-default, #161b22);
+    border-bottom: 1px solid var(--color-border-default, #30363d);
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 11;
+  }
+
+  /* 隐藏提示栏节省空间 */
+  .tips-bar {
+    display: none;
   }
 }
 </style>

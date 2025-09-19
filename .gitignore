@@ -151,3 +151,6 @@ podcast_cards*.html
 record.mp3
 *沐尔*.mp3
 *赵守镇*.mp3
+
+# Ignore nocommit directory
+nocommit/

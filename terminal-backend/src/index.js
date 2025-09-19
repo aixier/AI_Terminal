@@ -289,8 +289,15 @@ app.use('/api/sts', stsRoutes)
 console.log('     ✓ /api/sts route registered')
 app.use('/api/oss-direct', ossDirectRoutes)
 console.log('     ✓ /api/oss-direct route registered')
-app.use('/api/html', htmlEditRoutes)
-console.log('     ✓ /api/html route registered')
+// 确保HTML编辑路由正确注册
+try {
+  app.use('/api/html', htmlEditRoutes)
+  console.log('     ✓ /api/html route registered successfully')
+  console.log('     ✓ Available routes: GET /api/html/status/:taskId, POST /api/html/edit')
+} catch (error) {
+  console.error('     ✗ Failed to register /api/html routes:', error)
+  throw error
+}
 
 app.use('/api', cardExtractorRoutes)
 console.log('     ✓ /api/extract-cards routes registered')

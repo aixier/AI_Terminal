@@ -246,11 +246,20 @@
                 :rows="6"
                 placeholder="请描述您想要的修改，例如：&#10;- 将标题改为...&#10;- 修改文字颜色为红色&#10;- 删除这段内容"
                 :disabled="selectedElements.length === 0"
+                class="pc-edit-textarea"
               />
 
               <div class="form-tips" v-if="selectedElements.length === 0">
                 <el-icon><Warning /></el-icon>
                 请先选择要修改的元素
+              </div>
+
+              <!-- PC端按钮移到输入框下方 -->
+              <div class="pc-action-buttons">
+                <el-button @click="handleCancel">取消</el-button>
+                <el-button type="primary" @click="handleApply" :loading="isApplying">
+                  应用修改
+                </el-button>
               </div>
             </template>
 
@@ -291,15 +300,7 @@
       </div>
     </div>
 
-    <!-- 底部按钮 - 移动端隐藏 -->
-    <template v-if="!isMobile" #footer>
-      <span class="dialog-footer">
-        <el-button @click="handleCancel">取消</el-button>
-        <el-button type="primary" @click="handleApply" :loading="isApplying">
-          应用修改
-        </el-button>
-      </span>
-    </template>
+    <!-- 底部按钮区域移除，按钮已移至输入框下方 -->
   </el-dialog>
 </template>
 
@@ -1163,8 +1164,8 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 
 .edit-toolbar {
   padding: 15px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--color-bg-default, #161b22);
+  border-bottom: 1px solid var(--color-border-default, #30363d);
   display: flex;
   align-items: center;
   gap: 20px;
@@ -1340,7 +1341,7 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 
 .tool-label {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-secondary, #8b949e);
 }
 
 .tool-status {
@@ -1350,13 +1351,13 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
   padding: 5px 12px;
   border-radius: 4px;
   font-size: 14px;
-  color: #666;
-  background: #f5f5f5;
+  color: var(--color-text-secondary, #8b949e);
+  background: var(--color-bg-subtle, #1c2128);
 }
 
 .tool-status.active {
-  color: #007AFF;
-  background: #e6f7ff;
+  color: var(--color-accent-emphasis, #1f6feb);
+  background: var(--color-bg-overlay, #272c34);
   font-weight: 500;
 }
 
@@ -1364,7 +1365,7 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
   min-width: 40px;
   text-align: center;
   font-weight: bold;
-  color: #333;
+  color: var(--color-text-primary, #f0f6fc);
 }
 
 .edit-container {
@@ -1419,10 +1420,11 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 
 .tips-bar {
   padding: 10px 15px;
-  background: #e6f7ff;
-  border-top: 1px solid #91d5ff;
+  background: var(--color-bg-info, #0c2d6b);
+  border-top: 1px solid var(--color-border-info, #1f6feb);
   display: flex;
   align-items: center;
+  color: var(--color-text-info, #79c0ff);
   gap: 8px;
   font-size: 14px;
   color: #0050b3;
@@ -1430,8 +1432,8 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 
 .side-panel {
   width: 350px;
-  background: white;
-  border-left: 1px solid #e0e0e0;
+  background: var(--color-bg-default, #161b22);
+  border-left: 1px solid var(--color-border-default, #30363d);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1456,14 +1458,15 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 .panel-section {
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--color-border-default, #30363d);
 }
 
 .panel-header {
   padding: 12px 15px;
-  background: #fafafa;
+  background: var(--color-bg-subtle, #1c2128);
   font-weight: 500;
   display: flex;
+  color: var(--color-text-primary, #f0f6fc);
   justify-content: space-between;
   align-items: center;
   color: #333;
@@ -1484,9 +1487,10 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 .selected-item {
   padding: 10px;
   margin-bottom: 8px;
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
+  background: var(--color-bg-subtle, #1c2128);
+  border: 1px solid var(--color-border-default, #30363d);
   border-radius: 6px;
+  color: var(--color-text-primary, #f0f6fc);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -1517,8 +1521,8 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
 .coverage-badge {
   margin-left: auto;
   padding: 2px 8px;
-  background: #52c41a;
-  color: white;
+  background: var(--color-success-emphasis, #2ea043);
+  color: #fff;
   border-radius: 10px;
   font-size: 12px;
   font-weight: bold;
@@ -1552,6 +1556,58 @@ watch(() => props.htmlContent, (newContent, oldContent) => {
   gap: 8px;
   font-size: 12px;
   color: #ad6800;
+}
+
+/* PC端操作按钮样式 - 深色主题 */
+.pc-action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  justify-content: flex-end;
+}
+
+.pc-edit-textarea :deep(.el-textarea__inner) {
+  background: var(--color-bg-subtle, #1c2128);
+  color: var(--color-text-primary, #f0f6fc);
+  border: 1px solid var(--color-border-default, #30363d);
+}
+
+.pc-edit-textarea :deep(.el-textarea__inner):focus {
+  border-color: var(--color-accent-emphasis, #1f6feb);
+}
+
+/* Element Plus 组件深色主题覆盖 */
+.html-edit-modal :deep(.el-button) {
+  background: var(--color-bg-subtle, #1c2128);
+  color: var(--color-text-primary, #f0f6fc);
+  border-color: var(--color-border-default, #30363d);
+}
+
+.html-edit-modal :deep(.el-button:hover) {
+  background: var(--color-bg-overlay, #272c34);
+  border-color: var(--color-border-subtle, #484f58);
+  color: var(--color-text-primary, #f0f6fc);
+}
+
+.html-edit-modal :deep(.el-button--primary) {
+  background: var(--color-accent-emphasis, #1f6feb);
+  border-color: var(--color-accent-emphasis, #1f6feb);
+  color: #fff;
+}
+
+.html-edit-modal :deep(.el-button--primary:hover) {
+  background: var(--color-accent-hover, #388bfd);
+  border-color: var(--color-accent-hover, #388bfd);
+}
+
+.html-edit-modal :deep(.el-tag) {
+  background: var(--color-bg-overlay, #272c34);
+  color: var(--color-text-primary, #f0f6fc);
+  border-color: var(--color-border-default, #30363d);
+}
+
+.html-edit-modal :deep(.el-divider--vertical) {
+  background: var(--color-border-default, #30363d);
 }
 
 .dialog-footer {

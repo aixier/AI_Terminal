@@ -13,6 +13,20 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+// 健康检查路由
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'html-edit',
+    timestamp: new Date().toISOString(),
+    routes: {
+      'GET /status/:taskId': 'available',
+      'POST /edit': 'available',
+      'POST /status/batch': 'available'
+    }
+  });
+});
+
 // 文件监控管理器
 class FileChangeMonitor {
   constructor() {
@@ -85,13 +99,13 @@ class FileChangeMonitor {
       status: 'watching'
     });
 
-    // 5分钟超时
+    // 1小时超时
     setTimeout(() => {
       if (this.watchers.has(taskId)) {
         clearInterval(checkInterval);
         this.timeout(taskId);
       }
-    }, 300000); // 5分钟 = 300秒
+    }, 3600000); // 1小时 = 3600秒
   }
 
   // 处理文件变化
@@ -441,10 +455,10 @@ class FileChangeMonitor {
     this.watchers.delete(taskId);
     this.taskMetadata.delete(taskId);
 
-    // 5分钟后清理状态缓存
+    // 1小时后清理状态缓存
     setTimeout(() => {
       this.taskStatuses.delete(taskId);
-    }, 300000);
+    }, 3600000);
   }
 }
 
@@ -708,8 +722,11 @@ router.post('/edit', async (req, res) => {
 // 查询任务状态
 router.get('/status/:taskId', (req, res) => {
   try {
+    console.log(`[HTML_EDIT_STATUS] GET /api/html/status/${req.params.taskId}`);
     const { taskId } = req.params;
     const status = editService.getTaskStatus(taskId);
+
+    console.log(`[HTML_EDIT_STATUS] Status for ${taskId}:`, status);
 
     res.json({
       taskId,
@@ -723,6 +740,14 @@ router.get('/status/:taskId', (req, res) => {
       error: error.message
     });
   }
+});
+
+// 添加OPTIONS支持用于CORS预检
+router.options('/status/:taskId', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(200);
 });
 
 // 批量查询任务状态

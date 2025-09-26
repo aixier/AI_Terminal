@@ -108,18 +108,63 @@ class PromptProcessor {
       totalUserPathReplacements += userCardBracketMatches.length
     }
     
+    // 3. 处理相对CDN路径 (../CDN/xxx)
+    // 这些路径通常出现在模板文档中，需要替换为实际CDN路径
+    const relativeCdnMatches = processed.match(/\.\.\/CDN\/[^"'\s<>)]+/g) || []
+    if (relativeCdnMatches.length > 0) {
+      console.log(`[PromptProcessor] Found ${relativeCdnMatches.length} relative CDN paths to replace`)
+
+      for (const match of relativeCdnMatches) {
+        const cdnFileName = match.replace('../CDN/', '').replace(/[)]+$/, '') // 移除末尾的括号
+        let cdnPath = null
+
+        // 优先使用任务特定CDN
+        if (taskId) {
+          const taskCdnPath = path.join(userTemplateDir, 'tasks', taskId, 'CDN', cdnFileName)
+          if (await this.pathExists(taskCdnPath)) {
+            cdnPath = `CDN/${cdnFileName}` // 使用相对路径，让AI知道这是CDN目录
+            console.log(`[PromptProcessor] Replaced ${match} -> ${cdnPath} (task CDN)`)
+          }
+        }
+
+        // 如果任务CDN不存在，使用公共CDN
+        if (!cdnPath) {
+          // 尝试Docker路径
+          let publicCdnPath = path.join('/app/data/public_template/pod2post/CDN', cdnFileName)
+          let publicCdnExists = await this.pathExists(publicCdnPath)
+
+          // 如果Docker路径不存在，尝试本地开发路径
+          if (!publicCdnExists) {
+            publicCdnPath = path.join(process.cwd(), 'data/public_template/pod2post/CDN', cdnFileName)
+            publicCdnExists = await this.pathExists(publicCdnPath)
+          }
+
+          if (publicCdnExists) {
+            cdnPath = `CDN/${cdnFileName}` // 使用相对路径格式
+            console.log(`[PromptProcessor] Replaced ${match} -> ${cdnPath} (public CDN)`)
+          } else {
+            console.warn(`[PromptProcessor] CDN file not found: ${cdnFileName}`)
+            // 保持原样，让AI知道需要这个文件
+            cdnPath = `CDN/${cdnFileName}`
+          }
+        }
+
+        processed = processed.replace(new RegExp(match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), cdnPath)
+      }
+    }
+
     // 如果有未找到的路径，抛出错误
     if (notFoundPaths.length > 0) {
       const error = new Error(`以下路径未找到: ${notFoundPaths.join(', ')}`)
       error.notFoundPaths = notFoundPaths
       throw error
     }
-    
+
     // 打印处理后的prompt
     console.log('[PromptProcessor] ==========================================')
     console.log('[PromptProcessor] Processed prompt:')
     console.log('[PromptProcessor]  ', processed.substring(0, 300) + (processed.length > 300 ? '...' : ''))
-    console.log('[PromptProcessor] Total replacements:', bracketMatches.length + totalUserPathReplacements)
+    console.log('[PromptProcessor] Total replacements:', bracketMatches.length + totalUserPathReplacements + relativeCdnMatches.length)
     console.log('[PromptProcessor] ==========================================')
     
     return processed

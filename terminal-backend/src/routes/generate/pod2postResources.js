@@ -118,15 +118,28 @@ router.post('/',
       })
     }
     
-    const uploadedFiles = req.files.map(file => ({
-      originalName: file.originalname,
-      filename: file.filename,
-      size: file.size,
-      type: path.extname(file.originalname).toLowerCase(),
-      mimetype: file.mimetype,
-      path: file.path,
-      url: `/data/public_template/pod2post/resources/${file.filename}`
-    }))
+    // 从query参数获取taskId
+    const taskId = req.query.taskId
+
+    const uploadedFiles = req.files.map(file => {
+      // 根据是否有taskId构建正确的URL
+      let url
+      if (taskId && taskId.startsWith('pod2post_')) {
+        url = `/data/users/${req.user.username}/workspace/templates/pod2post/tasks/${taskId}/resources/${file.filename}`
+      } else {
+        url = `/data/users/${req.user.username}/workspace/templates/pod2post/resources/${file.filename}`
+      }
+
+      return {
+        originalName: file.originalname,
+        filename: file.filename,
+        size: file.size,
+        type: path.extname(file.originalname).toLowerCase(),
+        mimetype: file.mimetype,
+        path: file.path,
+        url
+      }
+    })
     
     console.log(`[Pod2PostResources] Successfully uploaded files:`, uploadedFiles.map(f => f.filename))
     
@@ -139,9 +152,6 @@ router.post('/',
         console.warn(`[Pod2PostResources] Failed to clear Base64 files:`, error.message)
       }
     }
-    
-    // 从query参数获取taskId
-    const taskId = req.query.taskId
     
     res.json({
       code: 200,
@@ -194,13 +204,21 @@ router.get('/',
       const ext = path.extname(file).toLowerCase()
       
       if (stats.isFile() && allowedExtensions.includes(ext)) {
+        // 根据是否有taskId构建正确的URL
+        let url
+        if (taskId && taskId.startsWith('pod2post_')) {
+          url = `/data/users/${req.user.username}/workspace/templates/pod2post/tasks/${taskId}/resources/${file}`
+        } else {
+          url = `/data/users/${req.user.username}/workspace/templates/pod2post/resources/${file}`
+        }
+
         documentFiles.push({
           filename: file,
           size: stats.size,
           type: ext,
           created: stats.birthtime,
           modified: stats.mtime,
-          url: `/data/public_template/pod2post/resources/${file}`
+          url
         })
       }
     }
@@ -359,7 +377,9 @@ router.post('/batch-delete',
   }
   
   try {
-    const resourcesPath = getResourcesPath()
+    // 从query参数获取taskId
+    const taskId = req.query.taskId
+    const resourcesPath = await getUserResourcesPath(req.user.username, taskId)
     const results = []
     
     for (const filename of filenames) {

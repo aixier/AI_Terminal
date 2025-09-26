@@ -99,13 +99,26 @@ router.post('/',
       })
     }
     
-    const uploadedFiles = req.files.map(file => ({
-      originalName: Buffer.from(file.originalname, 'latin1').toString('utf8'),
-      filename: file.filename,
-      size: file.size,
-      path: file.path,
-      url: `/data/users/${req.user.username}/workspace/templates/pod2post/photos/${file.filename}`
-    }))
+    // 从query参数获取taskId
+    const taskId = req.query.taskId
+
+    const uploadedFiles = req.files.map(file => {
+      // 根据是否有taskId构建正确的URL
+      let url
+      if (taskId && taskId.startsWith('pod2post_')) {
+        url = `/data/users/${req.user.username}/workspace/templates/pod2post/tasks/${taskId}/photos/${file.filename}`
+      } else {
+        url = `/data/users/${req.user.username}/workspace/templates/pod2post/photos/${file.filename}`
+      }
+
+      return {
+        originalName: Buffer.from(file.originalname, 'latin1').toString('utf8'),
+        filename: file.filename,
+        size: file.size,
+        path: file.path,
+        url
+      }
+    })
     
     console.log(`[Pod2PostPic] Successfully uploaded files:`, uploadedFiles.map(f => f.filename))
     
@@ -149,29 +162,39 @@ router.get('/',
   async (req, res) => {
     
   try {
-    const picPath = await getUserPicPath(req.user.username)
-    
+    // 从query参数获取taskId
+    const taskId = req.query.taskId
+    const picPath = await getUserPicPath(req.user.username, taskId)
+
     // 确保目录存在
     try {
       await fs.access(picPath)
     } catch {
       await fs.mkdir(picPath, { recursive: true })
     }
-    
+
     const files = await fs.readdir(picPath)
     const imageFiles = []
-    
+
     for (const file of files) {
       const filePath = path.join(picPath, file)
       const stats = await fs.stat(filePath)
-      
+
       if (stats.isFile() && /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(file)) {
+        // 根据是否有taskId构建正确的URL
+        let url
+        if (taskId && taskId.startsWith('pod2post_')) {
+          url = `/data/users/${req.user.username}/workspace/templates/pod2post/tasks/${taskId}/photos/${file}`
+        } else {
+          url = `/data/users/${req.user.username}/workspace/templates/pod2post/photos/${file}`
+        }
+
         imageFiles.push({
           filename: file,
           size: stats.size,
           created: stats.birthtime,
           modified: stats.mtime,
-          url: `/data/users/${req.user.username}/workspace/templates/pod2post/photos/${file}`
+          url
         })
       }
     }
@@ -208,9 +231,11 @@ router.delete('/:filename',
   async (req, res) => {
     
   const { filename } = req.params
-  
+
   try {
-    const picPath = await getUserPicPath(req.user.username)
+    // 从query参数获取taskId
+    const taskId = req.query.taskId
+    const picPath = await getUserPicPath(req.user.username, taskId)
     const filePath = path.join(picPath, filename)
     
     // 检查文件是否存在

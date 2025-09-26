@@ -43,6 +43,22 @@ class PromptProcessor {
         // 不检查目录是否存在，因为目录会在资源上传时自动创建
         if (taskId && ['CDN', 'photos', 'resources'].includes(fileName)) {
           const taskPath = path.join(userTemplateDir, 'tasks', taskId, fileName)
+
+          // CDN特殊处理：如果任务特定的CDN目录不存在，使用公共模板CDN
+          if (fileName === 'CDN') {
+            const taskCdnExists = await this.pathExists(taskPath)
+            if (!taskCdnExists) {
+              // Docker环境的公共CDN路径
+              const publicCdnPath = '/app/data/public_template/pod2post/CDN'
+              const publicCdnExists = await this.pathExists(publicCdnPath)
+              if (publicCdnExists) {
+                processed = processed.replace(match, publicCdnPath)
+                console.log(`[PromptProcessor] Replaced [${fileName}] -> ${publicCdnPath} (public CDN fallback)`)
+                continue
+              }
+            }
+          }
+
           processed = processed.replace(match, taskPath)
           console.log(`[PromptProcessor] Replaced [${fileName}] -> ${taskPath} (task-specific)`)
           continue

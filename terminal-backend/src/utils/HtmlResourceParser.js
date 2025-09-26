@@ -242,11 +242,29 @@ class HtmlResourceParser {
               }
             }
           }
-          
+
           // 相对于模板路径
           const resolved = path.resolve(templateBasePath, src)
           if (await this.fileExists(resolved)) {
             return resolved
+          }
+        }
+        return null
+      },
+
+      // 4.5 CDN特殊处理：公共模板CDN回退
+      async () => {
+        // 如果路径包含CDN，尝试公共模板CDN
+        if (src.includes('CDN/') || src.startsWith('CDN/')) {
+          const cdnFileName = src.includes('CDN/') ? src.split('CDN/')[1] : src.replace('CDN/', '')
+          if (cdnFileName) {
+            // Docker环境的公共CDN路径
+            const publicCdnPath = path.join('/app/data/public_template/pod2post/CDN', cdnFileName)
+            console.log(`[HtmlResourceParser] Trying public CDN fallback: ${publicCdnPath}`)
+            if (await this.fileExists(publicCdnPath)) {
+              console.log(`[HtmlResourceParser] Found in public CDN: ${publicCdnPath}`)
+              return publicCdnPath
+            }
           }
         }
         return null

@@ -342,7 +342,16 @@ async function processInBackground(
     // 传入任务特定路径，以便正确解析任务目录下的CDN资源
     const taskSpecificPath = taskId ? path.join(templatePath, 'tasks', taskId) : templatePath
     console.log('[Pod2PostAsync Background] Task-specific path for resource resolution:', taskSpecificPath)
-    console.log('[Pod2PostAsync Background] Looking for CDN resources in:', path.join(taskSpecificPath, 'CDN'))
+
+    // CDN特殊处理：检查任务CDN目录，如果不存在则记录将使用公共CDN
+    const taskCdnPath = path.join(taskSpecificPath, 'CDN')
+    const publicCdnPath = '/app/data/public_template/pod2post/CDN'
+    try {
+      await fs.access(taskCdnPath)
+      console.log('[Pod2PostAsync Background] Looking for CDN resources in:', taskCdnPath)
+    } catch {
+      console.log('[Pod2PostAsync Background] Task CDN not found, will fallback to public CDN:', publicCdnPath)
+    }
 
     const base64Result = await htmlProcessor.convertHtmlToBase64(
       htmlFilePath,

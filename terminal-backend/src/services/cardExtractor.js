@@ -29,6 +29,9 @@ class CardExtractorService {
                 { pattern: /^content-card$/, weight: 1.0 },
                 { pattern: /^cover-card$/, weight: 1.0 },
                 { pattern: /^card-container$/, weight: 0.9 },
+                // 添加Pod2Post常用的卡片样式
+                { pattern: /\bstyle[1-5]\b/i, weight: 0.8 },
+                { pattern: /\bstyle\d+-\w+/i, weight: 0.8 },
                 { pattern: /\bcard\b/i, weight: 0.7 },
                 { pattern: /\bpanel\b/i, weight: 0.5 },
                 { pattern: /\btile\b/i, weight: 0.5 },
@@ -83,11 +86,11 @@ class CardExtractorService {
             browser = await this.launchBrowser();
             const page = await browser.newPage();
 
-            // 设置视口
+            // 设置视口（降低像素比以减少资源消耗）
             await page.setViewport({
                 width: 1920,
                 height: 1080,
-                deviceScaleFactor: 2
+                deviceScaleFactor: 1  // 降低像素比
             });
 
             // 注入字体样式以确保中文显示
@@ -101,8 +104,17 @@ class CardExtractorService {
             });
 
             // 设置更长的默认导航超时（适应慢速OSS访问）
-            page.setDefaultNavigationTimeout(180000); // 3分钟
-            page.setDefaultTimeout(180000); // 3分钟
+            page.setDefaultNavigationTimeout(300000); // 5分钟
+            page.setDefaultTimeout(300000); // 5分钟
+
+            // 设置页面的额外HTTP头，可能有助于OSS资源加载
+            await page.setExtraHTTPHeaders({
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+            });
+
+            // 增加页面的资源加载设置
+            await page.setBypassCSP(true);  // 绕过CSP限制
 
             // 监听页面的console输出
             page.on('console', msg => console.log('[Browser Console]:', msg.text()));
@@ -140,7 +152,7 @@ class CardExtractorService {
                             }
 
                             let checkCount = 0;
-                            const maxChecks = 60; // 最多检查60次（60秒）
+                            const maxChecks = 120; // 增加到120次（120秒），给予充足的图片加载时间
 
                             const checkStatus = () => {
                                 checkCount++;
@@ -149,9 +161,10 @@ class CardExtractorService {
 
                                 console.log(`Check ${checkCount}: ${currentLoaded} loaded, ${currentErrors} failed, ${totalImages - currentLoaded - currentErrors} pending`);
 
-                                // 如果所有图片都处理完，或已加载50%，或检查次数达到上限
+                                // 如果所有图片都处理完，或已加载80%（提高要求确保完整加载），或检查次数达到上限
+                                // 对于OSS图片，等待大部分加载完成
                                 if (currentLoaded + currentErrors >= totalImages ||
-                                    currentLoaded >= totalImages * 0.5 ||
+                                    currentLoaded >= totalImages * 0.8 ||
                                     checkCount >= maxChecks) {
                                     resolve({ total: totalImages, loaded: currentLoaded, errors: currentErrors });
                                 } else {
@@ -163,12 +176,12 @@ class CardExtractorService {
                             checkStatus();
                         });
                     }),
-                    // 强制超时保护（考虑到OSS图片加载慢，延长到60秒）
+                    // 强制超时保护（增加到120秒，确保图片有足够时间加载）
                     new Promise((resolve) => {
                         setTimeout(() => {
-                            console.log('[CardExtractor] Force timeout after 60 seconds');
+                            console.log('[CardExtractor] Force timeout after 120 seconds - proceeding with card detection');
                             resolve({ total: -1, loaded: -1, errors: -1, timeout: true });
-                        }, 60000);
+                        }, 120000);
                     })
                 ]);
 
@@ -178,9 +191,9 @@ class CardExtractorService {
                 console.log('[CardExtractor] Page load error:', err.message);
             }
 
-            // 等待一下确保渲染完成
+            // 等待更长时间确保渲染完成（特别是对于包含大量图片的页面）
             console.log('[CardExtractor] Waiting for rendering...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 5000));  // 增加到5秒
             console.log('[CardExtractor] Rendering wait complete, proceeding to card detection...');
 
             // 识别卡片
@@ -194,9 +207,9 @@ class CardExtractorService {
                         console.log('[Card Detection] Starting simplified evaluation...');
                         const candidates = [];
 
-                        // 只查找最具体的选择器
-                        const cardElements = document.querySelectorAll('.card-container, .tutorial-card, .content-card');
-                        console.log(`[Card Detection] Found ${cardElements.length} card elements`);
+                        // 只查找最具体的选择器（包含Pod2Post的卡片类型）
+                        const cardElements = document.querySelectorAll('.card-container, .tutorial-card, .content-card, .cover-card');
+                        console.log(`[Card Detection] Found ${cardElements.length} card elements with primary selectors`);
 
                         // 如果没找到，尝试更通用的选择器
                         let elements = Array.from(cardElements);
@@ -221,9 +234,12 @@ class CardExtractorService {
 
                             const rect = element.getBoundingClientRect();
 
-                            // 跳过太小的元素
+                            // 跳过太小的元素（但保留合理的卡片尺寸）
                             if (rect.width < 100 || rect.height < 100) {
-                                return;
+                                // 特殊处理：如果类名明确包含card，降低尺寸要求
+                                if (!/card|cover|content/i.test(element.className)) {
+                                    return;
+                                }
                             }
 
                             // 计算得分
@@ -252,7 +268,7 @@ class CardExtractorService {
                             if (element.querySelector('img')) score += 5;
                             if (element.querySelector('h1, h2, h3, h4, h5, h6')) score += 5;
 
-                            if (score >= 30) {  // 阈值
+                            if (score >= 25) {  // 降低阈值，提高检测灵敏度
                                 candidates.push({
                                     score: score,
                                     className: className,
@@ -299,12 +315,12 @@ class CardExtractorService {
                     console.log(`[Card Detection] Found ${filtered.length} cards after filtering`);
                     return filtered;
                 }, this.cardPatterns),
-                    // 30秒超时保护（给卡片检测更多时间）
+                    // 120秒超时保护（给予充足时间处理复杂页面和大量图片）
                     new Promise((resolve) => {
                         setTimeout(() => {
-                            console.log('[CardExtractor] Card detection timeout after 30 seconds');
+                            console.log('[CardExtractor] Card detection timeout after 120 seconds');
                             resolve([]);
-                        }, 30000);
+                        }, 120000);
                     })
                 ]);
             } catch (err) {
@@ -367,7 +383,7 @@ class CardExtractorService {
     async launchBrowser() {
         const options = {
             headless: 'new',  // 使用新的 headless 模式
-            protocolTimeout: 180000,  // 增加协议超时到3分钟
+            protocolTimeout: 300000,  // 增加协议超时到5分钟
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -398,7 +414,19 @@ class CardExtractorService {
                 '--memory-pressure-off',
                 '--max_old_space_size=4096',
                 '--max-http-connections=100',
-                '--max-http-connections-per-host=20'
+                '--max-http-connections-per-host=32',  // 增加每个主机的连接数
+                // 增加资源限制和网络优化，解决ERR_INSUFFICIENT_RESOURCES
+                '--max-old-space-size=4096',  // 增加V8堆内存到4GB
+                '--js-flags=--max-old-space-size=4096',
+                '--disable-features=IsolateOrigins',  // 允许跨域
+                '--disable-site-isolation-trials',
+                '--disable-web-security',  // 允许跨域资源
+                '--allow-running-insecure-content',
+                '--ignore-certificate-errors',
+                '--ignore-certificate-errors-spki-list',
+                '--enable-features=NetworkService,NetworkServiceInProcess',
+                '--aggressive-cache-discard',
+                '--disable-blink-features=AutomationControlled'  // 避免被检测为自动化
             ],
             // 添加更多配置以确保在容器中正常运行
             ignoreDefaultArgs: ['--enable-automation'],

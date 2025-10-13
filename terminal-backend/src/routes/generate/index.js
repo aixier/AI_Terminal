@@ -14,6 +14,7 @@ import pod2postContentRoutes from './pod2postContent.js'
 import pod2postCdnRoutes from './pod2postCdn.js'
 import pod2postPicRoutes from './pod2postPic.js'
 import pod2postResourcesRoutes from './pod2postResources.js'
+import pod2postWriteTextRoutes from './pod2postWriteText.js'
 import templateRoutes from './templates.js'
 import statusRoutes from './status.js'
 import claudeRoutes from './claude.js'
@@ -47,6 +48,7 @@ router.use('/pod2post/content', pod2postContentRoutes) // GET /api/generate/pod2
 router.use('/pod2post/cdn', pod2postCdnRoutes) // POST /api/generate/pod2post/cdn (CDN图片上传)
 router.use('/pod2post/pic', pod2postPicRoutes) // POST /api/generate/pod2post/pic (照片上传)
 router.use('/pod2post/resources', pod2postResourcesRoutes) // POST /api/generate/pod2post/resources (参考文档上传)
+router.use('/pod2post/write-text', pod2postWriteTextRoutes) // POST /api/generate/pod2post/write-text (文本文件写入)
 
 // 模板和状态路由
 router.use('/templates', templateRoutes)   // GET /api/generate/templates
@@ -75,6 +77,7 @@ router.get('/health', (req, res) => {
       pod2postCdn: 'active',
       pod2postPic: 'active',
       pod2postResources: 'active',
+      pod2postWriteText: 'active',
       templates: 'active',
       status: 'active',
       claude: 'active'

@@ -1,0 +1,94 @@
+{
+  "sessionInfo": {
+    "sessionId": "1760250693069_default_58b3f93ly",
+    "userId": "default",
+    "createdAt": "2025-10-12T06:31:33.070Z",
+    "requestId": "pod2post_1760250415894_lp1t37j",
+    "apiEndpoint": "/api/generate/pod2post/async"
+  },
+  "request": {
+    "topic": "pod2post_template",
+    "templateName": "pod2post-template",
+    "templateType": "folder",
+    "userParameters": {},
+    "promptTemplate": null
+  },
+  "processing": {
+    "generatedParameters": {},
+    "assembledPrompt": null,
+    "claudePath": null,
+    "outputPath": null
+  },
+  "execution": {
+    "steps": [],
+    "totalDuration": 3071813,
+    "finalStatus": "error"
+  },
+  "output": {
+    "generatedFiles": [
+      {
+        "fileName": "pod2post_1760250415894_lp1t37j_meta.json",
+        "filePath": "/app/data/users/default/workspace/card/pod2post_1760250415894_lp1t37j/pod2post_1760250415894_lp1t37j_meta.json",
+        "fileType": "meta",
+        "fileSize": 1118,
+        "checksum": "d92df90847534010b09a9b8e552c315e79fb5b2e1f486b2acf71d7ae6127925a",
+        "createdAt": "2025-10-12T06:31:33.170Z"
+      }
+    ],
+    "externalUrls": {}
+  },
+  "environment": {
+    "nodeVersion": "v22.20.0",
+    "platform": "linux",
+    "isDocker": true,
+    "dataPath": "/app/data",
+    "apiVersion": "1.0.0"
+  },
+  "logs": [
+    {
+      "timestamp": "2025-10-12T06:31:33.170Z",
+      "level": "info",
+      "message": "File added: pod2post_1760250415894_lp1t37j_meta.json",
+      "context": {
+        "fileName": "pod2post_1760250415894_lp1t37j_meta.json",
+        "filePath": "/app/data/users/default/workspace/card/pod2post_1760250415894_lp1t37j/pod2post_1760250415894_lp1t37j_meta.json",
+        "fileType": "meta",
+        "fileSize": 1118,
+        "checksum": "d92df90847534010b09a9b8e552c315e79fb5b2e1f486b2acf71d7ae6127925a",
+        "createdAt": "2025-10-12T06:31:33.170Z"
+      }
+    },
+    {
+      "timestamp": "2025-10-12T06:31:33.170Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1760250415894_lp1t37j/pod2post_1760250415894_lp1t37j_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-10-12T06:31:33.321Z",
+      "level": "info",
+      "message": "Metadata saved/updated: /app/data/users/default/workspace/card/pod2post_1760250415894_lp1t37j/pod2post_1760250415894_lp1t37j_meta.json",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-10-12T07:22:44.883Z",
+      "level": "info",
+      "message": "Session completed with status: error",
+      "context": {}
+    },
+    {
+      "timestamp": "2025-10-12T07:22:44.883Z",
+      "level": "error",
+      "message": "生成超时：未检测到HTML文件",
+      "context": {}
+    }
+  ],
+  "custom": {
+    "templatePath": "/app/data/users/default/workspace/templates/pod2post",
+    "phases": {
+      "promptProcessing": "completed",
+      "firstGeneration": "processing",
+      "base64Embedding": "pending"
+    }
+  }
+}

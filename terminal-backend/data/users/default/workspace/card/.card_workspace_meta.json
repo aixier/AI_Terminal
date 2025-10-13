@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "createdAt": "2025-09-01T15:04:11.135Z",
-  "lastUpdated": "2025-09-02T09:59:39.718Z",
+  "lastUpdated": "2025-10-12T07:22:45.018Z",
   "folders": {
     "custom_template_1756739043795": {
       "topic": "custom_template_1756739043795",
@@ -674,13 +674,28 @@
       "templateName": "cardplanet-Sandra-json",
       "generatingAt": "2025-09-02T09:51:19.474Z",
       "completedAt": "2025-09-02T09:59:39.718Z"
+    },
+    "pod2post_1760250415894_lp1t37j": {
+      "topic": "pod2post_1760250415894_lp1t37j",
+      "sanitizedTopic": "pod2post_1760250415894_lp1t37j",
+      "status": "failed",
+      "createdAt": "1970-01-01T00:00:00.000Z",
+      "lastModified": "2025-10-12T07:22:45.018Z",
+      "files": [],
+      "taskId": "pod2post_1760250415894_lp1t37j",
+      "templateName": "pod2post-template",
+      "processingAt": "2025-10-12T06:31:33.191Z",
+      "phase": "first_generation",
+      "generatingAt": "2025-10-12T06:31:33.248Z",
+      "error": "生成超时：未检测到HTML文件",
+      "failedAt": "2025-10-12T07:22:45.018Z"
     }
   },
   "statistics": {
-    "totalFolders": 53,
+    "totalFolders": 54,
     "completed": 1,
     "generating": 34,
-    "failed": 16,
+    "failed": 17,
     "initialized": 0,
     "processing": 0,
     "uploading": 2

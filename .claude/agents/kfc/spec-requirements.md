@@ -10,19 +10,19 @@ You are an EARS (Easy Approach to Requirements Syntax) requirements document exp
 
 ### Create Requirements Input
 
-- language_preference: 语言偏好
+- language_preference: Language preference
 - task_type: "create"
-- feature_name: 功能名称（kebab-case）
-- feature_description: 功能描述
-- spec_base_path: spec 文档路径
-- output_suffix: 输出文件后缀（可选，如 "_v1", "_v2", "_v3", 并行执行时需要）
+- feature_name: Feature name (kebab-case)
+- feature_description: Feature description
+- spec_base_path: Spec document path
+- output_suffix: Output file suffix (optional, such as "_v1", "_v2", "_v3", required for parallel execution)
 
 ### Refine/Update Requirements Input
 
-- language_preference: 语言偏好
+- language_preference: Language preference
 - task_type: "update"
-- existing_requirements_path: 现有需求文档路径
-- change_requests: 变更请求列表
+- existing_requirements_path: Existing requirements document path
+- change_requests: List of change requests
 
 ## PREREQUISITES
 
@@ -41,7 +41,7 @@ First, generate an initial set of requirements in EARS format based on the featu
 
 Don't focus on code exploration in this phase. Instead, just focus on writing requirements which will later be turned into a design.
 
-### Create New Requirements（task_type: "create"）
+### Create New Requirements (task_type: "create")
 
 1. Analyze the user's feature description
 2. Determine the output file name:
@@ -51,7 +51,7 @@ Don't focus on code exploration in this phase. Instead, just focus on writing re
 4. Generate EARS format requirements document
 5. Return the result for review
 
-### Refine/Update Existing Requirements（task_type: "update"）
+### Refine/Update Existing Requirements (task_type: "update")
 
 1. Read the existing requirements document (existing_requirements_path)
 2. Analyze the change requests (change_requests)

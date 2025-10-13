@@ -87,13 +87,18 @@ class ResourceUploader {
           }
         })
         
-        console.log(`[ResourceUploader] 上传成功: ${file.relativePath} -> ${result.url || ossPath}`)
-        
+        // 构建完整的OSS URL
+        const ossUrl = result.url || `https://${this.oss.config.bucket}.${this.oss.config.region}.aliyuncs.com/${ossPath}`
+
+        console.log(`[ResourceUploader] 上传成功: ${file.relativePath} -> ${ossUrl}`)
+
         return {
           localPath: file.relativePath,
           fullPath: file.fullPath,
-          ossUrl: result.url || `https://oss.aliyuncs.com/${ossPath}`,
-          ossPath: ossPath
+          ossUrl: ossUrl,
+          ossPath: ossPath,
+          etag: result.etag,
+          size: stats.size
         }
       } catch (error) {
         console.error(`[ResourceUploader] 上传失败 (尝试 ${attempt}/${maxRetries}): ${error.message}`)
@@ -142,18 +147,23 @@ class ResourceUploader {
         })
         
         console.log(`[ResourceUploader] OSS上传成功: ${file.relativePath}`)
-        
+
+        // 构建完整的OSS URL
+        const ossUrl = uploadResult.url || `https://${this.oss.config.bucket}.${this.oss.config.region}.aliyuncs.com/${ossPath}`
+
         return {
           localPath: file.relativePath,
           absolutePath: file.fullPath,
-          ossUrl: uploadResult.url || `https://oss.aliyuncs.com/${ossPath}`,
+          ossUrl: ossUrl,
           ossPath: ossPath,
           size: stats.size,
           type: this.getMimeType(file.extension),
           md5: uploadResult.etag || null,
           uploadTime: new Date().toISOString(),
           fileName: file.fileName,
-          extension: file.extension
+          extension: file.extension,
+          bucket: this.oss.config.bucket,
+          region: this.oss.config.region
         }
       } catch (error) {
         console.error(`[ResourceUploader] OSS上传失败 (尝试 ${attempt}/${maxRetries}): ${error.message}`)

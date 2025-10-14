@@ -10,30 +10,196 @@ import axios from 'axios'
 import { SessionMetadata } from './sessionMetadata.js'
 import { downloadAndSaveHtml } from './htmlProcessor.js'
 import { repairJsonContent } from '../../../utils/jsonRepair.js'
+import { jsonrepair } from 'jsonrepair'
 
 /**
  * JSON字符串清理函数 - 修复常见的JSON格式问题
+ * 修复策略：先处理特殊字符，再处理JSON结构
  */
 function sanitizeJsonString(jsonString) {
-  // JSON清理：重点处理字符串值中破坏JSON结构的中文引号
+  console.log('[FileGenerator] Starting JSON sanitization')
   let result = jsonString
-  
-  // 在JSON字符串值中，将中文双引号替换为转义的英文双引号
-  // 匹配JSON字符串值: "key": "value with "quoted" content"
-  result = result.replace(/"([^"]+)"/g, (match, content) => {
-    // 如果内容包含中文引号，替换为转义的英文引号
-    const cleanContent = content
-      .replace(/"/g, '\\"')  // 中文左双引号
-      .replace(/"/g, '\\"')  // 中文右双引号
-      .replace(/'/g, "\\'")  // 中文左单引号
-      .replace(/'/g, "\\'")  // 中文右单引号
-    return `"${cleanContent}"`
+  let stats = {
+    leftQuotes: 0,
+    rightQuotes: 0,
+    leftSingleQuotes: 0,
+    rightSingleQuotes: 0
+  }
+
+  // 1. 首先处理所有中文引号 - 在JSON解析前先转义
+  // 这样可以避免正则表达式匹配错误
+  result = result.replace(/"/g, (match) => {
+    stats.leftQuotes++
+    return '\\"'  // 转义左双引号
   })
-  
-  // 移除控制字符
+
+  result = result.replace(/"/g, (match) => {
+    stats.rightQuotes++
+    return '\\"'  // 转义右双引号
+  })
+
+  result = result.replace(/'/g, (match) => {
+    stats.leftSingleQuotes++
+    return "\\'"  // 转义左单引号
+  })
+
+  result = result.replace(/'/g, (match) => {
+    stats.rightSingleQuotes++
+    return "\\'"  // 转义右单引号
+  })
+
+  console.log('[FileGenerator] Quote replacement stats:', stats)
+
+  // 2. 处理其他常见的JSON问题
+  // 修复尾随逗号（在对象和数组中）
+  result = result.replace(/,\s*}/g, '}')  // 对象中的尾随逗号
+  result = result.replace(/,\s*]/g, ']')  // 数组中的尾随逗号
+
+  // 修复缺少逗号的情况（简单启发式）
+  result = result.replace(/"\s*\n\s*"/g, '",\n"')  // 两个字符串值之间缺少逗号
+
+  // 3. 移除控制字符
   result = result.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '')
-  
+
+  // 4. 修复未转义的换行符（在字符串中）
+  result = result.replace(/(?<!\\)\n/g, '\\n')  // 将未转义的换行符转义
+  result = result.replace(/(?<!\\)\r/g, '\\r')  // 将未转义的回车符转义
+  result = result.replace(/(?<!\\)\t/g, '\\t')  // 将未转义的制表符转义
+
+  console.log('[FileGenerator] JSON sanitization completed')
   return result
+}
+
+/**
+ * 检测JSON是否包含中文引号
+ * @param {string} jsonString - JSON字符串
+ * @returns {boolean} 是否包含中文引号
+ */
+function hasChineseQuotes(jsonString) {
+  return /[""'']/.test(jsonString)
+}
+
+/**
+ * 修复Pod2Post模板JSON中的中文引号
+ * 只替换字符串值中的引号，保护JSON结构
+ * @param {string} jsonString - JSON字符串
+ * @returns {string} 修复后的JSON
+ */
+function fixPod2PostChineseQuotes(jsonString) {
+  let result = jsonString
+  let stats = { replaced: 0 }
+
+  // 1. 修复对象中的字符串值: "key": "value"
+  result = result.replace(/:\s*"([^"]*)"/g, (match, content) => {
+    let fixedContent = content
+      .replace(/"/g, '\\"')
+      .replace(/"/g, '\\"')
+      .replace(/'/g, "\\'")
+      .replace(/'/g, "\\'")
+
+    if (fixedContent !== content) {
+      stats.replaced++
+    }
+
+    return `: "${fixedContent}"`
+  })
+
+  // 2. 修复数组中的字符串值
+  result = result.replace(/"([^"]*)"(?=\s*[,|\]])/g, (match, content) => {
+    let fixedContent = content
+      .replace(/"/g, '\\"')
+      .replace(/"/g, '\\"')
+      .replace(/'/g, "\\'")
+      .replace(/'/g, "\\'")
+
+    if (fixedContent !== content) {
+      stats.replaced++
+    }
+
+    return `"${fixedContent}"`
+  })
+
+  console.log(`[Pod2Post] Fixed ${stats.replaced} Chinese quote occurrences`)
+  return result
+}
+
+/**
+ * 智能JSON修复策略（使用jsonrepair库）
+ * 结合jsonrepair库和自定义逻辑
+ * @param {string} jsonString - 原始JSON字符串
+ * @param {string} templateName - 模板名称
+ * @returns {Object} 修复结果
+ */
+function smartJsonRepair(jsonString, templateName) {
+  console.log('[FileGenerator] Starting smart JSON repair')
+
+  // 检测是否包含中文引号
+  const containsChineseQuotes = hasChineseQuotes(jsonString)
+  console.log('[FileGenerator] Contains Chinese quotes:', containsChineseQuotes)
+
+  // 1. 首先尝试使用 jsonrepair 库（能处理大部分问题）
+  try {
+    console.log('[FileGenerator] Trying jsonrepair library first')
+    const repaired = jsonrepair(jsonString)
+    const parsed = JSON.parse(repaired)
+    console.log('[FileGenerator] ✅ jsonrepair success')
+    return {
+      success: true,
+      data: parsed,
+      cleanedContent: repaired,
+      method: 'jsonrepair-library'
+    }
+  } catch (error) {
+    console.log('[FileGenerator] jsonrepair failed:', error.message)
+
+    // 2. 如果包含中文引号且jsonrepair失败，使用自定义修复
+    if (containsChineseQuotes) {
+      // Pod2Post模板使用专门的修复函数
+      if (templateName === 'pod2post-template.md' || templateName === 'pod2post') {
+        console.log('[FileGenerator] Using Pod2Post specific quote fixer')
+        const sanitized = fixPod2PostChineseQuotes(jsonString)
+
+        try {
+          const parsed = JSON.parse(sanitized)
+          console.log('[FileGenerator] Pod2Post JSON successfully parsed')
+          return {
+            success: true,
+            data: parsed,
+            cleanedContent: sanitized,
+            method: 'pod2post-quote-fixer'
+          }
+        } catch (pod2postError) {
+          console.log('[FileGenerator] Pod2Post quote fixer failed:', pod2postError.message)
+        }
+      }
+
+      // 通用sanitize函数
+      console.log('[FileGenerator] Using general sanitizer for Chinese quotes')
+      const sanitized = sanitizeJsonString(jsonString)
+
+      try {
+        const parsed = JSON.parse(sanitized)
+        console.log('[FileGenerator] JSON successfully parsed with general sanitizer')
+        return {
+          success: true,
+          data: parsed,
+          cleanedContent: sanitized,
+          method: 'general-sanitizer'
+        }
+      } catch (sanitizeError) {
+        console.log('[FileGenerator] General sanitizer failed:', sanitizeError.message)
+      }
+    }
+
+    // 3. 所有方法都失败，需要Claude API
+    console.log('[FileGenerator] All methods failed, will use Claude API')
+    return {
+      success: false,
+      error: error.message,
+      needsClaude: true,
+      method: 'all-methods-failed'
+    }
+  }
 }
 
 /**
@@ -332,36 +498,69 @@ export async function generateFourFiles(params) {
     let jsonContent
     try {
       const jsonData = await fs.readFile(jsonFilePath, 'utf-8')
-      
-      // 先尝试使用内置的清理函数
-      const sanitizedJsonData = sanitizeJsonString(jsonData)
-      
-      try {
-        // 尝试直接解析
-        jsonContent = JSON.parse(sanitizedJsonData)
-        console.log('[FileGenerator] JSON parsed successfully with built-in sanitizer')
-      } catch (parseError) {
-        // 解析失败，使用jsonRepair模块修复
-        console.log('[FileGenerator] JSON parse failed, attempting repair:', parseError.message)
-        
+      console.log('[FileGenerator] Original JSON length:', jsonData.length)
+
+      // 使用智能修复策略
+      const smartRepairResult = smartJsonRepair(jsonData, templateName)
+
+      if (smartRepairResult.success) {
+        // 智能修复成功
+        jsonContent = smartRepairResult.data
+        console.log('[FileGenerator] JSON successfully repaired with method:', smartRepairResult.method)
+
+        // 如果进行了修复，保存回文件
+        if (smartRepairResult.method !== 'original-sanitizer' && smartRepairResult.cleanedContent) {
+          await fs.writeFile(jsonFilePath, smartRepairResult.cleanedContent, 'utf-8')
+          console.log('[FileGenerator] Repaired JSON saved back to file')
+        }
+      } else {
+        // 智能修复失败，需要使用Claude API
+        console.log('[FileGenerator] Smart repair failed, using Claude API repair')
+
+        // 强制触发Claude修复，特别是对于包含中文引号的情况
         const repairResult = await repairJsonContent(jsonData, {
-          templateName: 'daily-knowledge-card-template',
-          description: 'Knowledge card JSON',
-          requiredFields: ['theme', 'copy', 'cards'],
-          timeout: 60000,
-          retries: 1
+          templateName: templateName,  // 使用传入的模板名
+          description: `${templateName} generated JSON`,
+          requiredFields: getRequiredFieldsForTemplate(templateName),  // 根据模板类型设置必需字段
+          timeout: 90000,  // 增加超时时间
+          retries: 2,      // 增加重试次数
+          forceRepair: true,  // 强制修复
+          includeContext: true  // 包含上下文信息
         })
-        
+
         if (repairResult.success) {
-          console.log('[FileGenerator] JSON repaired successfully')
+          console.log('[FileGenerator] Claude API repair successful')
           jsonContent = repairResult.data
-          
+
           // 保存修复后的JSON到文件
           const repairedJsonString = JSON.stringify(jsonContent, null, 2)
           await fs.writeFile(jsonFilePath, repairedJsonString, 'utf-8')
-          console.log('[FileGenerator] Repaired JSON saved back to file')
+          console.log('[FileGenerator] Claude-repaired JSON saved back to file')
+
+          // 记录修复统计
+          console.log('[FileGenerator] Claude repair stats:', {
+            originalLength: jsonData.length,
+            fixedLength: repairedJsonString.length,
+            attempts: repairResult.attempts,
+            executionTime: repairResult.executionTime
+          })
         } else {
-          throw new Error(`JSON repair failed: ${repairResult.error}`)
+          // Claude修复也失败了
+          console.error('[FileGenerator] Claude API repair failed:', repairResult.error)
+
+          // 尝试最后的修复策略：基础清理
+          console.log('[FileGenerator] Attempting basic cleanup as last resort')
+          const basicCleaned = jsonData
+            .replace(/[""]/g, '"')  // 替换中文引号为英文引号
+            .replace(/[\u0000-\u001F]/g, '')  // 移除控制字符
+
+          try {
+            jsonContent = JSON.parse(basicCleaned)
+            console.log('[FileGenerator] Basic cleanup successful')
+            await fs.writeFile(jsonFilePath, JSON.stringify(jsonContent, null, 2), 'utf-8')
+          } catch (basicError) {
+            throw new Error(`All repair methods failed. Original error: ${parseError.message}. Claude error: ${repairResult.error}. Basic cleanup error: ${basicError.message}`)
+          }
         }
       }
       
@@ -449,6 +648,31 @@ export async function generateFourFiles(params) {
  */
 export function isDailyKnowledgeTemplate(templateName) {
   return templateName === 'daily-knowledge-card-template.md'
+}
+
+/**
+ * 获取模板的必需字段
+ * @param {string} templateName - 模板名称
+ * @returns {Array} 必需字段列表
+ */
+export function getRequiredFieldsForTemplate(templateName) {
+  // Pod2Post模板的必需字段
+  if (templateName === 'pod2post-template.md' || templateName === 'pod2post') {
+    return [
+      'social_content.post_title',
+      'social_content.post_content',
+      'social_content.highlights',
+      'social_content.hashtags'
+    ]
+  }
+
+  // Daily知识卡片模板的必需字段
+  if (isDailyKnowledgeTemplate(templateName)) {
+    return ['theme', 'copy', 'cards']
+  }
+
+  // 其他模板不强制要求特定字段
+  return []
 }
 
 /**

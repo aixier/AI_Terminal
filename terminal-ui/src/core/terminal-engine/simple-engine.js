@@ -170,94 +170,153 @@ export class SimpleTerminalEngine {
   connectWebSocket() {
     // 根据环境决定WebSocket URL
     const isDev = import.meta.env.DEV
-    const wsUrl = isDev 
+    const wsUrl = isDev
       ? `ws://${window.location.hostname}:6009/ws/terminal`  // 开发环境连接后端6009
       : `ws://${window.location.hostname}:${window.location.port}/ws/terminal`  // 生产环境
-    
+
     console.log('[Terminal] Connecting to WebSocket:', wsUrl)
     this.websocket = new WebSocket(wsUrl)
-    
+
+    // 初始化超时处理
+    let initTimeout = null
+
     this.websocket.onopen = () => {
       console.log('[Terminal] WebSocket connected')
       this.write('Connected to terminal server\r\n')
-      // 创建新的终端会话
-      setTimeout(() => {
-        console.log('[Terminal] Sending init message...')
-        this.createTerminalSession()
-      }, 100)
+
+      // 立即发送init消息，不延迟
+      console.log('[Terminal] Sending init message immediately...')
+      this.createTerminalSession()
+
+      // 设置初始化超时 - 10秒内必须收到 'ready' 消息
+      initTimeout = setTimeout(() => {
+        if (!this.terminalId) {
+          console.error('[Terminal] ⏱️ Terminal initialization timeout (10s)')
+          this.write('\r\n❌ [错误] 终端初始化超时 (10秒)\r\n')
+          this.write('[提示] 请检查后端服务是否运行在6009端口\r\n')
+          this.write('[提示] 请在终端运行 npm start 启动后端服务\r\n')
+          this.websocket.close()
+        }
+      }, 10000)
     }
-    
+
     this.websocket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data)
+        console.log('[Terminal] Received message type:', message.type, 'data:', message)
+
+        // 当接收到 'ready' 消息时，清除初始化超时
+        if (message.type === 'ready' && !this.terminalId) {
+          if (initTimeout) {
+            clearTimeout(initTimeout)
+            console.log('[Terminal] ✅ Cleared init timeout - terminal ready')
+          }
+        }
+
         this.handleMessage(message)
       } catch (error) {
-        console.error('[Terminal] Message parse error:', error)
+        console.error('[Terminal] Message parse error:', error, 'event.data:', event.data)
       }
     }
-    
+
     this.websocket.onclose = () => {
       console.log('[Terminal] WebSocket disconnected')
+      if (initTimeout) {
+        clearTimeout(initTimeout)
+      }
       this.write('\r\n[连接已断开]\r\n')
     }
-    
+
     this.websocket.onerror = (error) => {
       console.error('[Terminal] WebSocket error:', error)
-      this.write('\r\n[连接错误: 请检查终端服务是否运行在6009端口]\r\n')
-      this.write('[提示: 请在终端运行 npm start 启动后端服务]\r\n')
+      if (initTimeout) {
+        clearTimeout(initTimeout)
+      }
+      this.write('\r\n❌ [连接错误: 请检查终端服务]\r\n')
+      this.write('[提示] 确保后端服务运行在6009端口\r\n')
+      this.write('[提示] 请在终端运行: npm start\r\n')
     }
   }
   
-  createTerminalSession() {
+  createTerminalSession(retryCount = 0) {
     if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-      console.error('[Terminal] WebSocket not open, state:', this.websocket?.readyState)
+      const state = this.websocket?.readyState
+      const stateNames = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']
+      console.error(`[Terminal] WebSocket not open, state: ${state} (${stateNames[state] || 'UNKNOWN'})`)
+
+      // 如果WebSocket还在连接中，等待再重试
+      if (state === WebSocket.CONNECTING && retryCount < 5) {
+        console.log(`[Terminal] Retrying init message (${retryCount + 1}/5)...`)
+        setTimeout(() => this.createTerminalSession(retryCount + 1), 200)
+        return
+      }
+
       return
     }
-    
+
     const message = {
       type: 'init',
       cols: 80,
       rows: 24
     }
-    
+
     console.log('[Terminal] Sending init message:', message)
-    this.websocket.send(JSON.stringify(message))
-    console.log('[Terminal] Init message sent')
+    try {
+      this.websocket.send(JSON.stringify(message))
+      console.log('[Terminal] Init message sent successfully')
+    } catch (error) {
+      console.error('[Terminal] Failed to send init message:', error)
+    }
   }
   
   handleMessage(message) {
-    console.log('[Terminal] Received message:', message.type, message)
+    console.log('[Terminal] Received message type:', message.type, 'full message:', message)
     switch (message.type) {
       case 'connected':
-        console.log(`[Terminal] Connected: ${message.clientId}`)
+        console.log(`[Terminal] ✅ Connected: ${message.clientId}`)
+        this.write(`Waiting for terminal initialization...\r\n`)
         break
-        
+
       case 'ready':
         this.terminalId = message.terminalId
-        console.log(`[Terminal] Terminal ready: ${this.terminalId}`)
-        this.write('Terminal ready. Type commands to interact.\r\n$ ')
+        console.log(`[Terminal] ✅ Terminal ready: ${this.terminalId} (PID: ${message.pid})`)
+        this.write('\r\n' + '='.repeat(50) + '\r\n')
+        this.write('🎉 Terminal ready. Type commands to interact.\r\n')
+        this.write('='.repeat(50) + '\r\n')
+        this.write('$ ')
+
         // 聚焦输入
         setTimeout(() => {
-          this.contentEl.focus()
-          console.log('[Terminal] Focused after ready')
+          if (this.contentEl) {
+            this.contentEl.focus()
+            console.log('[Terminal] ✅ Input focused after ready')
+          }
         }, 100)
         break
-        
+
       case 'output':
         this.write(message.data)
         break
-        
+
       case 'exit':
         this.write(`\r\n[进程已退出，退出码: ${message.exitCode}]\r\n`)
         break
-        
+
       case 'error':
-        console.error('[Terminal] Server error:', message.error)
-        this.write(`\r\n[错误: ${message.error}]\r\n`)
+        console.error('[Terminal] ❌ Server error:', message.error, message.details)
+        this.write(`\r\n❌ [错误] ${message.error}\r\n`)
+
+        // 如果是初始化错误，显示更详细的信息
+        if (message.details && message.details.code) {
+          this.write(`[错误代码] ${message.details.code}\r\n`)
+          if (message.details.syscall) {
+            this.write(`[系统调用] ${message.details.syscall}\r\n`)
+          }
+        }
         break
-        
+
       default:
-        console.log('[Terminal] Unknown message:', message)
+        console.warn('[Terminal] ⚠️ Unknown message type:', message.type)
     }
   }
   

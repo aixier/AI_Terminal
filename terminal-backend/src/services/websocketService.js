@@ -160,13 +160,37 @@ class NativeWebSocketService {
 
       // 生成终端ID
       const terminalId = `term_${Date.now()}_${Math.random().toString(36).substring(7)}`
-      
+
+      // 确定工作目录 - 改进的逻辑
+      let cwd = options.cwd
+      if (!cwd) {
+        // 1. 优先使用当前用户的HOME
+        cwd = process.env.HOME || process.env.USERPROFILE
+
+        // 2. 如果HOME不存在，使用当前工作目录
+        if (!cwd) {
+          cwd = process.cwd()
+        }
+      }
+
+      // 确定shell - 改进的逻辑
+      let shell = options.shell
+      if (!shell) {
+        if (process.platform === 'win32') {
+          shell = process.env.COMSPEC || 'cmd.exe'
+        } else {
+          shell = process.env.SHELL || '/bin/bash'
+        }
+      }
+
+      console.log(`[WebSocketService] Using cwd: ${cwd}, shell: ${shell}`)
+
       // 创建终端 - 使用terminalManager的create方法
       const terminal = terminalManager.create(terminalId, {
         cols: options.cols || 80,
         rows: options.rows || 24,
-        cwd: options.cwd || process.env.HOME,
-        shell: options.shell
+        cwd: cwd,
+        shell: shell
       })
 
       // 建立映射关系
@@ -191,23 +215,35 @@ class NativeWebSocketService {
           exitCode: exitCode,
           signal: signal
         })
-        ws.close()
+        ws.close(1000, 'Terminal exited')
       })
 
       // 发送成功消息
       this.sendMessage(ws, {
         type: 'ready',
         terminalId: terminalId,
-        pid: terminal.pid
+        pid: terminal.pid,
+        message: `Terminal ready. PID: ${terminal.pid}`
       })
 
-      console.log(`[WebSocketService] ✅ Terminal ${terminalId} created for ${clientId}`)
+      console.log(`[WebSocketService] ✅ Terminal ${terminalId} created for ${clientId}, PID: ${terminal.pid}`)
 
     } catch (error) {
       logger.error(`[WebSocketService] Failed to create terminal:`, error)
+      console.error(`[WebSocketService] ❌ Error details:`, {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        syscall: error.syscall
+      })
+
       this.sendMessage(ws, {
         type: 'error',
-        error: `Failed to create terminal: ${error.message}`
+        error: `Failed to create terminal: ${error.message}`,
+        details: {
+          code: error.code,
+          syscall: error.syscall
+        }
       })
     }
   }

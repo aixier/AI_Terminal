@@ -322,6 +322,17 @@ defineExpose({
   overflow: hidden;
 }
 
+/* 隐藏 xterm.js 的输入 textarea（保留在DOM中以支持输入） */
+:deep(.xterm-helper-textarea) {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Terminal 样式优化 */
 #terminal-content {
   padding: 8px;

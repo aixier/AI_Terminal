@@ -11,8 +11,12 @@
 
 import { WebSocketServer } from 'ws'
 import { Client } from 'ssh2'
+import jwt from 'jsonwebtoken'
 import terminalManager from './terminalManager.js'
 import logger from '../utils/logger.js'
+import config from '../config/config.js'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 class NativeWebSocketService {
   constructor() {
@@ -53,20 +57,33 @@ class NativeWebSocketService {
   handleConnection(ws, req) {
     const clientId = this.generateClientId()
     const clientIp = req.socket.remoteAddress
-    
+
+    // 验证用户身份
+    const user = this.extractUserFromRequest(req)
+    if (!user) {
+      console.log('[WebSocketService] ❌ Unauthorized connection attempt from', clientIp)
+      this.sendMessage(ws, {
+        type: 'error',
+        error: 'Unauthorized: No valid authentication provided'
+      })
+      ws.close(1008, 'Unauthorized')
+      return
+    }
+
     console.log('========================================')
     console.log('[WebSocketService] ✅ NEW WEBSOCKET CONNECTION!')
     console.log('[WebSocketService] Client ID:', clientId)
     console.log('[WebSocketService] Client IP:', clientIp)
-    console.log('[WebSocketService] Headers:', req.headers)
+    console.log('[WebSocketService] User:', user.username)
     console.log('[WebSocketService] Time:', new Date().toISOString())
     console.log('========================================')
 
-    // 记录连接信息
+    // 记录连接信息（包含用户信息）
     this.connections.set(ws, {
       id: clientId,
       ip: clientIp,
       connectedAt: new Date(),
+      user: user,
       headers: req.headers
     })
 
@@ -77,8 +94,37 @@ class NativeWebSocketService {
     this.sendMessage(ws, {
       type: 'connected',
       clientId: clientId,
+      username: user.username,
       message: 'WebSocket connection established'
     })
+  }
+
+  /**
+   * 从请求中提取并验证用户信息
+   */
+  extractUserFromRequest(req) {
+    try {
+      // 从 URL query parameters 中获取 token
+      const url = new URL(req.url, `http://${req.headers.host}`)
+      const token = url.searchParams.get('token') ||
+                    req.headers.authorization?.replace('Bearer ', '')
+
+      if (!token) {
+        logger.warn('[WebSocketService] No token provided')
+        return null
+      }
+
+      // 验证 JWT token
+      const decoded = jwt.verify(token, config.jwt.secret)
+      return {
+        id: decoded.id,
+        username: decoded.username,
+        role: decoded.role || 'user'
+      }
+    } catch (error) {
+      logger.warn('[WebSocketService] Token verification failed:', error.message)
+      return null
+    }
   }
 
   /**
@@ -124,24 +170,26 @@ class NativeWebSocketService {
    */
   async handleMessage(ws, clientId, message) {
     const { type, ...payload } = message
+    const connInfo = this.connections.get(ws)
+    const user = connInfo?.user
 
     switch (type) {
       case 'init':
-        await this.handleInit(ws, clientId, payload)
+        await this.handleInit(ws, clientId, payload, user)
         break
-      
+
       case 'input':
         this.handleInput(ws, clientId, payload.data)
         break
-      
+
       case 'resize':
         this.handleResize(ws, clientId, payload)
         break
-      
+
       case 'ping':
         this.sendMessage(ws, { type: 'pong', timestamp: Date.now() })
         break
-      
+
       default:
         logger.warn(`[WebSocketService] Unknown message type: ${type}`)
         this.sendMessage(ws, {
@@ -154,19 +202,24 @@ class NativeWebSocketService {
   /**
    * 初始化终端
    */
-  async handleInit(ws, clientId, options) {
+  async handleInit(ws, clientId, options, user) {
     try {
       console.log(`[WebSocketService] Initializing terminal for ${clientId}`)
+      console.log('[WebSocketService] User:', user?.username)
       console.log('[WebSocketService] Options:', options)
+
+      if (!user) {
+        throw new Error('User information missing')
+      }
 
       const mode = options.mode || 'local'
 
       if (mode === 'ssh' && options.ssh) {
         // SSH模式
-        await this.handleSSHInit(ws, clientId, options)
+        await this.handleSSHInit(ws, clientId, options, user)
       } else {
         // 本地PTY模式（默认）
-        await this.handleLocalInit(ws, clientId, options)
+        await this.handleLocalInit(ws, clientId, options, user)
       }
     } catch (error) {
       logger.error(`[WebSocketService] Failed to initialize terminal:`, error)
@@ -184,20 +237,33 @@ class NativeWebSocketService {
   /**
    * 初始化本地PTY终端
    */
-  async handleLocalInit(ws, clientId, options) {
+  async handleLocalInit(ws, clientId, options, user) {
     try {
       console.log(`[WebSocketService] Initializing LOCAL PTY for ${clientId}`)
 
       // 生成终端ID
       const terminalId = `term_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
-      // 确定工作目录
+      // 用户隔离：强制设置工作目录为用户的私有目录
+      const userDir = path.join('/app/data/users', user.username)
+
+      // 确保用户目录存在
+      await this.ensureUserDirectory(userDir)
+
+      // 如果客户端指定了cwd，必须在用户目录内
       let cwd = options.cwd
-      if (!cwd) {
-        cwd = process.env.HOME || process.env.USERPROFILE
-        if (!cwd) {
-          cwd = process.cwd()
+      if (cwd) {
+        // 解析绝对路径
+        const resolvedCwd = path.resolve(cwd)
+        // 检查是否在用户目录内
+        if (!resolvedCwd.startsWith(userDir)) {
+          console.warn(`[WebSocketService] ⚠️  Attempt to access outside user directory: ${resolvedCwd}`)
+          cwd = userDir // 强制使用用户目录
+        } else {
+          cwd = resolvedCwd
         }
+      } else {
+        cwd = userDir
       }
 
       // 确定shell
@@ -210,6 +276,8 @@ class NativeWebSocketService {
         }
       }
 
+      console.log(`[WebSocketService] User: ${user.username}`)
+      console.log(`[WebSocketService] User Dir: ${userDir}`)
       console.log(`[WebSocketService] Using cwd: ${cwd}, shell: ${shell}`)
 
       // 创建本地PTY终端
@@ -264,10 +332,11 @@ class NativeWebSocketService {
   /**
    * 初始化SSH终端
    */
-  async handleSSHInit(ws, clientId, options) {
+  async handleSSHInit(ws, clientId, options, user) {
     return new Promise((resolve, reject) => {
       try {
         console.log(`[WebSocketService] Initializing SSH for ${clientId}`)
+        console.log(`[WebSocketService] SSH User: ${user.username}`)
 
         const sshConfig = options.ssh || {}
         const terminalId = `ssh_${Date.now()}_${Math.random().toString(36).substring(7)}`
@@ -497,6 +566,20 @@ class NativeWebSocketService {
         }
       })
     }, 30000) // 每30秒ping一次
+  }
+
+  /**
+   * 确保用户目录存在
+   * @param {string} userDir - 用户目录路径
+   */
+  async ensureUserDirectory(userDir) {
+    try {
+      await fs.mkdir(userDir, { recursive: true })
+      console.log(`[WebSocketService] User directory ensured: ${userDir}`)
+    } catch (error) {
+      logger.error(`[WebSocketService] Failed to create user directory ${userDir}:`, error)
+      throw new Error(`Cannot create user directory: ${error.message}`)
+    }
   }
 
   /**

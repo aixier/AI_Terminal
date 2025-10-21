@@ -128,11 +128,23 @@ export class XTermEngine {
 
   connectWebSocket() {
     const isDev = import.meta.env.DEV
-    const wsUrl = isDev
+
+    // 从 localStorage 获取认证 token
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.error('[XTerm] ❌ No authentication token found. Please login first.')
+      this.terminal.write('\r\n❌ [错误] 未找到认证令牌，请先登录\r\n')
+      return
+    }
+
+    // 构建 WebSocket URL，添加 token 参数
+    let wsUrl = isDev
       ? `ws://${window.location.hostname}:6009/ws/terminal`
       : `ws://${window.location.hostname}:${window.location.port}/ws/terminal`
 
-    console.log('[XTerm] Connecting to WebSocket:', wsUrl)
+    wsUrl += `?token=${encodeURIComponent(token)}`
+
+    console.log('[XTerm] Connecting to WebSocket:', wsUrl.replace(token, '[token]'))
     this.websocket = new WebSocket(wsUrl)
 
     let initTimeout = null
@@ -359,6 +371,38 @@ export class XTermEngine {
     if (this.terminal) {
       this.terminal.dispose()
       this.terminal = null
+    }
+  }
+
+  // 复制选中的文本到剪贴板
+  async copySelection() {
+    try {
+      const selection = this.terminal.getSelection()
+      if (selection) {
+        await navigator.clipboard.writeText(selection)
+        console.log('[XTerm] Text copied to clipboard')
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('[XTerm] Failed to copy:', error)
+      return false
+    }
+  }
+
+  // 粘贴剪贴板内容
+  async pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) {
+        this.sendInput(text)
+        console.log('[XTerm] Text pasted from clipboard')
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('[XTerm] Failed to paste:', error)
+      return false
     }
   }
 

@@ -174,14 +174,32 @@ onUnmounted(() => {
 function setupKeyboardShortcuts() {
   if (!terminalContainer.value) return
 
-  terminalContainer.value.addEventListener('keydown', (e) => {
+  terminalContainer.value.addEventListener('keydown', async (e) => {
+    // Ctrl+L: 清屏
     if (e.ctrlKey && e.key === 'l') {
       e.preventDefault()
       clear()
     }
+    // Ctrl+Shift+R: 刷新光标
     if (e.ctrlKey && e.shiftKey && e.key === 'R') {
       e.preventDefault()
       refreshCursor()
+    }
+    // Ctrl+Shift+C: 复制选中文本
+    if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+      e.preventDefault()
+      const copied = await terminalEngine.value?.copySelection()
+      if (copied) {
+        console.log('[TerminalBest] Text copied successfully')
+      }
+    }
+    // Ctrl+Shift+V: 粘贴剪贴板内容
+    if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+      e.preventDefault()
+      const pasted = await terminalEngine.value?.pasteFromClipboard()
+      if (pasted) {
+        console.log('[TerminalBest] Text pasted successfully')
+      }
     }
   })
 }
@@ -207,7 +225,9 @@ defineExpose({
   getStatus,
   reconnect,
   refreshCursor,
-  reinitializeTerminal
+  reinitializeTerminal,
+  copySelection: () => terminalEngine.value?.copySelection(),
+  pasteFromClipboard: () => terminalEngine.value?.pasteFromClipboard()
 })
 </script>
 

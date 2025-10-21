@@ -38,15 +38,14 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { createSimpleTerminalEngine } from '../core/terminal-engine/simple-engine.js'
+import { createXTermEngine } from '../core/terminal-engine/xterm-engine.js'
 
 const terminalContainer = ref(null)
 const isConnected = ref(false)
 const isReconnecting = ref(false)
-const isMobile = ref(false)
 const terminalEngine = ref(null)
 
-// 连接状态计算属性
+// 计算属性
 const connectionStatusClass = computed(() => ({
   'connected': isConnected.value,
   'disconnected': !isConnected.value,
@@ -60,14 +59,6 @@ const connectionStatusText = computed(() => {
 
 // Props
 const props = defineProps({
-  serverUrl: {
-    type: String,
-    default: ''
-  },
-  theme: {
-    type: String,
-    default: 'dark'
-  },
   fontSize: {
     type: Number,
     default: 14
@@ -77,179 +68,117 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['connected', 'disconnected', 'error'])
 
-// 连接状态监听
+// 更新连接状态
 const updateConnectionStatus = () => {
-  if (terminalEngine.value && terminalEngine.value.websocket) {
+  if (terminalEngine.value?.websocket) {
     isConnected.value = terminalEngine.value.websocket.readyState === WebSocket.OPEN
   } else {
     isConnected.value = false
   }
 }
 
-// 重连方法
+// 初始化终端
+const initializeTerminal = async () => {
+  if (!terminalContainer.value) return
+
+  const config = {
+    container: terminalContainer.value,
+    fontSize: props.fontSize
+  }
+
+  terminalEngine.value = createXTermEngine(config)
+
+  // 监听 WebSocket 事件以更新 UI 状态
+  if (terminalEngine.value.websocket) {
+    const originalOnOpen = terminalEngine.value.websocket.onopen
+    const originalOnClose = terminalEngine.value.websocket.onclose
+    const originalOnError = terminalEngine.value.websocket.onerror
+
+    terminalEngine.value.websocket.onopen = () => {
+      originalOnOpen?.call(terminalEngine.value.websocket)
+      isConnected.value = true
+      emit('connected')
+    }
+
+    terminalEngine.value.websocket.onclose = () => {
+      originalOnClose?.call(terminalEngine.value.websocket)
+      isConnected.value = false
+      emit('disconnected')
+    }
+
+    terminalEngine.value.websocket.onerror = (error) => {
+      originalOnError?.call(terminalEngine.value.websocket, error)
+      emit('error', error)
+    }
+  }
+}
+
+// 重新连接
 const reconnect = async () => {
   try {
     isReconnecting.value = true
-    if (terminalEngine.value) {
-      terminalEngine.value.destroy()
-    }
+    terminalEngine.value?.destroy()
     await initializeTerminal()
     updateConnectionStatus()
   } catch (error) {
-    console.error('Reconnection failed:', error)
+    console.error('[Terminal] Reconnection failed:', error)
+    emit('error', error)
   } finally {
     isReconnecting.value = false
   }
 }
 
-// 刷新光标
+// 刷新光标焦点
 const refreshCursor = () => {
-  if (terminalEngine.value && terminalEngine.value.contentEl) {
+  if (terminalEngine.value?.contentEl) {
     terminalEngine.value.contentEl.focus()
+  } else if (terminalContainer.value) {
+    terminalContainer.value.focus()
   }
 }
 
-// 重新初始化终端（移动端）
+// 重新初始化终端
 const reinitializeTerminal = async () => {
-  console.log('[TerminalBest] Mobile terminal reinitialization triggered')
-  
   try {
-    if (terminalEngine.value) {
-      terminalEngine.value.destroy()
-    }
+    terminalEngine.value?.destroy()
     await initializeTerminal()
-    
-    // 移动端额外执行光标恢复
-    if (isMobile.value) {
-      setTimeout(() => {
-        refreshCursor()
-        console.log('[TerminalBest] Mobile cursor restored after reinit')
-      }, 300)
-    }
-    
-    // 更新连接状态
     updateConnectionStatus()
-    console.log('[TerminalBest] Terminal reinitialization successful')
   } catch (error) {
-    console.error('[TerminalBest] Terminal reinitialization error:', error)
-  }
-}
-
-// 检测移动设备
-const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-         (navigator.maxTouchPoints && navigator.maxTouchPoints > 2)
-}
-
-// 初始化终端
-const initializeTerminal = async () => {
-  if (!terminalContainer.value) return
-  
-  const config = {
-    container: terminalContainer.value,
-    device: isMobile.value ? 'mobile' : 'desktop',
-    config: {
-      renderer: {
-        type: 'auto',
-        optimizeForTouch: isMobile.value
-      },
-      buffer: {
-        maxLines: 10000,
-        cols: 80,
-        rows: 24
-      },
-      theme: {
-        background: '#000000',
-        foreground: '#00ff00',
-        cursor: '#00ff00'
-      }
-    }
-  }
-  
-  terminalEngine.value = createSimpleTerminalEngine(config)
-  
-  // 设置WebSocket事件监听
-  if (terminalEngine.value.websocket) {
-    terminalEngine.value.websocket.onopen = () => {
-      isConnected.value = true
-      emit('connected')
-    }
-    
-    terminalEngine.value.websocket.onclose = () => {
-      isConnected.value = false
-      emit('disconnected')
-    }
-    
-    terminalEngine.value.websocket.onerror = (error) => {
-      console.error('[TerminalBest] WebSocket error:', error)
-      emit('error', error)
-    }
+    console.error('[Terminal] Reinitialization failed:', error)
+    emit('error', error)
   }
 }
 
 // 生命周期
 onMounted(async () => {
   try {
-    // 检测移动端设备
-    isMobile.value = isMobileDevice()
-    console.log('[TerminalBest] Mobile device detected:', isMobile.value)
-    
-    // 初始化终端
     await initializeTerminal()
-    
-    // 设置快捷键
+
+    // 定期更新连接状态
+    const statusInterval = setInterval(updateConnectionStatus, 2000)
+    onUnmounted(() => clearInterval(statusInterval))
+
+    // 设置键盘快捷键
     setupKeyboardShortcuts()
-    
-    // 定期检查连接状态
-    setInterval(updateConnectionStatus, 2000)
-    
-    // 移动端特殊处理
-    if (isMobile.value) {
-      // 延迟初始化，确保移动端布局完成
-      setTimeout(() => {
-        reinitializeTerminal()
-      }, 500)
-    }
-    
   } catch (error) {
-    console.error('Failed to initialize terminal:', error)
-    updateConnectionStatus()
+    console.error('[Terminal] Initialization failed:', error)
     emit('error', error)
   }
 })
 
 onUnmounted(() => {
-  // 清理终端
-  if (terminalEngine.value) {
-    terminalEngine.value.destroy()
-  }
+  terminalEngine.value?.destroy()
 })
 
-// 设置键盘快捷键
+// 键盘快捷键
 function setupKeyboardShortcuts() {
-  const container = terminalContainer.value
-  if (!container) return
-  
-  container.addEventListener('keydown', (e) => {
-    // Ctrl+Shift+C: 复制 (暂时禁用，因为需要实现复制功能)
-    if (e.ctrlKey && e.shiftKey && e.key === 'C') {
-      e.preventDefault()
-      // TODO: 实现复制功能
-    }
-    
-    // Ctrl+Shift+V: 粘贴 (暂时禁用)
-    if (e.ctrlKey && e.shiftKey && e.key === 'V') {
-      e.preventDefault()
-      // TODO: 实现粘贴功能
-    }
-    
-    // Ctrl+L: 清屏
+  if (!terminalContainer.value) return
+
+  terminalContainer.value.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'l') {
       e.preventDefault()
       clear()
     }
-    
-    // Ctrl+Shift+R: 刷新光标
     if (e.ctrlKey && e.shiftKey && e.key === 'R') {
       e.preventDefault()
       refreshCursor()
@@ -259,23 +188,17 @@ function setupKeyboardShortcuts() {
 
 // 公开的方法
 const sendCommand = (command) => {
-  if (terminalEngine.value) {
-    terminalEngine.value.sendInput(command + '\r')
-  }
+  terminalEngine.value?.sendInput(command + '\r')
 }
 
 const clear = () => {
-  if (terminalEngine.value) {
-    terminalEngine.value.clear()
-  }
+  terminalEngine.value?.clear()
 }
 
-const getStatus = () => {
-  return {
-    isConnected: isConnected.value,
-    isReconnecting: isReconnecting.value
-  }
-}
+const getStatus = () => ({
+  isConnected: isConnected.value,
+  isReconnecting: isReconnecting.value
+})
 
 // 暴露给父组件
 defineExpose({
@@ -283,16 +206,18 @@ defineExpose({
   clear,
   getStatus,
   reconnect,
-  refreshCursor
+  refreshCursor,
+  reinitializeTerminal
 })
 </script>
 
 <style scoped>
 .terminal-wrapper {
   width: 100%;
-  height: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #1e1e1e;
 }
 
 .connection-status {

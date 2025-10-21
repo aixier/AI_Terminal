@@ -10,6 +10,7 @@
  */
 
 import { WebSocketServer } from 'ws'
+import { Client } from 'ssh2'
 import terminalManager from './terminalManager.js'
 import logger from '../utils/logger.js'
 
@@ -158,22 +159,48 @@ class NativeWebSocketService {
       console.log(`[WebSocketService] Initializing terminal for ${clientId}`)
       console.log('[WebSocketService] Options:', options)
 
+      const mode = options.mode || 'local'
+
+      if (mode === 'ssh' && options.ssh) {
+        // SSH模式
+        await this.handleSSHInit(ws, clientId, options)
+      } else {
+        // 本地PTY模式（默认）
+        await this.handleLocalInit(ws, clientId, options)
+      }
+    } catch (error) {
+      logger.error(`[WebSocketService] Failed to initialize terminal:`, error)
+      this.sendMessage(ws, {
+        type: 'error',
+        error: `Failed to initialize terminal: ${error.message}`,
+        details: {
+          code: error.code,
+          syscall: error.syscall
+        }
+      })
+    }
+  }
+
+  /**
+   * 初始化本地PTY终端
+   */
+  async handleLocalInit(ws, clientId, options) {
+    try {
+      console.log(`[WebSocketService] Initializing LOCAL PTY for ${clientId}`)
+
       // 生成终端ID
       const terminalId = `term_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
-      // 确定工作目录 - 改进的逻辑
+      // 确定工作目录
       let cwd = options.cwd
       if (!cwd) {
-        // 1. 优先使用当前用户的HOME
         cwd = process.env.HOME || process.env.USERPROFILE
-
-        // 2. 如果HOME不存在，使用当前工作目录
         if (!cwd) {
           cwd = process.cwd()
         }
       }
 
-      // 确定shell - 改进的逻辑
+      // 确定shell
       let shell = options.shell
       if (!shell) {
         if (process.platform === 'win32') {
@@ -185,7 +212,7 @@ class NativeWebSocketService {
 
       console.log(`[WebSocketService] Using cwd: ${cwd}, shell: ${shell}`)
 
-      // 创建终端 - 使用terminalManager的create方法
+      // 创建本地PTY终端
       const terminal = terminalManager.create(terminalId, {
         cols: options.cols || 80,
         rows: options.rows || 24,
@@ -221,47 +248,169 @@ class NativeWebSocketService {
       // 发送成功消息
       this.sendMessage(ws, {
         type: 'ready',
+        mode: 'local',
         terminalId: terminalId,
         pid: terminal.pid,
-        message: `Terminal ready. PID: ${terminal.pid}`
+        message: `Local terminal ready. PID: ${terminal.pid}`
       })
 
-      console.log(`[WebSocketService] ✅ Terminal ${terminalId} created for ${clientId}, PID: ${terminal.pid}`)
-
+      console.log(`[WebSocketService] ✅ Local Terminal ${terminalId} created for ${clientId}, PID: ${terminal.pid}`)
     } catch (error) {
-      logger.error(`[WebSocketService] Failed to create terminal:`, error)
-      console.error(`[WebSocketService] ❌ Error details:`, {
-        message: error.message,
-        code: error.code,
-        errno: error.errno,
-        syscall: error.syscall
-      })
-
-      this.sendMessage(ws, {
-        type: 'error',
-        error: `Failed to create terminal: ${error.message}`,
-        details: {
-          code: error.code,
-          syscall: error.syscall
-        }
-      })
+      logger.error(`[WebSocketService] Failed to create local terminal:`, error)
+      throw error
     }
+  }
+
+  /**
+   * 初始化SSH终端
+   */
+  async handleSSHInit(ws, clientId, options) {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log(`[WebSocketService] Initializing SSH for ${clientId}`)
+
+        const sshConfig = options.ssh || {}
+        const terminalId = `ssh_${Date.now()}_${Math.random().toString(36).substring(7)}`
+
+        const sshClient = new Client()
+        const clientConfig = {
+          host: sshConfig.host,
+          port: sshConfig.port || 22,
+          username: sshConfig.username,
+          readyTimeout: 30000,
+          algorithms: {
+            serverHostKey: ['ssh-rsa', 'ssh-dss'],
+            cipher: ['aes128-ctr', 'aes192-ctr', 'aes256-ctr', 'aes128-cbc', 'aes192-cbc']
+          }
+        }
+
+        // 支持密码或密钥认证
+        if (sshConfig.privateKey) {
+          clientConfig.privateKey = sshConfig.privateKey
+        } else if (sshConfig.password) {
+          clientConfig.password = sshConfig.password
+        } else {
+          throw new Error('SSH authentication requires password or privateKey')
+        }
+
+        sshClient.on('ready', () => {
+          console.log(`[WebSocketService] SSH client ready for ${terminalId}`)
+
+          // 请求PTY
+          sshClient.shell({ term: 'xterm', cols: options.cols || 80, rows: options.rows || 24 }, (err, stream) => {
+            if (err) {
+              console.error('[WebSocketService] Failed to open SSH shell:', err)
+              this.sendMessage(ws, {
+                type: 'error',
+                error: 'Failed to open SSH shell: ' + err.message
+              })
+              sshClient.end()
+              reject(err)
+              return
+            }
+
+            console.log(`[WebSocketService] ✅ SSH shell opened for ${terminalId}`)
+
+            // 建立映射
+            this.wsToTerminal.set(ws, terminalId)
+            this.terminalToWs.set(terminalId, ws)
+
+            // 存储SSH会话信息
+            const sessionInfo = {
+              type: 'ssh',
+              sshClient,
+              stream,
+              terminalId
+            }
+            this.connections.set(ws, sessionInfo)
+
+            // 监听SSH输出
+            stream.on('data', (data) => {
+              if (ws.readyState === ws.OPEN) {
+                this.sendMessage(ws, {
+                  type: 'output',
+                  data: data.toString()
+                })
+              }
+            })
+
+            stream.on('close', () => {
+              console.log(`[WebSocketService] SSH stream closed for ${terminalId}`)
+              sshClient.end()
+              ws.close(1000, 'SSH session ended')
+            })
+
+            stream.on('error', (err) => {
+              console.error('[WebSocketService] SSH stream error:', err)
+              this.sendMessage(ws, {
+                type: 'error',
+                error: 'SSH stream error: ' + err.message
+              })
+            })
+
+            // 发送成功消息
+            this.sendMessage(ws, {
+              type: 'ready',
+              mode: 'ssh',
+              terminalId: terminalId,
+              host: sshConfig.host,
+              message: `SSH connection established to ${sshConfig.username}@${sshConfig.host}`
+            })
+
+            resolve()
+          })
+        })
+
+        sshClient.on('error', (err) => {
+          console.error('[WebSocketService] SSH connection error:', err)
+          this.sendMessage(ws, {
+            type: 'error',
+            error: 'SSH connection error: ' + err.message
+          })
+          reject(err)
+        })
+
+        sshClient.on('close', () => {
+          console.log('[WebSocketService] SSH client closed')
+        })
+
+        console.log('[WebSocketService] Attempting SSH connection to', clientConfig.host, clientConfig.username)
+        sshClient.connect(clientConfig)
+
+      } catch (error) {
+        console.error('[WebSocketService] SSH initialization error:', error)
+        this.sendMessage(ws, {
+          type: 'error',
+          error: 'SSH initialization error: ' + error.message
+        })
+        reject(error)
+      }
+    })
   }
 
   /**
    * 处理终端输入
    */
   handleInput(ws, clientId, data) {
-    console.log(`[WebSocketService] Received input from ${clientId}:`, data, 'Length:', data.length)
+    console.log(`[WebSocketService] Received input from ${clientId}:`, data.slice(0, 50), 'Length:', data.length)
     const terminalId = this.wsToTerminal.get(ws)
     if (terminalId) {
       console.log(`[WebSocketService] Found terminal ${terminalId} for client ${clientId}`)
-      const terminal = terminalManager.get(terminalId)  // 使用get方法
-      if (terminal) {
-        console.log(`[WebSocketService] Writing to terminal: "${data}" (charCode: ${data.charCodeAt(0)})`)
-        terminal.write(data)
+
+      // 检查是否是SSH会话
+      const connectionInfo = this.connections.get(ws)
+      if (connectionInfo && connectionInfo.type === 'ssh' && connectionInfo.stream) {
+        console.log(`[WebSocketService] Writing to SSH stream`)
+        connectionInfo.stream.write(data)
       } else {
-        console.error(`[WebSocketService] Terminal instance not found for ${terminalId}`)
+        // 本地PTY
+        const terminal = terminalManager.get(terminalId)
+        if (terminal) {
+          console.log(`[WebSocketService] Writing to local PTY: charCode ${data.charCodeAt(0)}`)
+          terminal.write(data)
+        } else {
+          console.error(`[WebSocketService] Terminal instance not found for ${terminalId}`)
+        }
       }
     } else {
       console.error(`[WebSocketService] No terminal mapping for client ${clientId}`)
@@ -274,10 +423,18 @@ class NativeWebSocketService {
   handleResize(ws, clientId, { cols, rows }) {
     const terminalId = this.wsToTerminal.get(ws)
     if (terminalId) {
-      const terminal = terminalManager.get(terminalId)  // 使用get方法
-      if (terminal) {
-        terminal.resize(cols, rows)
-        console.log(`[WebSocketService] Terminal ${terminalId} resized to ${cols}x${rows}`)
+      // 检查是否是SSH会话
+      const connectionInfo = this.connections.get(ws)
+      if (connectionInfo && connectionInfo.type === 'ssh' && connectionInfo.stream) {
+        console.log(`[WebSocketService] Resizing SSH terminal to ${cols}x${rows}`)
+        connectionInfo.stream.setWindow(rows, cols, 0, 0)
+      } else {
+        // 本地PTY
+        const terminal = terminalManager.get(terminalId)
+        if (terminal) {
+          terminal.resize(cols, rows)
+          console.log(`[WebSocketService] Local terminal ${terminalId} resized to ${cols}x${rows}`)
+        }
       }
     }
   }
@@ -288,16 +445,29 @@ class NativeWebSocketService {
   handleDisconnect(ws, clientId) {
     // 清理终端
     const terminalId = this.wsToTerminal.get(ws)
-    if (terminalId) {
-      terminalManager.destroy(terminalId)  // 使用destroy方法
+    const connectionInfo = this.connections.get(ws)
+
+    if (connectionInfo && connectionInfo.type === 'ssh') {
+      // SSH会话清理
+      if (connectionInfo.stream) {
+        connectionInfo.stream.end()
+      }
+      if (connectionInfo.sshClient) {
+        connectionInfo.sshClient.end()
+      }
+      console.log(`[WebSocketService] Cleaned up SSH session for ${clientId}`)
+    } else if (terminalId) {
+      // 本地PTY清理
+      terminalManager.destroy(terminalId)
       this.terminalToWs.delete(terminalId)
+      console.log(`[WebSocketService] Destroyed local terminal ${terminalId} for ${clientId}`)
     }
 
     // 清理映射
     this.wsToTerminal.delete(ws)
     this.connections.delete(ws)
 
-    console.log(`[WebSocketService] Cleaned up resources for ${clientId}`)
+    console.log(`[WebSocketService] Cleaned up all resources for ${clientId}`)
   }
 
   /**

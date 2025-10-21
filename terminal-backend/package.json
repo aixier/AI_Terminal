@@ -42,6 +42,7 @@
     "puppeteer-core": "^24.21.0",
     "sharp": "^0.34.3",
     "socket.io": "^4.8.1",
+    "ssh2": "^1.15.0",
     "unzipper": "^0.12.3",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",

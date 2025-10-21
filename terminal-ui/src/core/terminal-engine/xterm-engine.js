@@ -377,15 +377,59 @@ export class XTermEngine {
   // 复制选中的文本到剪贴板
   async copySelection() {
     try {
-      const selection = this.terminal.getSelection()
-      if (selection) {
+      // 方式1：尝试获取当前选中的文本（鼠标选择）
+      let selection = this.terminal.getSelection()
+
+      // 方式2：如果没有选中内容，复制最后一行
+      if (!selection || selection.trim().length === 0) {
+        // 从 buffer 获取最后N行的内容
+        const buffer = this.terminal.buffer.active
+        if (!buffer || buffer.length === 0) {
+          console.warn('[XTerm] No content to copy')
+          return false
+        }
+
+        // 获取最后显示的20行内容
+        const lines = []
+        const startLine = Math.max(0, buffer.length - 20)
+        for (let i = startLine; i < buffer.length; i++) {
+          const line = buffer.getLine(i)
+          if (line) {
+            lines.push(line.translateToString())
+          }
+        }
+        selection = lines.join('\n')
+      }
+
+      if (selection && selection.trim().length > 0) {
         await navigator.clipboard.writeText(selection)
-        console.log('[XTerm] Text copied to clipboard')
+        console.log('[XTerm] Text copied to clipboard:', selection.length, 'chars')
         return true
       }
+
+      console.warn('[XTerm] No text to copy')
       return false
     } catch (error) {
       console.error('[XTerm] Failed to copy:', error)
+      return false
+    }
+  }
+
+  // 全选终端中的所有文本
+  selectAll() {
+    try {
+      const buffer = this.terminal.buffer.active
+      if (!buffer || buffer.length === 0) {
+        console.warn('[XTerm] No content to select')
+        return false
+      }
+
+      // 选择从第一行到最后一行的所有内容
+      this.terminal.select(0, 0, buffer.length, buffer.getLine(buffer.length - 1)?.length || 0)
+      console.log('[XTerm] All content selected')
+      return true
+    } catch (error) {
+      console.error('[XTerm] Failed to select all:', error)
       return false
     }
   }

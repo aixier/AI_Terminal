@@ -175,6 +175,14 @@ function setupKeyboardShortcuts() {
   if (!terminalContainer.value) return
 
   terminalContainer.value.addEventListener('keydown', async (e) => {
+    // Ctrl+A: 全选
+    if (e.ctrlKey && e.key === 'a') {
+      e.preventDefault()
+      const selected = terminalEngine.value?.selectAll()
+      if (selected) {
+        console.log('[TerminalBest] All content selected')
+      }
+    }
     // Ctrl+L: 清屏
     if (e.ctrlKey && e.key === 'l') {
       e.preventDefault()
@@ -185,12 +193,14 @@ function setupKeyboardShortcuts() {
       e.preventDefault()
       refreshCursor()
     }
-    // Ctrl+Shift+C: 复制选中文本
+    // Ctrl+Shift+C: 复制选中文本（如果没有选中，复制最后20行）
     if (e.ctrlKey && e.shiftKey && e.key === 'C') {
       e.preventDefault()
       const copied = await terminalEngine.value?.copySelection()
       if (copied) {
-        console.log('[TerminalBest] Text copied successfully')
+        console.log('[TerminalBest] Text copied to clipboard')
+      } else {
+        console.warn('[TerminalBest] Failed to copy text')
       }
     }
     // Ctrl+Shift+V: 粘贴剪贴板内容
@@ -198,7 +208,9 @@ function setupKeyboardShortcuts() {
       e.preventDefault()
       const pasted = await terminalEngine.value?.pasteFromClipboard()
       if (pasted) {
-        console.log('[TerminalBest] Text pasted successfully')
+        console.log('[TerminalBest] Text pasted from clipboard')
+      } else {
+        console.warn('[TerminalBest] Failed to paste text')
       }
     }
   })
@@ -226,6 +238,7 @@ defineExpose({
   reconnect,
   refreshCursor,
   reinitializeTerminal,
+  selectAll: () => terminalEngine.value?.selectAll(),
   copySelection: () => terminalEngine.value?.copySelection(),
   pasteFromClipboard: () => terminalEngine.value?.pasteFromClipboard()
 })

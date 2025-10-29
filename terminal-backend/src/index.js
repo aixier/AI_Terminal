@@ -18,6 +18,8 @@ import generateRoutes from './routes/generate/index.js'
 import uploadRoutes from './routes/upload.js'
 import workspaceRoutes from './routes/workspace.js'
 import transcriptionRoutes from './routes/transcription.js'
+import youtube2postRoutes from './routes/youtube2post/index.js'
+import youtubeDownloadRoutes from './routes/youtubeDownload.js'
 import assetsRoutes from './routes/v2/assets.js'
 import { router as sseRouter } from './routes/v2/sse.js'
 import stsRoutes from './routes/sts.js'
@@ -26,6 +28,8 @@ import htmlEditRoutes from './routes/htmlEdit.js'
 import cardExtractorRoutes from './routes/cardExtractor.js'
 import { setupSocketHandlers } from './services/socketService.js'
 import websocketService from './services/websocketService.js'
+import { startYoutube2PostWorker } from './workers/youtube2postProcessor.js'
+import videoDecomposeRoutes from './routes/videoDecompose.js'
 // import { preventCommandInjection, limitRequestSize, auditLog, rateLimit } from './middleware/security.js'
 // import { verifyToken, optionalAuth } from './middleware/auth.js'
 
@@ -285,6 +289,12 @@ console.log('     ✓ /api/workspace route registered')
 
 app.use('/api/transcription', transcriptionRoutes)
 console.log('     ✓ /api/transcription route registered')
+app.use('/api/youtube2post', youtube2postRoutes)
+console.log('     ✓ /api/youtube2post route registered')
+app.use('/api/video-decompose', videoDecomposeRoutes)
+console.log('     ✓ /api/video-decompose route registered')
+app.use('/api/youtube', youtubeDownloadRoutes)
+console.log('     ✓ /api/youtube route registered')
 app.use('/api/sts', stsRoutes)
 console.log('     ✓ /api/sts route registered')
 app.use('/api/oss-direct', ossDirectRoutes)
@@ -612,6 +622,10 @@ httpServer.listen(PORT, HOST, () => {
   logger.info(`Server running on ${HOST}:${PORT} in ${config.nodeEnv} mode`)
   logger.info(`Server is accessible from any network interface`)
   logger.info(`HTTP timeout set to ${TIMEOUT_MS/1000}s for long-running requests`)
+
+  if (config.youtube2post?.workerEnabled !== false) {
+    startYoutube2PostWorker()
+  }
 })
 
 export { io }
